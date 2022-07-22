@@ -3,39 +3,30 @@ pragma solidity =0.7.6;
 
 import "forge-std/Test.sol";
 import "../src/PredyV3Pool.sol";
+import "../src/mocks/MockERC20.sol";
+//import "v3-core/contracts/UniswapV3Factory.sol";
+//import "v3-periphery/SwapRouter.sol";
 
 contract PredyV3PoolTest is Test {
+    MockERC20 token0;
+    MockERC20 token1;
     PredyV3Pool pool;
+    SwapRouter swapRouter;
 
     function setUp() public {
-        pool = new PredyV3Pool();
+        token0 = new MockERC20("WETH", "WETH", 18);
+        token1 = new MockERC20("USDC", "USDC", 6);
+
+        UniswapV3Factory factory = new UniswapV3Factory();
+        NonfungiblePositionManager positionManager = new NonfungiblePositionManager(factory, token0, address(0));
+        swapRouter = new SwapRouter(factory, token0);
+
+        pool = new PredyV3Pool(token0, token1, false, positionManager, swapRouter);
+
+
     }
 
-    function testAddLiquidity(uint256 _tickId, uint256 _amount) public {
-        pool.addLiquidity(_tickId, _amount);
+    function testCreateBoard(uint256 _expiration) public {
+        pool.createBoard(_expiration, [], []);
     }
-
-    function testRemoveLiquidity(uint256 _tickId, uint256 _amount) public {
-        pool.removeLiquidity(_tickId, _amount);
-    }
-
-    function testAddAndRemoveLiquidity(uint256 _amount) public {
-        for(uint256 i = 5;i < 500;i++) {
-            pool.addLiquidity(i, _amount);
-        }
-        pool.removeLiquidity(5, _amount);
-    }
-
-    function testAddPerpOption(uint256 _amount) public {
-        pool.addPerpOption(_amount);
-    }
-
-    function testRemovePerpOption(uint256 _amount) public {
-        pool.removePerpOption(_amount);
-    }
-
-    function testSwap(int256 _amount) public {
-        pool.swap(_amount);
-    }
-
 }
