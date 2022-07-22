@@ -3,8 +3,7 @@ pragma solidity =0.7.6;
 
 
 import "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
-import "./libraries/Position.sol";
-import "./libraries/Math.sol";
+import "v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
 
 contract PredyV3Pool {
     address public immutable token0;
