@@ -3,15 +3,15 @@ pragma solidity ^0.7.6;
 pragma abicoder v2;
 
 import "openzeppelin-contracts/access/Ownable.sol";
-import "openzeppelin-contracts/token/ERC20/SafeERC20.sol";
 import "openzeppelin-contracts/token/ERC20/ERC20.sol";
 import "v3-periphery/interfaces/INonfungiblePositionManager.sol";
 import "v3-periphery/libraries/LiquidityAmounts.sol";
+import "v3-periphery/libraries/TransferHelper.sol";
 import "v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "v3-core/contracts/libraries/TickMath.sol";
-import "v3-core/contracts/UniswapV3Factory.sol";
+import "v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 import "v3-core/contracts/libraries/FixedPoint128.sol";
-import "v3-periphery/SwapRouter.sol";
+import "v3-periphery/interfaces/ISwapRouter.sol";
 import "./base/BaseStrategy.sol";
 import "./interfaces/IPredyV3Pool.sol";
 import "./interfaces/IPricingModule.sol";
@@ -143,15 +143,15 @@ contract PredyV3Pool is IPredyV3Pool {
         address _token0,
         address _token1,
         bool _isMarginZero,
-        INonfungiblePositionManager _positionManager,
+        address _positionManager,
         address _factory,
-        ISwapRouter _swapRouter
+        address _swapRouter
     ) {
         token0 = _token0;
         token1 = _token1;
         isMarginZero = _isMarginZero;
-        positionManager = _positionManager;
-        swapRouter = _swapRouter;
+        positionManager = INonfungiblePositionManager(_positionManager);
+        swapRouter = ISwapRouter(_swapRouter);
 
         PoolAddress.PoolKey memory poolKey = PoolAddress.PoolKey({token0: token0, token1: token1, fee: FEE_TIER});
 
@@ -416,7 +416,7 @@ contract PredyV3Pool is IPredyV3Pool {
         INonfungiblePositionManager.DecreaseLiquidityParams memory params = INonfungiblePositionManager
             .DecreaseLiquidityParams(board.tokenIds[_index], _liquidity, 0, 0, block.timestamp);
 
-        (uint256 amount0, uint256 amount1) = decreaseLiquidity(_boardId, _index, params);
+        (uint256 amount0, uint256 amount1) = decreaseLiquidityFromUni(_boardId, _index, params);
 
         if (_isInstant != InstantDebtType.NONE) {
             perpStatuses[_boardId][_index].instantBorrowedLiquidity += _liquidity;
@@ -501,7 +501,7 @@ contract PredyV3Pool is IPredyV3Pool {
             INonfungiblePositionManager.DecreaseLiquidityParams memory params = INonfungiblePositionManager
                 .DecreaseLiquidityParams(board.tokenIds[index], vault.collateralLiquidity[i], 0, 0, block.timestamp);
 
-            (uint256 amount0, uint256 amount1) = decreaseLiquidity(_boardId, index, params);
+            (uint256 amount0, uint256 amount1) = decreaseLiquidityFromUni(_boardId, index, params);
 
             totalAmount0 += amount0;
             totalAmount1 += amount1;
@@ -561,19 +561,19 @@ contract PredyV3Pool is IPredyV3Pool {
         vault.debtAmount1 = 0;
     }
 
-    function decreaseLiquidity(
+    function decreaseLiquidityFromUni(
         uint256 _boardId,
         uint128 _index,
         INonfungiblePositionManager.DecreaseLiquidityParams memory params
     ) internal returns (uint256 amount0, uint256 amount1) {
-        uint128 liquidity = getLiquidity(_boardId, _index);
+        uint128 liquidityAmount = getTotalLiquidityAmount(_boardId, _index);
 
         (amount0, amount1) = positionManager.decreaseLiquidity(params);
 
-        collect(_boardId, _index, uint128(amount0), uint128(amount1), liquidity);
+        collectTokenAmountsFromUni(_boardId, _index, uint128(amount0), uint128(amount1), liquidityAmount);
     }
 
-    function collect(
+    function collectTokenAmountsFromUni(
         uint256 _boardId,
         uint128 _index,
         uint128 _amount0,
@@ -591,10 +591,14 @@ contract PredyV3Pool is IPredyV3Pool {
 
         (uint256 a0, uint256 a1) = positionManager.collect(params);
 
+        // Update cumulative trade fee
         perpStatuses[_boardId][_index].cumFee0 += ((a0 - _amount0) * FixedPoint128.Q128) / _preLiquidity;
         perpStatuses[_boardId][_index].cumFee1 += ((a1 - _amount1) * FixedPoint128.Q128) / _preLiquidity;
     }
 
+    /**
+     * Liquidates if margin value is less than min collateral
+     */
     function liquidate(
         uint256 _vaultId,
         uint256 _boardId,
@@ -613,6 +617,9 @@ contract PredyV3Pool is IPredyV3Pool {
         _closePositionsInVault(_vaultId, _boardId, _zeroToOne, _amount, _amountOutMinimum);
     }
 
+    /**
+     * Liquidates if perp option becomes ITM
+     */
     function liquidate2(
         uint256 _vaultId,
         uint256 _boardId,
@@ -644,6 +651,9 @@ contract PredyV3Pool is IPredyV3Pool {
         _closePositionsInVault(_vaultId, _boardId, _zeroToOne, _amount, _amountOutMinimum);
     }
 
+    /**
+     * Liquidates if collateral value is less than (2 * debt value).
+     */
     function liquidate3(
         uint256 _vaultId,
         uint256 _boardId,
@@ -771,7 +781,7 @@ contract PredyV3Pool is IPredyV3Pool {
         (uint256 lowerSqrtPrice, uint256 upperSqrtPrice) = getSqrtPriceRange(boards[_boardId], _index);
 
         if (perpStatus.borrowedLiquidity > 0) {
-            uint256 a = ((block.timestamp - _lastTouchedTimestamp) *
+            uint256 feeAmount = ((block.timestamp - _lastTouchedTimestamp) *
                 pricingModule.calculatePerpFee(
                     _sqrtPrice,
                     lowerSqrtPrice,
@@ -779,15 +789,15 @@ contract PredyV3Pool is IPredyV3Pool {
                     volatility,
                     getPerpUR(_boardId, _index)
                 )) / 1 days;
-            perpStatus.cumulativeFee += a;
-            perpStatus.cumulativeFeeForLP += (a * perpStatus.borrowedLiquidity) / getLiquidity(_boardId, _index);
+            perpStatus.cumulativeFee += feeAmount;
+            perpStatus.cumulativeFeeForLP += (feeAmount * perpStatus.borrowedLiquidity) / getTotalLiquidityAmount(_boardId, _index);
         }
 
         if (perpStatus.instantBorrowedLiquidity > 0) {
-            uint256 a = ((block.timestamp - _lastTouchedTimestamp) *
+            uint256 feeAmount = ((block.timestamp - _lastTouchedTimestamp) *
                 pricingModule.calculateInstantRate(_sqrtPrice, getInstantUR(_boardId, _index))) / 1 days;
-            perpStatus.instantCumulativeFee += a;
-            perpStatus.cumulativeFeeForLP += (a * perpStatus.instantBorrowedLiquidity) / getLiquidity(_boardId, _index);
+            perpStatus.instantCumulativeFee += feeAmount;
+            perpStatus.cumulativeFeeForLP += (feeAmount * perpStatus.instantBorrowedLiquidity) / getTotalLiquidityAmount(_boardId, _index);
         }
     }
 
@@ -818,17 +828,17 @@ contract PredyV3Pool is IPredyV3Pool {
     function getPerpUR(uint256 _boardId, uint256 _index) internal view returns (uint256) {
         PerpStatus memory perpStatus = perpStatuses[_boardId][_index];
 
-        uint128 liquidity = getLiquidity(_boardId, _index);
+        uint128 liquidityAmount = getTotalLiquidityAmount(_boardId, _index);
 
-        return (perpStatus.borrowedLiquidity * 1e10) / liquidity;
+        return (perpStatus.borrowedLiquidity * 1e10) / liquidityAmount;
     }
 
     function getInstantUR(uint256 _boardId, uint256 _index) internal view returns (uint256) {
         PerpStatus memory perpStatus = perpStatuses[_boardId][_index];
 
-        uint128 liquidity = getLiquidity(_boardId, _index);
+        uint128 liquidityAmount = getTotalLiquidityAmount(_boardId, _index);
 
-        return (perpStatus.instantBorrowedLiquidity * 1e10) / liquidity;
+        return (perpStatus.instantBorrowedLiquidity * 1e10) / liquidityAmount;
     }
 
     function getUR() internal view returns (uint256) {
@@ -855,7 +865,7 @@ contract PredyV3Pool is IPredyV3Pool {
         return (oldestAvailableAge, initialized);
     }
 
-    function getLiquidity(uint256 _boardId, uint256 _index) internal view returns (uint128) {
+    function getTotalLiquidityAmount(uint256 _boardId, uint256 _index) internal view returns (uint128) {
         (, , , , , , , uint128 liquidity, , , , ) = positionManager.positions(boards[_boardId].tokenIds[_index]);
 
         return liquidity;
