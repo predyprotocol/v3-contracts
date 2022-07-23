@@ -614,7 +614,13 @@ contract PredyV3Pool is IPredyV3Pool {
         uint256 minCollateral = getMinCollateral(_vaultId, _boardId);
         require(currentMargin < minCollateral, "vault is not danger");
 
+        uint256 reward = minCollateral / 100;
+
+        decreaseReward(_vaultId, reward);
+
         _closePositionsInVault(_vaultId, _boardId, _zeroToOne, _amount, _amountOutMinimum);
+
+        sendReward(msg.sender, reward);
     }
 
     /**
@@ -648,11 +654,17 @@ contract PredyV3Pool is IPredyV3Pool {
             require(sqrtPrice < upperPrice);
         }
 
+        uint256 reward = getDebtPositionValue(_vaultId, _boardId, decodeSqrtPriceX96(sqrtPrice)) / 100;
+
+        decreaseReward(_vaultId, reward);
+
         _closePositionsInVault(_vaultId, _boardId, _zeroToOne, _amount, _amountOutMinimum);
+
+        sendReward(msg.sender, reward);
     }
 
     /**
-     * Liquidates if collateral value is less than (2 * debt value).
+     * Liquidates if 75% of collateral value is less than debt value.
      */
     function liquidate3(
         uint256 _vaultId,
@@ -668,14 +680,39 @@ contract PredyV3Pool is IPredyV3Pool {
         (uint256 sqrtPrice, ) = callUniswapObserve(1 minutes);
         uint256 price = decodeSqrtPriceX96(sqrtPrice);
 
-        // TODO: calculate value using TWAP price
+        // calculate value using TWAP price
+        uint256 debtValue = getDebtPositionValue(_vaultId, _boardId, price);
+
         require(
-            getCollateralPositionValue(_vaultId, _boardId, price) < 2 * getDebtPositionValue(_vaultId, _boardId, price)
+            getCollateralPositionValue(_vaultId, _boardId, price) * 3 / 4 < debtValue
         );
 
-        // TODO: Reward
+        uint256 reward = debtValue / 100;
+        decreaseReward(_vaultId, reward);
 
         _closePositionsInVault(_vaultId, _boardId, _zeroToOne, _amount, _amountOutMinimum);
+
+        sendReward(msg.sender, reward);
+    }
+
+    function decreaseReward(uint256 _vaultId, uint256 _reward) internal {
+        vaults[_vaultId].margin -=_reward;
+    }
+
+    function sendReward(address _liquidator, uint256 _reward) internal {
+        if(isMarginZero) {
+            TransferHelper.safeTransfer(
+                token0,
+                _liquidator,
+                _reward
+            );
+        } else {
+            TransferHelper.safeTransfer(
+                token1,
+                _liquidator,
+                _reward
+            );        
+        }
     }
 
     function swapExactInput(

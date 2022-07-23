@@ -52,15 +52,14 @@ contract PredyV3PoolTest is Test {
 
         IUniswapV3PoolActions uniPool = IUniswapV3PoolActions(factory.getPool(address(token0), address(token1), 500));
         uniPool.increaseObservationCardinalityNext(180);
-            (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(address(uniPool)).slot0();
 
-        console.log(sqrtPriceX96);
+        pool = new PredyV3Pool(address(token0), address(token1), !isTokenAToken0, address(positionManager), address(factory), address(swapRouter));
 
         INonfungiblePositionManager.MintParams memory params = INonfungiblePositionManager.MintParams(
             address(token0),
             address(token1),
             500,
-            -887220,
+            -887221,
             887220,
             isTokenAToken0 ? 1e20 : (1e20 * 1005 / 1e12),
             isTokenAToken0 ? (1e20 * 1005 / 1e12) : 1e20,
@@ -73,13 +72,8 @@ contract PredyV3PoolTest is Test {
         token0.approve(address(positionManager), 1e24);
         token1.approve(address(positionManager), 1e24);
 
-        console.log(owner);
-        console.log(token0.balanceOf(owner));
-        console.log(token0.allowance(owner, address(positionManager)));
+        positionManager.mint(params);
 
-        (uint256 amount0, , , ) = positionManager.mint(params);
-
-        //pool = new PredyV3Pool(address(token0), address(token1), !isTokenAToken0, address(positionManager), address(factory), address(swapRouter));
     }
 
     function testCreateBoard(uint256 _expiration) public {

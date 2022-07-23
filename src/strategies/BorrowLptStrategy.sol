@@ -2,10 +2,8 @@
 pragma solidity ^0.7.6;
 pragma abicoder v2;
 
-import "./base/BaseStrategy.sol";
-import "./interfaces/IPredyV3Pool.sol";
-import "openzeppelin-contracts/token/ERC20/SafeERC20.sol";
-import "v3-periphery/interfaces/ISwapRouter.sol";
+import "../base/BaseStrategy.sol";
+import "../interfaces/IPredyV3Pool.sol";
 
 contract BorrowLptStrategy is BaseStrategy {
     address public immutable token0;

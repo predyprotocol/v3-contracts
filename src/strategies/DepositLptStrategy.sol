@@ -2,7 +2,7 @@
 pragma solidity ^0.7.6;
 pragma abicoder v2;
 
-import "./base/BaseStrategy.sol";
+import "../base/BaseStrategy.sol";
 
 contract DepositLptStrategy is BaseStrategy {
     constructor(IPredyV3Pool _pool) BaseStrategy(_pool) {}
