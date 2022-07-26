@@ -15,6 +15,7 @@ import "v3-periphery/interfaces/ISwapRouter.sol";
 import "./base/BaseStrategy.sol";
 import "./interfaces/IPredyV3Pool.sol";
 import "./interfaces/IPricingModule.sol";
+import "forge-std/console2.sol";
 
 interface IUniswapV3PoolOracle {
     function slot0()
@@ -268,6 +269,7 @@ contract PredyV3Pool is IPredyV3Pool {
         );
 
         uint256 minCollateral = getMinCollateral(vaultId, _boardId);
+        console2.log(minCollateral);
         require(vault.margin >= minCollateral, "P2");
 
         if (_buffer0 > amount0) {
@@ -362,7 +364,7 @@ contract PredyV3Pool is IPredyV3Pool {
         uint256 _boardId,
         uint128 _index,
         uint128 _liquidity,
-        bool _isCall
+        uint160 _sqrtPrice
     ) external view override returns (uint256, uint256) {
         Board memory board = boards[_boardId];
 
@@ -370,7 +372,7 @@ contract PredyV3Pool is IPredyV3Pool {
 
         return
             LiquidityAmounts.getAmountsForLiquidity(
-                _isCall ? sqrtRatioAX96 : sqrtRatioBX96,
+                _sqrtPrice,
                 sqrtRatioAX96,
                 sqrtRatioBX96,
                 _liquidity
@@ -796,6 +798,8 @@ contract PredyV3Pool is IPredyV3Pool {
             applyPerpFee(_boardId, i, sqrtPrice, board.lastTouchedTimestamp);
         }
 
+        pricingModule.takeSnapshot(uniswapPool);
+
         // calculate interest for tokens
         {
             uint256 a = ((block.timestamp - board.lastTouchedTimestamp) *
@@ -815,16 +819,13 @@ contract PredyV3Pool is IPredyV3Pool {
     ) internal {
         PerpStatus storage perpStatus = perpStatuses[_boardId][_index];
 
-        (uint256 lowerSqrtPrice, uint256 upperSqrtPrice) = getSqrtPriceRange(boards[_boardId], _index);
-
         if (perpStatus.borrowedLiquidity > 0) {
             uint256 feeAmount = ((block.timestamp - _lastTouchedTimestamp) *
                 pricingModule.calculatePerpFee(
-                    _sqrtPrice,
-                    lowerSqrtPrice,
-                    upperSqrtPrice,
-                    volatility,
-                    getPerpUR(_boardId, _index)
+                    uniswapPool,
+                    boards[_boardId].lowers[_index],
+                    boards[_boardId].uppers[_index]
+                    // getPerpUR(_boardId, _index)
                 )) / 1 days;
             perpStatus.cumulativeFee += feeAmount;
             perpStatus.cumulativeFeeForLP += (feeAmount * perpStatus.borrowedLiquidity) / getTotalLiquidityAmount(_boardId, _index);
@@ -836,6 +837,11 @@ contract PredyV3Pool is IPredyV3Pool {
             perpStatus.instantCumulativeFee += feeAmount;
             perpStatus.cumulativeFeeForLP += (feeAmount * perpStatus.instantBorrowedLiquidity) / getTotalLiquidityAmount(_boardId, _index);
         }
+
+        pricingModule.takeSnapshotForRange(uniswapPool,
+                            boards[_boardId].lowers[_index],
+                    boards[_boardId].uppers[_index]);
+
     }
 
     function getMinCollateral(
@@ -854,12 +860,15 @@ contract PredyV3Pool is IPredyV3Pool {
         uint256 _index,
         uint128 _liquidity
     ) internal view returns(uint256){
-        (uint256 lowerSqrtPrice, uint256 upperSqrtPrice) = getSqrtPriceRange(boards[_boardId], _index);
+        // (uint160 lowerSqrtPrice, uint160 upperSqrtPrice) = getSqrtPriceRange(boards[_boardId], _index);
+
+        // require(address(pricingModule) != address(0), "a");
 
         return _liquidity * pricingModule.calculateMinCollateral(
-            lowerSqrtPrice,
-            upperSqrtPrice
-        ) / 1e16;
+            uniswapPool,
+            boards[_boardId].lowers[_index],
+            boards[_boardId].uppers[_index]
+        ) / (1e12 * 1e6);
     }
 
     function getPerpUR(uint256 _boardId, uint256 _index) internal view returns (uint256) {
@@ -894,6 +903,21 @@ contract PredyV3Pool is IPredyV3Pool {
     function getSqrtPriceRange(Board memory board, uint256 _index) internal pure returns (uint160 lowerSqrtPrice, uint160 upperSqrtPrice) {
         lowerSqrtPrice = TickMath.getSqrtRatioAtTick(board.lowers[_index]);
         upperSqrtPrice = TickMath.getSqrtRatioAtTick(board.uppers[_index]);
+    }
+
+    /**
+     * option size -> liquidity
+     */
+    function getLiquidityForOptionAmount(uint256 _boardId, uint256 _index, uint256 _amount) public view returns (uint128) {
+        (uint160 lowerSqrtPrice, uint160 upperSqrtPrice) = getSqrtPriceRange(boards[_boardId], _index);
+
+        if(isMarginZero) {
+            // amount / (sqrt(upper) - sqrt(lower))
+            return LiquidityAmounts.getLiquidityForAmount1(lowerSqrtPrice, upperSqrtPrice, _amount);
+        } else {
+            // amount * (sqrt(upper) * sqrt(lower)) / (sqrt(upper) - sqrt(lower))
+            return LiquidityAmounts.getLiquidityForAmount0(lowerSqrtPrice, upperSqrtPrice, _amount);
+        }
     }
 
     function getObservations(uint256 _i) external view returns (uint32, bool) {
@@ -1042,14 +1066,14 @@ contract PredyV3Pool is IPredyV3Pool {
     }
 
     function decodeSqrtPriceX96(uint256 sqrtPriceX96) private view returns (uint256 price) {
-        uint256 scaler = 10**ERC20(token0).decimals();
-        //if (uint160(token0) < uint160(token1)) {
-        price = FullMath.mulDiv(sqrtPriceX96, sqrtPriceX96, uint256(2**96)) * scaler / uint256(2**96);
-        //} else {
-        //    price = FullMath.mulDiv(sqrtPriceX96, sqrtPriceX96, uint256(2**(96 * 2)) / (1e18 * scaler));
-        //    if (price == 0) return 1e36;
-        //    price = 1e36 / price;
-        //}
+        uint256 scaler = 1;//10**ERC20(token0).decimals();
+        if (uint160(token0) < uint160(token1)) {
+            price = FullMath.mulDiv(sqrtPriceX96, sqrtPriceX96, uint256(2**96)) * scaler / uint256(2**96);
+        } else {
+            price = FullMath.mulDiv(sqrtPriceX96, sqrtPriceX96, uint256(2**(96 * 2)) / (1e18 * scaler));
+            if (price == 0) return 1e36;
+            price = 1e36 / price;
+        }
 
         if (price > 1e36) price = 1e36;
         else if (price == 0) price = 1;

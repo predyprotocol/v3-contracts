@@ -50,7 +50,7 @@ interface IPredyV3Pool {
         uint256 _boardId,
         uint128 _index,
         uint128 _liquidity,
-        bool _isCall
+        uint160 _sqrtPrice
     ) external view returns (uint256, uint256);
 
     function depositTokens(

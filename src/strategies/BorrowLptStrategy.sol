@@ -9,6 +9,8 @@ contract BorrowLptStrategy is BaseStrategy {
     address public immutable token0;
     address public immutable token1;
 
+    event LPTBorrowed(uint256 amount0, uint256 amount1, bool zeroToOne);
+
     constructor(
         address _token0,
         address _token1,
@@ -24,12 +26,12 @@ contract BorrowLptStrategy is BaseStrategy {
     }
 
     function getRequiredTokenAmounts(uint256 _boardId, bytes memory _data) external view returns (int256, int256) {
-        (uint128 index, uint128 liquidity, bool isCall, , ) = abi.decode(
+        (uint128 index, uint128 liquidity, uint160 sqrtPrice, , ) = abi.decode(
             _data,
-            (uint128, uint128, bool, IPredyV3Pool.InstantDebtType, uint256)
+            (uint128, uint128, uint160, IPredyV3Pool.InstantDebtType, uint256)
         );
 
-        (uint256 a0, uint256 a1) = pool.getTokenAmountsToBorrowLPT(_boardId, index, liquidity, isCall);
+        (uint256 a0, uint256 a1) = pool.getTokenAmountsToBorrowLPT(_boardId, index, liquidity, sqrtPrice);
 
         (uint256 aa0, uint256 aa1) = pool.getTokenAmountsToDepositLPT(_boardId, index, liquidity);
 
@@ -44,12 +46,12 @@ contract BorrowLptStrategy is BaseStrategy {
         (
             uint128 index,
             uint128 liquidity,
-            bool isCall,
+            uint160 sqrtPrice,
             IPredyV3Pool.InstantDebtType isInstant,
             uint256 amountInMaximum
-        ) = abi.decode(_data, (uint128, uint128, bool, IPredyV3Pool.InstantDebtType, uint256));
+        ) = abi.decode(_data, (uint128, uint128, uint160, IPredyV3Pool.InstantDebtType, uint256));
 
-        (uint256 a0, uint256 a1) = pool.getTokenAmountsToBorrowLPT(_boardId, index, liquidity, isCall);
+        (uint256 a0, uint256 a1) = pool.getTokenAmountsToBorrowLPT(_boardId, index, liquidity, sqrtPrice);
 
         (uint256 aa0, uint256 aa1) = pool.borrowLPT(_vaultId, _boardId, index, liquidity, isInstant);
 
@@ -59,14 +61,19 @@ contract BorrowLptStrategy is BaseStrategy {
             // token0 is required
             // req1 -> req0
             uint256 requiredA1 = pool.swapExactOutput(token1, token0, a0 - aa0, amountInMaximum);
+
+            emit LPTBorrowed(a0 - aa0, requiredA1, false);
+
             return (0, requiredA1 - (aa1 - a1));
         } else if (a1 > aa1) {
             // req0 -> req1
             uint256 requiredA0 = pool.swapExactOutput(token0, token1, a1 - aa1, amountInMaximum);
+
+            emit LPTBorrowed(requiredA0, a1 - aa1, true);
+
             return (requiredA0 - (aa0 - a0), 0);
         }
 
         return (0, 0);
-        // return (aa0 > a0 ? aa0 - a0 : 0, aa1 > a1 ? aa1 - a1 : 0);
     }
 }
