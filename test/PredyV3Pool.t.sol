@@ -9,10 +9,6 @@ import "forge-std/console.sol";
 import "./utils/TestDeployer.sol";
 import "../src/PredyV3Pool.sol";
 import "../src/mocks/MockERC20.sol";
-import {NonfungiblePositionManager} from "v3-periphery/NonfungiblePositionManager.sol";
-import {UniswapV3Factory } from "v3-core/contracts/UniswapV3Factory.sol";
-import {SwapRouter} from "v3-periphery/SwapRouter.sol";
-import "v3-core/contracts/interfaces/pool/IUniswapV3PoolActions.sol";
 
 
 contract PredyV3PoolTest is TestDeployer, Test {

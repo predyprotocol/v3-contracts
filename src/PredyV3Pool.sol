@@ -868,7 +868,7 @@ contract PredyV3Pool is IPredyV3Pool {
             uniswapPool,
             boards[_boardId].lowers[_index],
             boards[_boardId].uppers[_index]
-        ) / (1e12 * 1e6);
+        ) / 1e18;
     }
 
     function getPerpUR(uint256 _boardId, uint256 _index) internal view returns (uint256) {

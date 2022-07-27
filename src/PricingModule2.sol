@@ -174,6 +174,6 @@ contract PricingModule2 {
         int24 _upperTick
     ) external view returns (uint256 minCollateral) {
         // TODO
-        return 500;
+        return 20000000;
     }
 }

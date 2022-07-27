@@ -7,12 +7,7 @@ import "../../src/PricingModule2.sol";
 import "../../src/strategies/DepositLPTStrategy.sol";
 import "../../src/strategies/BorrowLPTStrategy.sol";
 import "../../src/mocks/MockERC20.sol";
-import {NonfungiblePositionManager} from "v3-periphery/NonfungiblePositionManager.sol";
-import {UniswapV3Factory } from "v3-core/contracts/UniswapV3Factory.sol";
 import {SwapRouter} from "v3-periphery/SwapRouter.sol";
-import 'v3-periphery/interfaces/external/IWETH9.sol';
-import "v3-core/contracts/interfaces/pool/IUniswapV3PoolActions.sol";
-import "v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 import "forge-std/console.sol";
 import "forge-std/Vm.sol";
 import "forge-std/Test.sol";
@@ -39,9 +34,9 @@ abstract contract BaseTestHelper {
         pool.createBoard(0, lowers, uppers);
     }
 
-    function depositLPT(uint256 _boardId, uint256 _margin, uint128 _index, uint128 _liquidity) public {
+    function depositLPT(uint256 _boardId, uint256 _margin, uint128 _index, uint128 _liquidity) public returns(uint256) {
         (uint256 a0, uint256 a1) = pool.getTokenAmountsToDepositLPT(_boardId, _index, _liquidity);
-        pool.openStrategy(address(depositLPTStrategy), _boardId, _margin, abi.encode(_index, _liquidity), a0, a1);
+        return pool.openStrategy(address(depositLPTStrategy), _boardId, _margin, abi.encode(_index, _liquidity), a0, a1);
     }
 
     function swap(address recipient, bool _priceUp) internal {

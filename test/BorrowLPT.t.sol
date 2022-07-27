@@ -5,16 +5,8 @@ pragma abicoder v2;
 import "forge-std/Test.sol";
 import "forge-std/Vm.sol";
 import "forge-std/console.sol";
-
 import "./utils/TestDeployer.sol";
 import "../src/PredyV3Pool.sol";
-import "../src/mocks/MockERC20.sol";
-import {NonfungiblePositionManager} from "v3-periphery/NonfungiblePositionManager.sol";
-import {UniswapV3Factory } from "v3-core/contracts/UniswapV3Factory.sol";
-import {SwapRouter} from "v3-periphery/SwapRouter.sol";
-import 'v3-periphery/interfaces/external/IWETH9.sol';
-import "v3-core/contracts/interfaces/pool/IUniswapV3PoolActions.sol";
-
 
 contract BorrowLPTTest is TestDeployer, Test {
     address owner;
@@ -35,7 +27,7 @@ contract BorrowLPTTest is TestDeployer, Test {
         depositLPT(0, 0, 1, pool.getLiquidityForOptionAmount(0, 1, 1e17));
     }
 
-    function testFailtToBorrow() public {
+    function testCannotBorrow() public {
         uint128 index = 0;
         uint256 ethAmount = 1 * 1e16;
         uint256 usdcAmount = ethAmount * 2000 / 1e12;

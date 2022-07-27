@@ -6,14 +6,12 @@ import "forge-std/Test.sol";
 import "forge-std/Vm.sol";
 import "forge-std/console2.sol";
 import "./utils/TestDeployer.sol";
-
 import "../src/PricingModule2.sol";
-import "v3-core/contracts/libraries/TickMath.sol";
-import 'v3-core/contracts/libraries/FullMath.sol';
 
 
 contract PricingModule2Test is TestDeployer, Test {
     address owner;
+    uint256 constant dailyFeeAmount = 28 * 1e15;
 
     function setUp() public {
         owner = 0x503828976D22510aad0201ac7EC88293211D23Da;
@@ -23,7 +21,6 @@ contract PricingModule2Test is TestDeployer, Test {
 
         deployContracts(owner, factory);
 
-
         createBoard();
 
         depositLPT(0, 0, 0, pool.getLiquidityForOptionAmount(0, 0, 1e17));
@@ -32,7 +29,7 @@ contract PricingModule2Test is TestDeployer, Test {
         token0.approve(address(swapRouter), 1e24);
         token1.approve(address(swapRouter), 1e24);
 
-        pricingModule.updateDaylyFeeAmount(28 * 1e15);
+        pricingModule.updateDaylyFeeAmount(dailyFeeAmount);
     }
 
     function testCalculatePerpFee(
@@ -75,6 +72,6 @@ contract PricingModule2Test is TestDeployer, Test {
         ) * 2000000000000000 / 1e16;
 
         assertGt(a, 0);
-        assertLt(a, 1e8);
+        assertLt(a, dailyFeeAmount);
     }
 }
