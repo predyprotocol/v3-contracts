@@ -6,10 +6,8 @@ import "forge-std/Test.sol";
 import "forge-std/Vm.sol";
 import "forge-std/console.sol";
 
-import "./utils/BaseTestHelper.sol";
+import "./utils/TestDeployer.sol";
 import "../src/PredyV3Pool.sol";
-import "../src/strategies/DepositLptStrategy.sol";
-import "../src/strategies/BorrowLptStrategy.sol";
 import "../src/mocks/MockERC20.sol";
 import {NonfungiblePositionManager} from "v3-periphery/NonfungiblePositionManager.sol";
 import {UniswapV3Factory } from "v3-core/contracts/UniswapV3Factory.sol";
@@ -17,14 +15,17 @@ import {SwapRouter} from "v3-periphery/SwapRouter.sol";
 import "v3-core/contracts/interfaces/pool/IUniswapV3PoolActions.sol";
 
 
-contract PredyV3PoolTest is BaseTestHelper, Test {
+contract PredyV3PoolTest is TestDeployer, Test {
     address owner;
 
     function setUp() public {
         owner = 0x503828976D22510aad0201ac7EC88293211D23Da;
         vm.startPrank(owner);
 
-        deployContracts();
+        address factory = deployCode("../node_modules/@uniswap/v3-core/artifacts/contracts/UniswapV3Factory.sol:UniswapV3Factory");
+
+        deployContracts(owner, factory);
+
     }
 
     function testCreateBoard(uint256 _expiration, uint128 _l) public {

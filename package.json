@@ -1,0 +1,26 @@
+{
+  "name": "predy_v3",
+  "version": "1.0.0",
+  "description": "PredyV3 =====",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/predyprotocol/v3-draft.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/predyprotocol/v3-draft/issues"
+  },
+  "homepage": "https://github.com/predyprotocol/v3-draft#readme",
+  "dependencies": {
+    "@uniswap/v3-core": "^1.0.1"
+  }
+}

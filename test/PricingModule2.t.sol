@@ -5,21 +5,24 @@ pragma abicoder v2;
 import "forge-std/Test.sol";
 import "forge-std/Vm.sol";
 import "forge-std/console2.sol";
-import "./utils/BaseTestHelper.sol";
+import "./utils/TestDeployer.sol";
 
 import "../src/PricingModule2.sol";
 import "v3-core/contracts/libraries/TickMath.sol";
 import 'v3-core/contracts/libraries/FullMath.sol';
 
 
-contract PricingModule2Test is BaseTestHelper, Test {
+contract PricingModule2Test is TestDeployer, Test {
     address owner;
 
     function setUp() public {
         owner = 0x503828976D22510aad0201ac7EC88293211D23Da;
         vm.startPrank(owner);
 
-        deployContracts();
+        address factory = deployCode("../node_modules/@uniswap/v3-core/artifacts/contracts/UniswapV3Factory.sol:UniswapV3Factory");
+
+        deployContracts(owner, factory);
+
 
         createBoard();
 

@@ -62,8 +62,7 @@ contract PricingModuleTest is Test {
         assertEq(a, 500);
     }
 
-    function testCalculateMinCollateral(
-    ) public {
+    function testCalculateMinCollateral() public {
         uint160 lowerSqrtPrice = TickMath.getSqrtRatioAtTick(202760);
         uint160 upperSqrtPrice = TickMath.getSqrtRatioAtTick(202770);
         

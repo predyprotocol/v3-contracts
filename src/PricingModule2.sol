@@ -136,11 +136,6 @@ contract PricingModule2 {
         uint256 feeGrowthGlobal0X128,
         uint256 feeGrowthGlobal1X128
     ) internal view returns (uint256 feeGrowthInside0X128, uint256 feeGrowthInside1X128) {
-        console2.log(uint256(tickLower), uint256(tickUpper), uint256(tickCurrent));
-        console2.log(lower.feeGrowthOutside0X128, lower.feeGrowthOutside1X128);
-        console2.log(upper.feeGrowthOutside0X128, upper.feeGrowthOutside1X128);
-        console2.log(feeGrowthGlobal0X128, feeGrowthGlobal1X128);
-
         // calculate fee growth below
         uint256 feeGrowthBelow0X128;
         uint256 feeGrowthBelow1X128;

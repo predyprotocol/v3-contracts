@@ -5,7 +5,7 @@ pragma abicoder v2;
 import "../base/BaseStrategy.sol";
 import "../interfaces/IPredyV3Pool.sol";
 
-contract BorrowLptStrategy is BaseStrategy {
+contract BorrowLPTStrategy is BaseStrategy {
     address public immutable token0;
     address public immutable token1;
 
