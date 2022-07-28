@@ -4,9 +4,8 @@ pragma solidity ^0.7.6;
 import "v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
 interface IPricingModule {
-    function takeSnapshot(
-        IUniswapV3Pool uniPool
-    ) external;
+    function takeSnapshot(IUniswapV3Pool uniPool) external;
+
     function takeSnapshotForRange(
         IUniswapV3Pool uniPool,
         int24 _lowerTick,

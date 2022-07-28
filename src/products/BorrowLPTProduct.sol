@@ -20,8 +20,7 @@ contract BorrowLPTProduct is BaseProduct {
         token1 = _token1;
     }
 
-    function isLiquidationRequired(
-    ) external pure override returns (bool) {
+    function isLiquidationRequired() external pure override returns (bool) {
         return false;
     }
 

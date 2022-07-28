@@ -38,7 +38,6 @@ contract PricingModule2 {
         int24 _lowerTick,
         int24 _upperTick
     ) public view returns (uint256) {
-
         {
             uint256 feeGrowthGlobal0X128 = uniPool.feeGrowthGlobal0X128();
             uint256 feeGrowthGlobal1X128 = uniPool.feeGrowthGlobal1X128();
@@ -46,19 +45,25 @@ contract PricingModule2 {
             (, int24 tickCurrent, , , , , ) = uniPool.slot0();
 
             (uint256 feeGrowthInside0X128, uint256 feeGrowthInside1X128) = getFeeGrowthInside(
-                getFeeGrowthOutside(uniPool, _lowerTick), getFeeGrowthOutside(uniPool, _upperTick), _lowerTick, _upperTick, tickCurrent, feeGrowthGlobal0X128, feeGrowthGlobal1X128);
-            
-            bytes32 key = keccak256(abi.encodePacked(_lowerTick, _upperTick));
-
-            return calculateRatio(
-                snapshots[
-                    key
-                ],
-                feeGrowthInside0X128,
-                feeGrowthInside1X128,
+                getFeeGrowthOutside(uniPool, _lowerTick),
+                getFeeGrowthOutside(uniPool, _upperTick),
+                _lowerTick,
+                _upperTick,
+                tickCurrent,
                 feeGrowthGlobal0X128,
                 feeGrowthGlobal1X128
             );
+
+            bytes32 key = keccak256(abi.encodePacked(_lowerTick, _upperTick));
+
+            return
+                calculateRatio(
+                    snapshots[key],
+                    feeGrowthInside0X128,
+                    feeGrowthInside1X128,
+                    feeGrowthGlobal0X128,
+                    feeGrowthGlobal1X128
+                );
         }
     }
 
@@ -93,11 +98,23 @@ contract PricingModule2 {
         (, int24 tickCurrent, , , , , ) = uniPool.slot0();
 
         (uint256 feeGrowthInside0X128, uint256 feeGrowthInside1X128) = getFeeGrowthInside(
-            getFeeGrowthOutside(uniPool, _lowerTick), getFeeGrowthOutside(uniPool, _upperTick), _lowerTick, _upperTick, tickCurrent, feeGrowthGlobal0X128, feeGrowthGlobal1X128);
+            getFeeGrowthOutside(uniPool, _lowerTick),
+            getFeeGrowthOutside(uniPool, _upperTick),
+            _lowerTick,
+            _upperTick,
+            tickCurrent,
+            feeGrowthGlobal0X128,
+            feeGrowthGlobal1X128
+        );
 
         bytes32 key = keccak256(abi.encodePacked(_lowerTick, _upperTick));
 
-        snapshots[key] = TickSnapshot(feeGrowthInside0X128, feeGrowthInside1X128, feeGrowthGlobal0X128, feeGrowthGlobal1X128);
+        snapshots[key] = TickSnapshot(
+            feeGrowthInside0X128,
+            feeGrowthInside1X128,
+            feeGrowthGlobal0X128,
+            feeGrowthGlobal1X128
+        );
     }
 
     function calculateRatio(
@@ -107,23 +124,23 @@ contract PricingModule2 {
         uint256 feeGrowthGlobal0X128,
         uint256 feeGrowthGlobal1X128
     ) internal view returns (uint256) {
-        uint256 a = 1e8 * (feeGrowthInside0X128 - snapshot.lastFeeGrowthInside0X128) / (feeGrowthGlobal0X128 - snapshot.lastFeeGrowthGlobal0X128);
-        uint256 b = 1e8 * (feeGrowthInside1X128 - snapshot.lastFeeGrowthInside1X128) / (feeGrowthGlobal1X128 - snapshot.lastFeeGrowthGlobal1X128);
+        uint256 a = (1e8 * (feeGrowthInside0X128 - snapshot.lastFeeGrowthInside0X128)) /
+            (feeGrowthGlobal0X128 - snapshot.lastFeeGrowthGlobal0X128);
+        uint256 b = (1e8 * (feeGrowthInside1X128 - snapshot.lastFeeGrowthInside1X128)) /
+            (feeGrowthGlobal1X128 - snapshot.lastFeeGrowthGlobal1X128);
 
-        return dailyFeeAmount * (a + b) / (2 * 1e8);
+        return (dailyFeeAmount * (a + b)) / (2 * 1e8);
     }
 
-    function getFeeGrowthOutside(
-        IUniswapV3Pool uniPool,
-        int24 _tickId
-    ) internal view returns (TickInfo memory) {
-        (, , uint256 feeGrowthOutside0X128, uint256 feeGrowthOutside1X128, , , , bool initialized) = uniPool.ticks(_tickId);
+    function getFeeGrowthOutside(IUniswapV3Pool uniPool, int24 _tickId) internal view returns (TickInfo memory) {
+        (, , uint256 feeGrowthOutside0X128, uint256 feeGrowthOutside1X128, , , , bool initialized) = uniPool.ticks(
+            _tickId
+        );
 
         require(initialized, "initialized");
 
         return TickInfo(feeGrowthOutside0X128, feeGrowthOutside1X128);
     }
-
 
     function getFeeGrowthInside(
         TickInfo memory lower,
@@ -137,7 +154,7 @@ contract PricingModule2 {
         // calculate fee growth below
         uint256 feeGrowthBelow0X128;
         uint256 feeGrowthBelow1X128;
-        
+
         if (tickCurrent >= tickLower) {
             // 1808790600867964665724044468235309
             feeGrowthBelow0X128 = lower.feeGrowthOutside0X128;

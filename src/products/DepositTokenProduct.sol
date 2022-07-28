@@ -7,11 +7,10 @@ import "../base/BaseProduct.sol";
 contract DepositTokenProduct is BaseProduct {
     constructor(IPredyV3Pool _pool) BaseProduct(_pool) {}
 
-    function isLiquidationRequired(
-    ) external pure override returns (bool) {
+    function isLiquidationRequired() external pure override returns (bool) {
         return false;
     }
-    
+
     function openPosition(
         uint256 _vaultId,
         uint256 _boardId,

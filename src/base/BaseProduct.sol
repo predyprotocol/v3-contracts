@@ -11,9 +11,7 @@ contract BaseProduct {
         pool = _pool;
     }
 
-    function isLiquidationRequired(
-    ) external pure virtual returns (bool) {}
-
+    function isLiquidationRequired() external pure virtual returns (bool) {}
 
     function openPosition(
         uint256 _vaultId,

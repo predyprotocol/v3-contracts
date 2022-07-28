@@ -8,7 +8,9 @@
     "test": "test"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint:check": "prettier --check \"src/**/*.sol\" \"deploy/**/*.ts\"",
+    "lint:write": "prettier --write \"src/**/*.sol\" \"deploy/**/*.ts\""
   },
   "repository": {
     "type": "git",
@@ -21,6 +23,9 @@
   },
   "homepage": "https://github.com/predyprotocol/v3-draft#readme",
   "dependencies": {
-    "@uniswap/v3-core": "^1.0.1"
+    "@uniswap/v3-core": "^1.0.1",
+    "prettier": "^2.7.1",
+    "prettier-plugin-solidity": "^1.0.0-dev.23",
+    "solhint": "^3.3.7"
   }
 }
