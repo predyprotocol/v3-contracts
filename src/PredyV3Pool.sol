@@ -62,6 +62,14 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
         uint256[] fee1Last;
     }
 
+    struct CloseParams {
+        bool zeroToOne;
+        uint256 amount;
+        uint256 amountOutMinimum;
+        uint256 penaltyAmount0;
+        uint256 penaltyAmount1;
+    }
+
     address token0;
     address token1;
     bool isMarginZero;
@@ -93,6 +101,7 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
     BaseToken.TokenState tokenState1;
 
     event VaultCreated(uint256 vaultId);
+    event PositionClosed(uint256 _amount0, uint256 _amount1, uint256 _penaltyAmount0, uint256 _penaltyAmount1);
 
     modifier onlyStrategy() {
         require(strategies[msg.sender] == msg.sender);
@@ -255,7 +264,7 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
         uint256 _amount,
         uint256 _amountOutMinimum
     ) public override onlyVaultOwner(_vaultId) {
-        _closePositionsInVault(_vaultId, _boardId, _zeroToOne, _amount, _amountOutMinimum);
+        _closePositionsInVault(_vaultId, _boardId, CloseParams(_zeroToOne, _amount, _amountOutMinimum, 0, 0));
     }
 
     function withdrawFromVault(
@@ -303,11 +312,18 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
 
         // calculate reward
         uint256 reward = minCollateral / 100;
-        decreaseReward(_vaultId, reward);
-        sendReward(msg.sender, reward);
+
+        CloseParams memory params = CloseParams(_zeroToOne, _amount, _amountOutMinimum, 0, 0);
+        if(isMarginZero) {
+            params.penaltyAmount0 = reward;
+        } else {
+            params.penaltyAmount1 = reward;
+        }
 
         // close position
-        _closePositionsInVault(_vaultId, _boardId, _zeroToOne, _amount, _amountOutMinimum);
+        _closePositionsInVault(_vaultId, _boardId, params);
+
+        sendReward(msg.sender, reward);
     }
 
     /**
@@ -344,11 +360,18 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
 
         // calculate reward
         uint256 reward = getDebtPositionValue(_vaultId, _boardId, decodeSqrtPriceX96(sqrtPrice)) / 100;
-        decreaseReward(_vaultId, reward);
-        sendReward(msg.sender, reward);
+
+        CloseParams memory params = CloseParams(_zeroToOne, _amount, _amountOutMinimum, 0, 0);
+        if(isMarginZero) {
+            params.penaltyAmount0 = reward;
+        } else {
+            params.penaltyAmount1 = reward;
+        }
 
         // close position
-        _closePositionsInVault(_vaultId, _boardId, _zeroToOne, _amount, _amountOutMinimum);
+        _closePositionsInVault(_vaultId, _boardId, params);
+
+        sendReward(msg.sender, reward);
     }
 
     /**
@@ -378,21 +401,23 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
 
         // calculate reward
         uint256 reward = debtValue / 100;
-        decreaseReward(_vaultId, reward);
-        sendReward(msg.sender, reward);
+        (uint256 amount0, uint256 amount1) = getDebtPositionAmounts(_vaultId, _boardId);
+        CloseParams memory params = CloseParams(_zeroToOne, _amount, _amountOutMinimum, amount0/100, amount1/100);
 
         // close position
-        _closePositionsInVault(_vaultId, _boardId, _zeroToOne, _amount, _amountOutMinimum);
+        _closePositionsInVault(_vaultId, _boardId, params);
+
+        sendReward(msg.sender, params.penaltyAmount0, params.penaltyAmount1);
     }
 
     function forceClose(uint256 _boardId, bytes[] memory _data) external onlyOwner {
         for(uint256 i = 0;i < _data.length;i++) {
-            (uint256 vaultId, bool _zeroToOne, uint256 _amount, uint256 _amountOutMinimum) = abi.decode(
+            (uint256 vaultId, bool _zeroToOne, uint256 _amount, uint256 _amountOutMinimum, uint256 reward) = abi.decode(
                 _data[i],
-                (uint256, bool, uint256, uint256)
+                (uint256, bool, uint256, uint256, uint256)
             );
             
-            _closePositionsInVault(vaultId, _boardId, _zeroToOne, _amount, _amountOutMinimum);
+            _closePositionsInVault(vaultId, _boardId, CloseParams(_zeroToOne, _amount, _amountOutMinimum, 0, 0));
         }
     }
 
@@ -533,42 +558,39 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
     function _closePositionsInVault(
         uint256 _vaultId,
         uint256 _boardId,
-        bool _zeroToOne,
-        uint256 _amount,
-        uint256 _amountOutMinimum
+        CloseParams memory _params
     ) internal {
         Vault storage vault = vaults[_vaultId];
 
         applyPerpFee(_boardId);
 
-        uint256 tmpVaultAmount0 = tokenState0.getCollateralValue(accountState0[_vaultId]);
-        uint256 tmpVaultAmount1 = tokenState1.getCollateralValue(accountState1[_vaultId]);
+        uint256 tmpVaultAmount0 = tokenState0.getCollateralValue(accountState0[_vaultId]) + vault.collateralAmount0;
+        uint256 tmpVaultAmount1 = tokenState1.getCollateralValue(accountState1[_vaultId]) + vault.collateralAmount1;
 
-
-        if (_amount > 0) {
-            if (_zeroToOne) {
-                uint256 requiredA1 = swapExactInput(token0, token1, _amount, _amountOutMinimum);
-                tmpVaultAmount0 -= _amount;
+        if (_params.amount > 0) {
+            if (_params.zeroToOne) {
+                uint256 requiredA1 = swapExactInput(token0, token1, _params.amount, _params.amountOutMinimum);
+                tmpVaultAmount0 -= _params.amount;
                 tmpVaultAmount1 += requiredA1;
             } else {
-                uint256 requiredA0 = swapExactInput(token1, token0, _amount, _amountOutMinimum);
+                uint256 requiredA0 = swapExactInput(token1, token0, _params.amount, _params.amountOutMinimum);
                 tmpVaultAmount0 += requiredA0;
-                tmpVaultAmount1 -= _amount;
+                tmpVaultAmount1 -= _params.amount;
             }
         }
 
-        (uint256 totalWithdrawAmount0, uint256 totalWithdrawAmount1) = withdraw(_vaultId, _boardId);
+        (uint256 totalWithdrawAmount0, uint256 totalWithdrawAmount1) = withdrawLPT(_vaultId, _boardId);
 
-        (uint256 totalRepayAmount0, uint256 totalRepayAmount1) = repayDebtLpt(_vaultId, _boardId);
+        (uint256 totalRepayAmount0, uint256 totalRepayAmount1) = repayLPT(_vaultId, _boardId);
 
         uint256 remainMargin = getMarginValue(_vaultId, _boardId);
 
         if (isMarginZero) {
-            tmpVaultAmount0 += totalWithdrawAmount0 + remainMargin - totalRepayAmount0;
-            tmpVaultAmount1 += totalWithdrawAmount1 - totalRepayAmount1;
+            tmpVaultAmount0 += totalWithdrawAmount0 + remainMargin - totalRepayAmount0 - _params.penaltyAmount0;
+            tmpVaultAmount1 += totalWithdrawAmount1 - totalRepayAmount1 - _params.penaltyAmount1;
         } else {
-            tmpVaultAmount0 += totalWithdrawAmount0 - totalRepayAmount0;
-            tmpVaultAmount1 += totalWithdrawAmount1 + remainMargin - totalRepayAmount1;
+            tmpVaultAmount0 += totalWithdrawAmount0 - totalRepayAmount0 - _params.penaltyAmount0;
+            tmpVaultAmount1 += totalWithdrawAmount1 + remainMargin - totalRepayAmount1 - _params.penaltyAmount1;
         }
 
         vault.collateralAmount0 = tmpVaultAmount0;
@@ -581,9 +603,15 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
         tokenState0.clearDebt(accountState0[_vaultId]);
         tokenState1.clearDebt(accountState1[_vaultId]);
 
+        emit PositionClosed(
+            tmpVaultAmount0,
+            tmpVaultAmount1,
+            _params.penaltyAmount0,
+            _params.penaltyAmount1
+        );
     }
 
-    function withdraw(uint256 _vaultId, uint256 _boardId)
+    function withdrawLPT(uint256 _vaultId, uint256 _boardId)
         internal
         returns (uint256 totalAmount0, uint256 totalAmount1)
     {
@@ -616,7 +644,7 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
         }
     }
 
-    function repayDebtLpt(uint256 _vaultId, uint256 _boardId)
+    function repayLPT(uint256 _vaultId, uint256 _boardId)
         internal
         returns (uint256 totalAmount0, uint256 totalAmount1)
     {
@@ -687,10 +715,6 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
         perpStatuses[_boardId][_index].cumFee1 += ((a1 - _amount1) * FixedPoint128.Q128) / _preLiquidity;
     }
 
-    function decreaseReward(uint256 _vaultId, uint256 _reward) internal {
-        vaults[_vaultId].margin -=_reward;
-    }
-
     function sendReward(address _liquidator, uint256 _reward) internal {
         if(isMarginZero) {
             TransferHelper.safeTransfer(
@@ -705,6 +729,19 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
                 _reward
             );        
         }
+    }
+
+    function sendReward(address _liquidator, uint256 _reward0, uint256 _reward1) internal {
+        TransferHelper.safeTransfer(
+            token0,
+            _liquidator,
+            _reward0
+        );
+        TransferHelper.safeTransfer(
+            token1,
+            _liquidator,
+            _reward1
+        );
     }
 
     function swapExactInput(
