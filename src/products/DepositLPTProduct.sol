@@ -2,14 +2,14 @@
 pragma solidity ^0.7.6;
 pragma abicoder v2;
 
-import "../base/BaseStrategy.sol";
+import "../base/BaseProduct.sol";
 
-contract LevLPStrategy is BaseStrategy {
-    constructor(IPredyV3Pool _pool) BaseStrategy(_pool) {}
+contract DepositLPTProduct is BaseProduct {
+    constructor(IPredyV3Pool _pool) BaseProduct(_pool) {}
 
     function isLiquidationRequired(
     ) external pure override returns (bool) {
-        return true;
+        return false;
     }
     
     function openPosition(
@@ -21,10 +21,8 @@ contract LevLPStrategy is BaseStrategy {
 
         (uint256 a0, uint256 a1) = pool.getTokenAmountsToDepositLPT(_boardId, index, liquidity);
 
-        (a0, a1) = pool.depositLPT(_vaultId, _boardId, index, liquidity, a0, a1);
+        pool.depositLPT(_vaultId, _boardId, index, liquidity, a0, a1);
 
-        pool.borrowTokens(_vaultId, a0 / 2, a1 / 2);
-
-        return (a0 / 2, a1 / 2);
+        return (a0, a1);
     }
 }

@@ -12,7 +12,7 @@ import "v3-core/contracts/libraries/TickMath.sol";
 import "v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 import "v3-core/contracts/libraries/FixedPoint128.sol";
 import "v3-periphery/interfaces/ISwapRouter.sol";
-import "./base/BaseStrategy.sol";
+import "./base/BaseProduct.sol";
 import "./interfaces/IPredyV3Pool.sol";
 import "./interfaces/IPricingModule.sol";
 import "./vendors/IUniswapV3PoolOracle.sol";
@@ -39,6 +39,7 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
         uint256 cumulativeFeeForLP;
         uint256 cumFee0;
         uint256 cumFee1;
+        uint256 lastTouchedTimestamp;
     }
 
     struct Vault {
@@ -101,7 +102,7 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
     BaseToken.TokenState tokenState1;
 
     event VaultCreated(uint256 vaultId);
-    event PositionClosed(uint256 _amount0, uint256 _amount1, uint256 _penaltyAmount0, uint256 _penaltyAmount1);
+    event PositionClosed(uint256 vaultId, uint256 _amount0, uint256 _amount1, uint256 _penaltyAmount0, uint256 _penaltyAmount1);
 
     modifier onlyStrategy() {
         require(strategies[msg.sender] == msg.sender);
@@ -143,7 +144,7 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
         tokenState1.initialize();
     }
 
-    function addStrategy(address _strategyAddress) external onlyOwner {
+    function addProduct(address _strategyAddress) external onlyOwner {
         strategies[_strategyAddress] = _strategyAddress;
     }
 
@@ -210,7 +211,7 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
     }
 
     // User API
-    function openStrategy(
+    function openPosition(
         address _strategyId,
         uint256 _boardId,
         uint256 _margin,
@@ -224,12 +225,10 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
         // check board
         require(_boardId < boardIdCount, "P1");
 
-        applyPerpFee(_boardId);
-
         vault.margin += _margin;
         extraVaultParams[vaultId].owner = msg.sender;
         
-        extraVaultParams[vaultId].isLiquidationRequired = BaseStrategy(strategies[_strategyId]).isLiquidationRequired();
+        extraVaultParams[vaultId].isLiquidationRequired = BaseProduct(strategies[_strategyId]).isLiquidationRequired();
 
         if (isMarginZero) {
             TransferHelper.safeTransferFrom(token0, msg.sender, address(this), _margin + _buffer0);
@@ -239,11 +238,13 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
             TransferHelper.safeTransferFrom(token1, msg.sender, address(this), _margin + _buffer1);
         }
 
-        (uint256 amount0, uint256 amount1) = BaseStrategy(strategies[_strategyId]).openPosition(
+        (uint256 amount0, uint256 amount1) = BaseProduct(strategies[_strategyId]).openPosition(
             vaultId,
             _boardId,
             _data
         );
+
+        // applyPerpFee(_boardId, vaultId);
 
         uint256 minCollateral = getMinCollateral(vaultId, _boardId);
         console2.log(_margin, minCollateral);
@@ -264,6 +265,7 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
         uint256 _amount,
         uint256 _amountOutMinimum
     ) public override onlyVaultOwner(_vaultId) {
+        applyPerpFee(_boardId, _vaultId);
         _closePositionsInVault(_vaultId, _boardId, CloseParams(_zeroToOne, _amount, _amountOutMinimum, 0, 0));
     }
 
@@ -303,7 +305,7 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
         uint256 _amount,
         uint256 _amountOutMinimum
     ) external {
-        applyPerpFee(_boardId);
+        applyPerpFee(_boardId, _vaultId);
 
         // check liquidation
         uint256 currentMargin = getMarginValue(_vaultId, _boardId);
@@ -340,13 +342,13 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
         Board memory board = boards[_boardId];
         Vault memory vault = vaults[_vaultId];
 
-        applyPerpFee(_boardId);
+        applyPerpFee(_boardId, _vaultId);
 
         // check liquidation
         require(extraVaultParams[_vaultId].debtInstant[_debtIndex] != InstantDebtType.NONE);
 
         // check ITM
-        (uint256 sqrtPrice, ) = callUniswapObserve(1 minutes);
+        (uint160 sqrtPrice, ) = callUniswapObserve(1 minutes);
 
         if (extraVaultParams[_vaultId].debtInstant[_debtIndex] == InstantDebtType.LONG) {
             uint256 lowerPrice = TickMath.getSqrtRatioAtTick(board.lowers[vault.debtIndex[_debtIndex]]);
@@ -359,7 +361,7 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
         }
 
         // calculate reward
-        uint256 reward = getDebtPositionValue(_vaultId, _boardId, decodeSqrtPriceX96(sqrtPrice)) / 100;
+        uint256 reward = getDebtPositionValue(_vaultId, _boardId, sqrtPrice) / 100;
 
         CloseParams memory params = CloseParams(_zeroToOne, _amount, _amountOutMinimum, 0, 0);
         if(isMarginZero) {
@@ -384,24 +386,22 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
         uint256 _amount,
         uint256 _amountOutMinimum
     ) external {
-        applyPerpFee(_boardId);
+        applyPerpFee(_boardId, _vaultId);
 
         // check liquidation
         require(extraVaultParams[_vaultId].isLiquidationRequired);
 
-        (uint256 sqrtPrice, ) = callUniswapObserve(1 minutes);
-        uint256 price = decodeSqrtPriceX96(sqrtPrice);
+        (uint160 sqrtPrice, ) = callUniswapObserve(1 minutes);
 
         // calculate value using TWAP price
-        uint256 debtValue = getDebtPositionValue(_vaultId, _boardId, price);
+        uint256 debtValue = getDebtPositionValue(_vaultId, _boardId, sqrtPrice);
 
         require(
-            getCollateralPositionValue(_vaultId, _boardId, price) * 3 / 4 < debtValue
+            getCollateralPositionValue(_vaultId, _boardId, sqrtPrice) * 3 / 4 < debtValue
         );
 
         // calculate reward
-        uint256 reward = debtValue / 100;
-        (uint256 amount0, uint256 amount1) = getDebtPositionAmounts(_vaultId, _boardId);
+        (uint256 amount0, uint256 amount1) = getDebtPositionAmounts(_vaultId, _boardId, sqrtPrice);
         CloseParams memory params = CloseParams(_zeroToOne, _amount, _amountOutMinimum, amount0/100, amount1/100);
 
         // close position
@@ -411,6 +411,8 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
     }
 
     function forceClose(uint256 _boardId, bytes[] memory _data) external onlyOwner {
+        applyPerpFee(_boardId);
+
         for(uint256 i = 0;i < _data.length;i++) {
             (uint256 vaultId, bool _zeroToOne, uint256 _amount, uint256 _amountOutMinimum, uint256 reward) = abi.decode(
                 _data[i],
@@ -421,7 +423,7 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
         }
     }
 
-    // Strategy API
+    // Product API
 
     function depositTokens(
         uint256 _vaultId,
@@ -544,6 +546,21 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
         return (amount0, amount1);
     }
 
+    // Getter Functions
+
+    function getVaultStatus(
+        uint256 _vaultId,
+        uint256 _boardId
+    ) external view returns(uint256, uint256, uint256){
+        (uint160 sqrtPriceX96, , , , , , ) = uniswapPool.slot0();
+
+        uint256 debtValue = getDebtPositionValue(_vaultId, _boardId, sqrtPriceX96);
+        uint256 collateralValue = getCollateralPositionValue(_vaultId, _boardId, sqrtPriceX96);
+        uint256 remainMargin = getMarginValue(_vaultId, _boardId);
+
+        return (collateralValue, debtValue, remainMargin);
+    }
+
     // Private Functions
 
     function createVault() internal returns (uint256 vaultId, Vault storage) {
@@ -561,8 +578,6 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
         CloseParams memory _params
     ) internal {
         Vault storage vault = vaults[_vaultId];
-
-        applyPerpFee(_boardId);
 
         uint256 tmpVaultAmount0 = tokenState0.getCollateralValue(accountState0[_vaultId]) + vault.collateralAmount0;
         uint256 tmpVaultAmount1 = tokenState1.getCollateralValue(accountState1[_vaultId]) + vault.collateralAmount1;
@@ -604,6 +619,7 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
         tokenState1.clearDebt(accountState1[_vaultId]);
 
         emit PositionClosed(
+            _vaultId,
             tmpVaultAmount0,
             tmpVaultAmount1,
             _params.penaltyAmount0,
@@ -622,20 +638,22 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
             uint128 index = vault.collateralIndex[i];
             INonfungiblePositionManager.DecreaseLiquidityParams memory params = INonfungiblePositionManager
                 .DecreaseLiquidityParams(board.tokenIds[index], vault.collateralLiquidity[i], 0, 0, block.timestamp);
+            
+            {
+                (uint256 amount0, uint256 amount1) = decreaseLiquidityFromUni(_boardId, index, params);
+                totalAmount0 += amount0;
+                totalAmount1 += amount1;
+            }
+        }
 
-            (uint256 amount0, uint256 amount1) = decreaseLiquidityFromUni(_boardId, index, params);
+        {
+            (uint256 fee0, uint256 fee1) = getEarnedTradeFee(_vaultId, _boardId);
+            totalAmount0 += fee0;
+            totalAmount1 += fee1;
+        }
 
-            totalAmount0 += amount0;
-            totalAmount1 += amount1;
-
-            totalAmount0 +=
-                ((perpStatuses[_boardId][index].cumFee0 - extraVaultParams[_vaultId].fee0Last[i]) *
-                    vault.collateralLiquidity[i]) /
-                FixedPoint128.Q128;
-            totalAmount1 +=
-                ((perpStatuses[_boardId][index].cumFee1 - extraVaultParams[_vaultId].fee1Last[i]) *
-                    vault.collateralLiquidity[i]) /
-                FixedPoint128.Q128;
+        for (uint256 i = 0; i < vault.collateralIndex.length; i++) {
+            uint128 index = vault.collateralIndex[i];
 
             extraVaultParams[_vaultId].fee0Last[i] = perpStatuses[_boardId][index].cumFee0;
             extraVaultParams[_vaultId].fee1Last[i] = perpStatuses[_boardId][index].cumFee1;
@@ -810,45 +828,67 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
     }
 
     function applyPerpFee(uint256 _boardId) internal {
+        Board memory board = boards[_boardId];
+
+        // calculate fee for perps
+        (uint160 sqrtPrice, ) = callUniswapObserve(1 minutes);
+
+        for (uint256 i = 0; i < board.lowers.length; i++) {
+            applyPerpFee(_boardId, i, sqrtPrice);
+        }
+
+        updateInterest(_boardId, sqrtPrice);
+    }
+
+    function applyPerpFee(uint256 _boardId, uint256 _vaultId) internal {
+        Board storage board = boards[_boardId];
+        Vault memory vault = vaults[_vaultId];
+
+        // calculate fee for perps
+        (uint160 sqrtPrice, ) = callUniswapObserve(1 minutes);
+
+        for (uint256 i = 0; i < vault.collateralIndex.length; i++) {
+            applyPerpFee(_boardId, vault.collateralIndex[i], sqrtPrice);
+        }
+
+        for (uint256 i = 0; i < vault.debtIndex.length; i++) {
+            applyPerpFee(_boardId, vault.debtIndex[i], sqrtPrice);
+        }
+
+        updateInterest(_boardId, sqrtPrice);
+    }
+
+    function updateInterest(uint256 _boardId, uint256 _sqrtPrice) internal {
         Board storage board = boards[_boardId];
 
         if (block.timestamp <= board.lastTouchedTimestamp) {
             return;
         }
 
-        // calculate fee for perps
-
-        // TODO: change TWAP time
-        (uint256 sqrtPrice, ) = callUniswapObserve(1 minutes);
-
-        for (uint256 i = 0; i < board.lowers.length; i++) {
-            applyPerpFee(_boardId, i, sqrtPrice, board.lastTouchedTimestamp);
-        }
-
-        pricingModule.takeSnapshot(uniswapPool);
-
         // calculate interest for tokens
         {
             uint256 a = ((block.timestamp - board.lastTouchedTimestamp) *
-                pricingModule.calculateInstantRate(sqrtPrice, getUR())) / 1 days;
+                pricingModule.calculateInstantRate(_sqrtPrice, getUR())) / 1 days;
             
             tokenState0.updateScaler(a);
             tokenState1.updateScaler(a);
         }
-
         board.lastTouchedTimestamp = block.timestamp;
     }
 
     function applyPerpFee(
         uint256 _boardId,
         uint256 _index,
-        uint256 _sqrtPrice,
-        uint256 _lastTouchedTimestamp
+        uint256 _sqrtPrice
     ) internal {
         PerpStatus storage perpStatus = perpStatuses[_boardId][_index];
 
+        if (block.timestamp <= perpStatus.lastTouchedTimestamp) {
+            return;
+        }
+
         if (perpStatus.borrowedLiquidity > 0) {
-            uint256 feeAmount = ((block.timestamp - _lastTouchedTimestamp) *
+            uint256 feeAmount = ((block.timestamp - perpStatus.lastTouchedTimestamp) *
                 pricingModule.calculatePerpFee(
                     uniswapPool,
                     boards[_boardId].lowers[_index],
@@ -860,7 +900,7 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
         }
 
         if (perpStatus.instantBorrowedLiquidity > 0) {
-            uint256 feeAmount = ((block.timestamp - _lastTouchedTimestamp) *
+            uint256 feeAmount = ((block.timestamp - perpStatus.lastTouchedTimestamp) *
                 pricingModule.calculateInstantRate(_sqrtPrice, getInstantUR(_boardId, _index))) / 1 days;
             perpStatus.instantCumulativeFee += feeAmount;
             perpStatus.cumulativeFeeForLP += (feeAmount * perpStatus.instantBorrowedLiquidity) / getTotalLiquidityAmount(_boardId, _index);
@@ -870,6 +910,7 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
                             boards[_boardId].lowers[_index],
                     boards[_boardId].uppers[_index]);
 
+        perpStatus.lastTouchedTimestamp = block.timestamp;
     }
 
     function getMinCollateral(
@@ -888,10 +929,6 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
         uint256 _index,
         uint128 _liquidity
     ) internal view returns(uint256){
-        // (uint160 lowerSqrtPrice, uint160 upperSqrtPrice) = getSqrtPriceRange(boards[_boardId], _index);
-
-        // require(address(pricingModule) != address(0), "a");
-
         return _liquidity * pricingModule.calculateMinCollateral(
             uniswapPool,
             boards[_boardId].lowers[_index],
@@ -922,10 +959,22 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
         return (tokenState0.totalBorrowed * 1e10) / tokenState0.totalDeposited;
     }
 
-    function getPrice() external view returns (uint256, int24) {
-        (uint160 sqrtPriceX96, int24 tick, , , , , ) = uniswapPool.slot0();
+    /**
+     * Gets current price of underlying token by margin token.
+     */
+    function getPrice() external view returns (uint256) {
+        (uint160 sqrtPriceX96, , , , , , ) = uniswapPool.slot0();
 
-        return (decodeSqrtPriceX96(sqrtPriceX96), tick);
+        return decodeSqrtPriceX96(sqrtPriceX96);
+    }
+
+    /**
+     * Gets Time Weighted Average Price of underlying token by margin token.
+     */
+    function getTWAP() external view returns (uint256) {
+        (uint256 sqrtPrice, ) = callUniswapObserve(1 minutes);
+
+        return decodeSqrtPriceX96(sqrtPrice);
     }
 
     function getSqrtPriceRange(Board memory board, uint256 _index) internal pure returns (uint160 lowerSqrtPrice, uint160 upperSqrtPrice) {
@@ -948,12 +997,6 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
         }
     }
 
-    function getObservations(uint256 _i) external view returns (uint32, bool) {
-        (uint32 oldestAvailableAge, , , bool initialized) = uniswapPool.observations(_i);
-
-        return (oldestAvailableAge, initialized);
-    }
-
     function getTotalLiquidityAmount(uint256 _boardId, uint256 _index) internal view returns (uint128) {
         (, , , , , , , uint128 liquidity, , , , ) = positionManager.positions(boards[_boardId].tokenIds[_index]);
 
@@ -961,46 +1004,58 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
     }
 
     /**
-     * returns collateral value scaled by token1's decimal
+     * returns collateral value scaled by margin token's decimal
      */
     function getCollateralPositionValue(
         uint256 _vaultId,
         uint256 _boardId,
-        uint256 _price
+        uint160 _sqrtPrice
     ) internal view returns (uint256) {
-        (uint256 amount0, uint256 amount1) = getCollateralPositionAmounts(_vaultId, _boardId);
+        uint256 price = decodeSqrtPriceX96(_sqrtPrice);
 
-        return amount0 * _price / 1e18 + amount1;
+        (uint256 amount0, uint256 amount1) = getCollateralPositionAmounts(_vaultId, _boardId, _sqrtPrice);
+
+        if(isMarginZero) {
+            return amount1 * price / 1e18 + amount0;
+        } else {
+            return amount0 * price / 1e18 + amount1;
+        }
     }
 
     /**
-     * returns debt value scaled by token1's decimal
+     * returns debt value scaled by margin token's decimal
      */
     function getDebtPositionValue(
         uint256 _vaultId,
         uint256 _boardId,
-        uint256 _price
+        uint160 _sqrtPrice
     ) internal view returns (uint256) {
-        (uint256 amount0, uint256 amount1) = getDebtPositionAmounts(_vaultId, _boardId);
+        uint256 price = decodeSqrtPriceX96(_sqrtPrice);
 
-        return amount0 * _price / 1e18 + amount1;
+        (uint256 amount0, uint256 amount1) = getDebtPositionAmounts(_vaultId, _boardId, _sqrtPrice);
+
+        if(isMarginZero) {
+            return amount1 * price / 1e18 + amount0;
+        } else {
+            return amount0 * price / 1e18 + amount1;
+        }
     }
 
-    function getCollateralPositionAmounts(uint256 _vaultId, uint256 _boardId)
-        public
+    function getCollateralPositionAmounts(uint256 _vaultId, uint256 _boardId, uint160 _sqrtPrice)
+        internal
         view
         returns (uint256 totalAmount0, uint256 totalAmount1)
     {
         Vault memory vault = vaults[_vaultId];
         Board memory board = boards[_boardId];
 
-        (uint160 sqrtPriceX96, , , , , , ) = uniswapPool.slot0();
+        // (uint160 sqrtPriceX96, , , , , , ) = uniswapPool.slot0();
 
         for (uint256 i = 0; i < vault.collateralIndex.length; i++) {
             (uint160 sqrtRatioAX96, uint160 sqrtRatioBX96) = getSqrtPriceRange(board, vault.collateralIndex[i]);
 
             (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
-                sqrtPriceX96,
+                _sqrtPrice,
                 sqrtRatioAX96,
                 sqrtRatioBX96,
                 vault.collateralLiquidity[i]
@@ -1010,27 +1065,48 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
             totalAmount1 += amount1;
         }
 
+        (uint256 fee0, uint256 fee1) = getEarnedTradeFee(_vaultId, _boardId);
+        totalAmount0 += fee0;
+        totalAmount1 += fee1;
+
         totalAmount0 += tokenState0.getCollateralValue(accountState0[_vaultId]);
         totalAmount1 += tokenState1.getCollateralValue(accountState1[_vaultId]);
         totalAmount0 += vault.collateralAmount0;
         totalAmount1 += vault.collateralAmount1;
     }
 
-    function getDebtPositionAmounts(uint256 _vaultId, uint256 _boardId)
-        public
+    function getEarnedTradeFee(uint256 _vaultId, uint256 _boardId) internal view returns (uint256 totalAmount0, uint256 totalAmount1) {
+        Vault memory vault = vaults[_vaultId];
+
+        for (uint256 i = 0; i < vault.collateralIndex.length; i++) {
+            uint256 index = vault.collateralIndex[i];
+            totalAmount0 =
+                ((perpStatuses[_boardId][index].cumFee0 - extraVaultParams[_vaultId].fee0Last[i]) *
+                    vault.collateralLiquidity[i]) /
+                FixedPoint128.Q128;
+            totalAmount1 =
+                ((perpStatuses[_boardId][index].cumFee1 - extraVaultParams[_vaultId].fee1Last[i]) *
+                    vault.collateralLiquidity[i]) /
+                FixedPoint128.Q128;
+        }
+    }
+
+
+    function getDebtPositionAmounts(uint256 _vaultId, uint256 _boardId, uint160 _sqrtPrice)
+        internal
         view
         returns (uint256 totalAmount0, uint256 totalAmount1)
     {
         Vault memory vault = vaults[_vaultId];
         Board memory board = boards[_boardId];
 
-        (uint160 sqrtPriceX96, , , , , , ) = uniswapPool.slot0();
+        // (uint160 sqrtPriceX96, , , , , , ) = uniswapPool.slot0();
 
         for (uint256 i = 0; i < vault.debtIndex.length; i++) {
             (uint160 sqrtRatioAX96, uint160 sqrtRatioBX96) = getSqrtPriceRange(board, vault.debtIndex[i]);
 
             (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
-                sqrtPriceX96,
+                _sqrtPrice,
                 sqrtRatioAX96,
                 sqrtRatioBX96,
                 vault.debtLiquidity[i]
@@ -1049,7 +1125,7 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
         return TickMath.getTickAtSqrtRatio(sqrtPriceX96);
     }
 
-    function callUniswapObserve(uint256 ago) private view returns (uint256, uint256) {
+    function callUniswapObserve(uint256 ago) private view returns (uint160, uint256) {
         uint32[] memory secondsAgos = new uint32[](2);
 
         secondsAgos[0] = uint32(ago);
@@ -1098,12 +1174,13 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
 
     function decodeSqrtPriceX96(uint256 sqrtPriceX96) private view returns (uint256 price) {
         uint256 scaler = 1;//10**ERC20(token0).decimals();
-        if (uint160(token0) < uint160(token1)) {
-            price = FullMath.mulDiv(sqrtPriceX96, sqrtPriceX96, uint256(2**96)) * scaler / uint256(2**96);
-        } else {
+        
+        if (isMarginZero) {
             price = FullMath.mulDiv(sqrtPriceX96, sqrtPriceX96, uint256(2**(96 * 2)) / (1e18 * scaler));
             if (price == 0) return 1e36;
             price = 1e36 / price;
+        } else {
+            price = FullMath.mulDiv(sqrtPriceX96, sqrtPriceX96, uint256(2**96)) * scaler / uint256(2**96);
         }
 
         if (price > 1e36) price = 1e36;

@@ -8,12 +8,11 @@ import "v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "v3-core/contracts/libraries/Tick.sol";
 
 contract PricingModule2 {
-    uint256 constant ONE = 1e12;
-    uint256 constant PI_E8 = 3.1415926535 * 1e12;
-
     struct TickSnapshot {
         uint256 lastFeeGrowthInside0X128;
         uint256 lastFeeGrowthInside1X128;
+        uint256 lastFeeGrowthGlobal0X128;
+        uint256 lastFeeGrowthGlobal1X128;
     }
 
     struct TickInfo {
@@ -22,9 +21,6 @@ contract PricingModule2 {
     }
 
     mapping(bytes32 => TickSnapshot) snapshots;
-
-    uint256 lastFeeGrowthGlobal0X128;
-    uint256 lastFeeGrowthGlobal1X128;
 
     uint256 dailyFeeAmount;
 
@@ -74,6 +70,7 @@ contract PricingModule2 {
         return 500;
     }
 
+    /*
     function takeSnapshot(
         IUniswapV3Pool uniPool
     ) external {
@@ -83,6 +80,7 @@ contract PricingModule2 {
         lastFeeGrowthGlobal0X128 = feeGrowthGlobal0X128;
         lastFeeGrowthGlobal1X128 = feeGrowthGlobal1X128;
     }
+    */
 
     function takeSnapshotForRange(
         IUniswapV3Pool uniPool,
@@ -99,7 +97,7 @@ contract PricingModule2 {
 
         bytes32 key = keccak256(abi.encodePacked(_lowerTick, _upperTick));
 
-        snapshots[key] = TickSnapshot(feeGrowthInside0X128, feeGrowthInside1X128);
+        snapshots[key] = TickSnapshot(feeGrowthInside0X128, feeGrowthInside1X128, feeGrowthGlobal0X128, feeGrowthGlobal1X128);
     }
 
     function calculateRatio(
@@ -109,8 +107,8 @@ contract PricingModule2 {
         uint256 feeGrowthGlobal0X128,
         uint256 feeGrowthGlobal1X128
     ) internal view returns (uint256) {
-        uint256 a = 1e8 * (feeGrowthInside0X128 - snapshot.lastFeeGrowthInside0X128) / (feeGrowthGlobal0X128 - lastFeeGrowthGlobal0X128);
-        uint256 b = 1e8 * (feeGrowthInside1X128 - snapshot.lastFeeGrowthInside1X128) / (feeGrowthGlobal1X128 - lastFeeGrowthGlobal1X128);
+        uint256 a = 1e8 * (feeGrowthInside0X128 - snapshot.lastFeeGrowthInside0X128) / (feeGrowthGlobal0X128 - snapshot.lastFeeGrowthGlobal0X128);
+        uint256 b = 1e8 * (feeGrowthInside1X128 - snapshot.lastFeeGrowthInside1X128) / (feeGrowthGlobal1X128 - snapshot.lastFeeGrowthGlobal1X128);
 
         return dailyFeeAmount * (a + b) / (2 * 1e8);
     }

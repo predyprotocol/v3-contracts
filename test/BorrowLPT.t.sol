@@ -37,7 +37,7 @@ contract BorrowLPTTest is TestDeployer, Test {
 
         bytes memory data = abi.encode(index, liquidity, TickMath.getSqrtRatioAtTick(202570), 0, usdcAmount);
         vm.expectRevert(bytes("P2"));
-        pool.openStrategy(address(borrowLPTStrategy), 0, margin, data, usdcAmount, 0);
+        pool.openPosition(address(borrowLPTProduct), 0, margin, data, usdcAmount, 0);
     }
 
     function testBorrow0() public {
@@ -53,7 +53,7 @@ contract BorrowLPTTest is TestDeployer, Test {
         uint128 liquidity = pool.getLiquidityForOptionAmount(0, index, ethAmount);
 
         bytes memory data = abi.encode(index, liquidity, TickMath.getSqrtRatioAtTick(202570), 0, usdcAmount);
-        uint256 vaultId = pool.openStrategy(address(borrowLPTStrategy), 0, 100000000, data, usdcAmount, 0);
+        uint256 vaultId = pool.openPosition(address(borrowLPTProduct), 0, 100000000, data, usdcAmount, 0);
 
         vm.warp(block.timestamp + 1 days);
         swap(owner, false);
@@ -77,12 +77,13 @@ contract BorrowLPTTest is TestDeployer, Test {
         console.log(2, liquidity);
 
         bytes memory data = abi.encode(index, liquidity, TickMath.getSqrtRatioAtTick(202570), 0, usdcAmount);
-        uint256 vaultId = pool.openStrategy(address(borrowLPTStrategy), 0, margin, data, usdcAmount, 0);
+        uint256 vaultId = pool.openPosition(address(borrowLPTProduct), 0, margin, data, usdcAmount, 0);
 
         vm.warp(block.timestamp + 1 days);
         swap(owner, true);
 
         showCurrentTick();
+        pool.getVaultStatus(vaultId, 0);
         
         // (, uint256 collateralAmount0, uint256 collateralAmount1, , ) = pool.vaults(vaultId);
 

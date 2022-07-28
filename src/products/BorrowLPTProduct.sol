@@ -2,10 +2,10 @@
 pragma solidity ^0.7.6;
 pragma abicoder v2;
 
-import "../base/BaseStrategy.sol";
+import "../base/BaseProduct.sol";
 import "../interfaces/IPredyV3Pool.sol";
 
-contract BorrowLPTStrategy is BaseStrategy {
+contract BorrowLPTProduct is BaseProduct {
     address public immutable token0;
     address public immutable token1;
 
@@ -15,7 +15,7 @@ contract BorrowLPTStrategy is BaseStrategy {
         address _token0,
         address _token1,
         IPredyV3Pool _pool
-    ) BaseStrategy(_pool) {
+    ) BaseProduct(_pool) {
         token0 = _token0;
         token1 = _token1;
     }

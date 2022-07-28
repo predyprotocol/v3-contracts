@@ -4,7 +4,7 @@ pragma abicoder v2;
 
 import "../interfaces/IPredyV3Pool.sol";
 
-contract BaseStrategy {
+contract BaseProduct {
     IPredyV3Pool public pool;
 
     constructor(IPredyV3Pool _pool) {

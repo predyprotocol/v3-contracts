@@ -9,7 +9,7 @@ interface IPredyV3Pool {
         SHORT
     }
 
-    function openStrategy(
+    function openPosition(
         address _strategyId,
         uint256 _boardId,
         uint256 _margin,

@@ -34,9 +34,6 @@ contract PricingModule2Test is TestDeployer, Test {
 
     function testCalculatePerpFee(
     ) public {
-        pricingModule.takeSnapshot(
-            uniPool
-        );
         pricingModule.takeSnapshotForRange(
             uniPool,
             202560,

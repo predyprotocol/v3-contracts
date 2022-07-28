@@ -38,7 +38,7 @@ contract PredyV3PoolTest is TestDeployer, Test {
         
         (uint256 a0, uint256 a1) = pool.getTokenAmountsToDepositLPT(0, 0, _l);
 
-        pool.openStrategy(address(depositLPTStrategy), 0, 1000000, abi.encode(0, _l), a0, a1);
+        pool.openPosition(address(depositLPTProduct), 0, 1000000, abi.encode(0, _l), a0, a1);
     }
 
     function testCreateBoard2(uint256 _expiration, uint24 _spacing) public {

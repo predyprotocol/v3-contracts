@@ -2,10 +2,10 @@
 pragma solidity ^0.7.6;
 pragma abicoder v2;
 
-import "../base/BaseStrategy.sol";
+import "../base/BaseProduct.sol";
 
-contract DepositTokenStrategy is BaseStrategy {
-    constructor(IPredyV3Pool _pool) BaseStrategy(_pool) {}
+contract DepositTokenProduct is BaseProduct {
+    constructor(IPredyV3Pool _pool) BaseProduct(_pool) {}
 
     function isLiquidationRequired(
     ) external pure override returns (bool) {

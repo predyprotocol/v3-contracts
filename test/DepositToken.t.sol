@@ -33,6 +33,6 @@ contract DepositTokenTest is TestDeployer, Test {
         vm.assume(_a1 < 1e6);
 
         uint256 margin = 0;
-        pool.openStrategy(address(depositTokenStrategy), boardId, margin, abi.encode(_a0, _a1), _a0, _a1);
+        pool.openPosition(address(depositTokenProduct), boardId, margin, abi.encode(_a0, _a1), _a0, _a1);
     }
 }

@@ -5,8 +5,8 @@ pragma abicoder v2;
 import "./BaseTestHelper.sol";
 import "../../src/PredyV3Pool.sol";
 import "../../src/PricingModule2.sol";
-import "../../src/strategies/DepositLPTStrategy.sol";
-import "../../src/strategies/BorrowLPTStrategy.sol";
+import "../../src/products/DepositLPTProduct.sol";
+import "../../src/products/BorrowLPTProduct.sol";
 import "../../src/mocks/MockERC20.sol";
 import {NonfungiblePositionManager} from "v3-periphery/NonfungiblePositionManager.sol";
 import {UniswapV3Factory } from "v3-core/contracts/UniswapV3Factory.sol";
@@ -47,11 +47,11 @@ abstract contract ForkTestDeployer is BaseTestHelper {
 
         pool = new PredyV3Pool(address(token0), address(token1), !isTokenAToken0, address(positionManager), address(factory), address(swapRouter));
 
-        depositLPTStrategy = new DepositLPTStrategy(pool);
-        borrowLPTStrategy = new BorrowLPTStrategy(address(token0), address(token1), pool);
+        depositLPTProduct = new DepositLPTProduct(pool);
+        borrowLPTProduct = new BorrowLPTProduct(address(token0), address(token1), pool);
 
-        pool.addStrategy(address(depositLPTStrategy));
-        pool.addStrategy(address(borrowLPTStrategy));
+        pool.addProduct(address(depositLPTProduct));
+        pool.addProduct(address(borrowLPTProduct));
 
         token0.approve(address(pool), 1e24);
         token1.approve(address(pool), 1e24);

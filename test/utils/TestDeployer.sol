@@ -5,10 +5,10 @@ pragma abicoder v2;
 import "./BaseTestHelper.sol";
 import "../../src/PredyV3Pool.sol";
 import "../../src/PricingModule2.sol";
-import "../../src/strategies/DepositLPTStrategy.sol";
-import "../../src/strategies/BorrowLPTStrategy.sol";
-import "../../src/strategies/LevLPStrategy.sol";
-import "../../src/strategies/DepositTokenStrategy.sol";
+import "../../src/products/DepositLPTProduct.sol";
+import "../../src/products/BorrowLPTProduct.sol";
+import "../../src/products/LevLPTProduct.sol";
+import "../../src/products/DepositTokenProduct.sol";
 import "../../src/mocks/MockERC20.sol";
 import {NonfungiblePositionManager} from "v3-periphery/NonfungiblePositionManager.sol";
 import {UniswapV3Factory } from "v3-core/contracts/UniswapV3Factory.sol";
@@ -51,7 +51,7 @@ abstract contract TestDeployer is BaseTestHelper {
         uniPool = IUniswapV3Pool(IUniswapV3Factory(factory).getPool(address(token0), address(token1), 500));
         IUniswapV3PoolActions(uniPool).increaseObservationCardinalityNext(180);
 
-        pool = new PredyV3Pool(address(token0), address(token1), !isTokenAToken0, address(positionManager), factory, address(swapRouter));
+        pool = new PredyV3Pool(address(token0), address(token1), true, address(positionManager), factory, address(swapRouter));
 
         INonfungiblePositionManager.MintParams memory params = INonfungiblePositionManager.MintParams(
             address(token0),
@@ -76,15 +76,15 @@ abstract contract TestDeployer is BaseTestHelper {
 
         positionManager.mint(params);
 
-        depositLPTStrategy = new DepositLPTStrategy(pool);
-        borrowLPTStrategy = new BorrowLPTStrategy(address(token0), address(token1), pool);
-        levLPStrategy = new LevLPStrategy(pool);
-        depositTokenStrategy = new DepositTokenStrategy(pool);
+        depositLPTProduct = new DepositLPTProduct(pool);
+        borrowLPTProduct = new BorrowLPTProduct(address(token0), address(token1), pool);
+        levLPProduct = new LevLPTProduct(pool);
+        depositTokenProduct = new DepositTokenProduct(pool);
 
-        pool.addStrategy(address(depositLPTStrategy));
-        pool.addStrategy(address(borrowLPTStrategy));
-        pool.addStrategy(address(levLPStrategy));
-        pool.addStrategy(address(depositTokenStrategy));
+        pool.addProduct(address(depositLPTProduct));
+        pool.addProduct(address(borrowLPTProduct));
+        pool.addProduct(address(levLPProduct));
+        pool.addProduct(address(depositTokenProduct));
 
         pricingModule = new PricingModule2();
         pool.setPricingModule(address(pricingModule));
