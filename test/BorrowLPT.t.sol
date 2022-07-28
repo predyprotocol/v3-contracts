@@ -45,6 +45,7 @@ contract BorrowLPTTest is TestDeployer, Test {
         // vm.assume(liquidity >= 100000000000000);
         // vm.assume(liquidity <= 300000000000000);
         uint128 index = 0;
+        uint256 margin = 100000000;
 
         uint256 ethAmount = 1 * 1e16;
         uint256 usdcAmount = ethAmount * 2000 / 1e12;
@@ -52,14 +53,14 @@ contract BorrowLPTTest is TestDeployer, Test {
         uint128 liquidity = pool.getLiquidityForOptionAmount(0, index, ethAmount);
 
         bytes memory data = abi.encode(index, liquidity, TickMath.getSqrtRatioAtTick(202570), 0, usdcAmount);
-        uint256 vaultId = pool.openStrategy(address(borrowLPTStrategy), 0, margin, data, usdcAmount, 0);
+        uint256 vaultId = pool.openStrategy(address(borrowLPTStrategy), 0, 100000000, data, usdcAmount, 0);
 
         vm.warp(block.timestamp + 1 days);
         swap(owner, false);
         
-        (, uint256 collateralAmount0, uint256 collateralAmount1, , ) = pool.vaults(vaultId);
+        //(, uint256 collateralAmount0, uint256 collateralAmount1, , ) = pool.vaults(vaultId);
 
-        pool.closePositionsInVault(vaultId, 0, false, collateralAmount1, collateralAmount1 * 1000 / 1e12);
+        pool.closePositionsInVault(vaultId, 0, false, ethAmount, ethAmount * 1000 / 1e12);
     }
 
     function testBorrow1() public {
@@ -83,18 +84,8 @@ contract BorrowLPTTest is TestDeployer, Test {
 
         showCurrentTick();
         
-        (, uint256 collateralAmount0, uint256 collateralAmount1, , ) = pool.vaults(vaultId);
+        // (, uint256 collateralAmount0, uint256 collateralAmount1, , ) = pool.vaults(vaultId);
 
-        /*
-        (uint256 a0, uint256 a1) = pool.getTokenAmountsToDepositLPT(0, index, liquidity);
-
-        console.log(collateralAmount0);
-        console.log(collateralAmount1);
-        console.log(a0);
-        console.log(a1);
-        */
-
-        pool.closePositionsInVault(vaultId, 0, true, collateralAmount0, collateralAmount0 * 1e12 / 2000);
-
+        pool.closePositionsInVault(vaultId, 0, true, usdcAmount, usdcAmount * 1e12 / 2000);
     }
 }

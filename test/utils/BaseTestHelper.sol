@@ -6,6 +6,8 @@ import "../../src/PredyV3Pool.sol";
 import "../../src/PricingModule2.sol";
 import "../../src/strategies/DepositLPTStrategy.sol";
 import "../../src/strategies/BorrowLPTStrategy.sol";
+import "../../src/strategies/LevLPStrategy.sol";
+import "../../src/strategies/DepositTokenStrategy.sol";
 import "../../src/mocks/MockERC20.sol";
 import {SwapRouter} from "v3-periphery/SwapRouter.sol";
 import "forge-std/console.sol";
@@ -20,6 +22,8 @@ abstract contract BaseTestHelper {
     IUniswapV3Pool uniPool;
     DepositLPTStrategy depositLPTStrategy;
     BorrowLPTStrategy borrowLPTStrategy;
+    LevLPStrategy levLPStrategy;
+    DepositTokenStrategy depositTokenStrategy;
 
     function createBoard() public {
         int24[] memory lowers = new int24[](2);

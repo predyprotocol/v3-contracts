@@ -7,6 +7,8 @@ import "../../src/PredyV3Pool.sol";
 import "../../src/PricingModule2.sol";
 import "../../src/strategies/DepositLPTStrategy.sol";
 import "../../src/strategies/BorrowLPTStrategy.sol";
+import "../../src/strategies/LevLPStrategy.sol";
+import "../../src/strategies/DepositTokenStrategy.sol";
 import "../../src/mocks/MockERC20.sol";
 import {NonfungiblePositionManager} from "v3-periphery/NonfungiblePositionManager.sol";
 import {UniswapV3Factory } from "v3-core/contracts/UniswapV3Factory.sol";
@@ -76,9 +78,13 @@ abstract contract TestDeployer is BaseTestHelper {
 
         depositLPTStrategy = new DepositLPTStrategy(pool);
         borrowLPTStrategy = new BorrowLPTStrategy(address(token0), address(token1), pool);
+        levLPStrategy = new LevLPStrategy(pool);
+        depositTokenStrategy = new DepositTokenStrategy(pool);
 
         pool.addStrategy(address(depositLPTStrategy));
         pool.addStrategy(address(borrowLPTStrategy));
+        pool.addStrategy(address(levLPStrategy));
+        pool.addStrategy(address(depositTokenStrategy));
 
         pricingModule = new PricingModule2();
         pool.setPricingModule(address(pricingModule));

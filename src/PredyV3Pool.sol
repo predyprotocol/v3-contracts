@@ -16,6 +16,7 @@ import "./base/BaseStrategy.sol";
 import "./interfaces/IPredyV3Pool.sol";
 import "./interfaces/IPricingModule.sol";
 import "forge-std/console2.sol";
+import "./libraries/BaseToken.sol";
 
 interface IUniswapV3PoolOracle {
     function slot0()
@@ -54,7 +55,9 @@ interface IUniswapV3PoolOracle {
 /**
  * |---|---|
  */
-contract PredyV3Pool is IPredyV3Pool {
+contract PredyV3Pool is IPredyV3Pool, Ownable {
+    using BaseToken for BaseToken.TokenState;
+
     struct Board {
         uint256 expiration;
         int24[] lowers;
@@ -75,10 +78,6 @@ contract PredyV3Pool is IPredyV3Pool {
 
     struct Vault {
         uint256 margin;
-        uint256 collateralAmount0;
-        uint256 collateralAmount1;
-        uint256 debtAmount0;
-        uint256 debtAmount1;
         uint128[] collateralIndex;
         uint128[] collateralLiquidity;
         uint256[] collateralFeeGrowth;
@@ -94,6 +93,11 @@ contract PredyV3Pool is IPredyV3Pool {
         InstantDebtType[] debtInstant;
         uint256[] fee0Last;
         uint256[] fee1Last;
+    }
+
+    struct VaultWithdrawList {
+        uint256 amount0;
+        uint256 amount1;
     }
 
     address token0;
@@ -118,15 +122,14 @@ contract PredyV3Pool is IPredyV3Pool {
 
     mapping(uint256 => Vault) public vaults;
     mapping(uint256 => ExtraVaultParam) extraVaultParams;
-
+    mapping(uint256 => BaseToken.AccountState) public accountState0;
+    mapping(uint256 => BaseToken.AccountState) public accountState1;
+    mapping(uint256 => VaultWithdrawList) withdrawList;
+    
     uint256 volatility;
 
-    uint256 totalDeposited0;
-    uint256 totalBorrowed0;
-    uint256 totalDeposited1;
-    uint256 totalBorrowed1;
-    uint256 cumInterest0;
-    uint256 cumInterest1;
+    BaseToken.TokenState tokenState0;
+    BaseToken.TokenState tokenState1;
 
     event VaultCreated(uint256 vaultId);
 
@@ -165,17 +168,20 @@ contract PredyV3Pool is IPredyV3Pool {
         ERC20(token1).approve(address(positionManager), 1e24);
         ERC20(token0).approve(address(_swapRouter), 1e24);
         ERC20(token1).approve(address(_swapRouter), 1e24);
+
+        tokenState0.initialize();
+        tokenState1.initialize();
     }
 
-    function addStrategy(address _strategyAddress) external {
+    function addStrategy(address _strategyAddress) external onlyOwner {
         strategies[_strategyAddress] = _strategyAddress;
     }
 
-    function setPricingModule(address _pricingModule) external {
+    function setPricingModule(address _pricingModule) external onlyOwner {
         pricingModule = IPricingModule(_pricingModule);
     }
 
-    function updateVolatility(uint256 _volatility) external {
+    function updateVolatility(uint256 _volatility) external onlyOwner {
         volatility = _volatility;
     }
 
@@ -269,7 +275,7 @@ contract PredyV3Pool is IPredyV3Pool {
         );
 
         uint256 minCollateral = getMinCollateral(vaultId, _boardId);
-        console2.log(minCollateral);
+        console2.log(_margin, minCollateral);
         require(vault.margin >= minCollateral, "P2");
 
         if (_buffer0 > amount0) {
@@ -297,11 +303,11 @@ contract PredyV3Pool is IPredyV3Pool {
 
         require(extraVaultParams[_vaultId].isClosed);
 
-        uint256 withdrawAmount0 = vault.collateralAmount0;
-        uint256 withdrawAmount1 = vault.collateralAmount1;
+        uint256 withdrawAmount0 = withdrawList[_vaultId].amount0;
+        uint256 withdrawAmount1 = withdrawList[_vaultId].amount1;
 
-        vault.collateralAmount0 = 0;
-        vault.collateralAmount1 = 0;
+        withdrawList[_vaultId].amount0 = 0;
+        withdrawList[_vaultId].amount1 = 0;
 
         TransferHelper.safeTransfer(
             token0,
@@ -322,11 +328,8 @@ contract PredyV3Pool is IPredyV3Pool {
     ) external override onlyStrategy {
         Vault storage vault = vaults[_vaultId];
 
-        vault.collateralAmount0 += _amount0;
-        vault.collateralAmount1 += _amount1;
-
-        totalDeposited0 += _amount0;
-        totalDeposited1 += _amount1;
+        tokenState0.addCollateral(accountState0[_vaultId], _amount0);
+        tokenState1.addCollateral(accountState1[_vaultId], _amount0);
     }
 
     function borrowTokens(
@@ -336,14 +339,8 @@ contract PredyV3Pool is IPredyV3Pool {
     ) external override onlyStrategy {
         Vault storage vault = vaults[_vaultId];
 
-        require(totalDeposited0 > totalBorrowed0 + _amount0);
-        require(totalDeposited1 > totalBorrowed1 + _amount1);
-
-        vault.debtAmount0 += _amount0;
-        vault.debtAmount1 += _amount1;
-
-        totalBorrowed0 += _amount0;
-        totalBorrowed1 += _amount1;
+        tokenState0.addDebt(accountState0[_vaultId], _amount0);
+        tokenState1.addDebt(accountState1[_vaultId], _amount0);
     }
 
     function getTokenAmountsToDepositLPT(
@@ -462,15 +459,19 @@ contract PredyV3Pool is IPredyV3Pool {
 
         applyPerpFee(_boardId);
 
+        uint256 tmpVaultAmount0 = tokenState0.getCollateralValue(accountState0[_vaultId]);
+        uint256 tmpVaultAmount1 = tokenState1.getCollateralValue(accountState1[_vaultId]);
+
+
         if (_amount > 0) {
             if (_zeroToOne) {
                 uint256 requiredA1 = swapExactInput(token0, token1, _amount, _amountOutMinimum);
-                vault.collateralAmount0 -= _amount;
-                vault.collateralAmount1 += requiredA1;
+                tmpVaultAmount0 -= _amount;
+                tmpVaultAmount1 += requiredA1;
             } else {
                 uint256 requiredA0 = swapExactInput(token1, token0, _amount, _amountOutMinimum);
-                vault.collateralAmount0 += requiredA0;
-                vault.collateralAmount1 -= _amount;
+                tmpVaultAmount0 += requiredA0;
+                tmpVaultAmount1 -= _amount;
             }
         }
 
@@ -481,14 +482,23 @@ contract PredyV3Pool is IPredyV3Pool {
         uint256 remainMargin = getMarginValue(_vaultId, _boardId);
 
         if (isMarginZero) {
-            vault.collateralAmount0 += totalWithdrawAmount0 + remainMargin - totalRepayAmount0;
-            vault.collateralAmount1 += totalWithdrawAmount1 - totalRepayAmount1;
+            tmpVaultAmount0 += totalWithdrawAmount0 + remainMargin - totalRepayAmount0;
+            tmpVaultAmount1 += totalWithdrawAmount1 - totalRepayAmount1;
         } else {
-            vault.collateralAmount0 += totalWithdrawAmount0 - totalRepayAmount0;
-            vault.collateralAmount1 += totalWithdrawAmount1 + remainMargin - totalRepayAmount1;
+            tmpVaultAmount0 += totalWithdrawAmount0 - totalRepayAmount0;
+            tmpVaultAmount1 += totalWithdrawAmount1 + remainMargin - totalRepayAmount1;
         }
 
+        withdrawList[_vaultId].amount0 = tmpVaultAmount0;
+        withdrawList[_vaultId].amount1 = tmpVaultAmount1;
+
         extraVaultParams[_vaultId].isClosed = true;
+
+        tokenState0.clearCollateral(accountState0[_vaultId]);
+        tokenState1.clearCollateral(accountState1[_vaultId]);
+        tokenState0.clearDebt(accountState0[_vaultId]);
+        tokenState1.clearDebt(accountState1[_vaultId]);
+
     }
 
     function withdraw(uint256 _vaultId, uint256 _boardId)
@@ -531,8 +541,8 @@ contract PredyV3Pool is IPredyV3Pool {
         Board storage board = boards[_boardId];
         Vault memory vault = vaults[_vaultId];
 
-        totalAmount0 = vault.debtAmount0;
-        totalAmount1 = vault.debtAmount1;
+        totalAmount0 = tokenState0.getDebtValue(accountState0[_vaultId]);
+        totalAmount1 = tokenState1.getDebtValue(accountState1[_vaultId]);
 
         (uint160 sqrtPriceX96, , , , , , ) = uniswapPool.slot0();
 
@@ -558,9 +568,6 @@ contract PredyV3Pool is IPredyV3Pool {
 
             vault.debtLiquidity[i] = 0;
         }
-
-        vault.debtAmount0 = 0;
-        vault.debtAmount1 = 0;
     }
 
     function decreaseLiquidityFromUni(
@@ -697,6 +704,18 @@ contract PredyV3Pool is IPredyV3Pool {
         sendReward(msg.sender, reward);
     }
 
+    function forceClose(uint256 _boardId, bytes[] memory _data) external onlyOwner {
+        for(uint256 i = 0;i < _data.length;i++) {
+            (uint256 vaultId, bool _zeroToOne, uint256 _amount, uint256 _amountOutMinimum) = abi.decode(
+                _data[i],
+                (uint256, bool, uint256, uint256)
+            );
+            
+            _closePositionsInVault(vaultId, _boardId, _zeroToOne, _amount, _amountOutMinimum);
+        }
+    }
+
+
     function decreaseReward(uint256 _vaultId, uint256 _reward) internal {
         vaults[_vaultId].margin -=_reward;
     }
@@ -804,8 +823,9 @@ contract PredyV3Pool is IPredyV3Pool {
         {
             uint256 a = ((block.timestamp - board.lastTouchedTimestamp) *
                 pricingModule.calculateInstantRate(sqrtPrice, getUR())) / 1 days;
-            cumInterest0 += a;
-            cumInterest1 += a;
+            
+            tokenState0.updateScaler(a);
+            tokenState1.updateScaler(a);
         }
 
         board.lastTouchedTimestamp = block.timestamp;
@@ -888,10 +908,10 @@ contract PredyV3Pool is IPredyV3Pool {
     }
 
     function getUR() internal view returns (uint256) {
-        if(totalDeposited0 == 0) {
+        if(tokenState0.totalDeposited == 0) {
             return 1e10;
         }
-        return (totalBorrowed0 * 1e10) / totalDeposited0;
+        return (tokenState0.totalBorrowed * 1e10) / tokenState0.totalDeposited;
     }
 
     function getPrice() external view returns (uint256, int24) {
@@ -982,8 +1002,8 @@ contract PredyV3Pool is IPredyV3Pool {
             totalAmount1 += amount1;
         }
 
-        totalAmount0 += vault.collateralAmount0;
-        totalAmount1 += vault.collateralAmount1;
+        totalAmount0 += tokenState0.getCollateralValue(accountState0[_vaultId]);
+        totalAmount1 += tokenState1.getCollateralValue(accountState1[_vaultId]);
     }
 
     function getDebtPositionAmounts(uint256 _vaultId, uint256 _boardId)
@@ -1010,8 +1030,9 @@ contract PredyV3Pool is IPredyV3Pool {
             totalAmount1 += amount1;
         }
 
-        totalAmount0 += vault.debtAmount0;
-        totalAmount1 += vault.debtAmount1;
+        totalAmount0 += tokenState0.getDebtValue(accountState0[_vaultId]);
+        totalAmount1 += tokenState1.getDebtValue(accountState1[_vaultId]);
+
     }
 
     function getTickAtSqrtRatio(uint160 sqrtPriceX96) external pure returns (int24) {

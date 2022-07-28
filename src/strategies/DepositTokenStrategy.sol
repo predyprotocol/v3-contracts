@@ -4,7 +4,7 @@ pragma abicoder v2;
 
 import "../base/BaseStrategy.sol";
 
-contract LevLPStrategy is BaseStrategy {
+contract DepositTokenStrategy is BaseStrategy {
     constructor(IPredyV3Pool _pool) BaseStrategy(_pool) {}
 
     function isLiquidationRequired(
