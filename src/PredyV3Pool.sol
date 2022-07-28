@@ -15,46 +15,11 @@ import "v3-periphery/interfaces/ISwapRouter.sol";
 import "./base/BaseStrategy.sol";
 import "./interfaces/IPredyV3Pool.sol";
 import "./interfaces/IPricingModule.sol";
+import "./vendors/IUniswapV3PoolOracle.sol";
 import "forge-std/console2.sol";
 import "./libraries/BaseToken.sol";
 
-interface IUniswapV3PoolOracle {
-    function slot0()
-        external
-        view
-        returns (
-            uint160 sqrtPriceX96,
-            int24 tick,
-            uint16 observationIndex,
-            uint16 observationCardinality,
-            uint16 observationCardinalityNext,
-            uint8 feeProtocol,
-            bool unlocked
-        );
 
-    function liquidity() external view returns (uint128);
-
-    function observe(uint32[] calldata secondsAgos)
-        external
-        view
-        returns (int56[] memory tickCumulatives, uint160[] memory liquidityCumulatives);
-
-    function observations(uint256 index)
-        external
-        view
-        returns (
-            uint32 blockTimestamp,
-            int56 tickCumulative,
-            uint160 liquidityCumulative,
-            bool initialized
-        );
-
-    function increaseObservationCardinalityNext(uint16 observationCardinalityNext) external;
-}
-
-/**
- * |---|---|
- */
 contract PredyV3Pool is IPredyV3Pool, Ownable {
     using BaseToken for BaseToken.TokenState;
 
@@ -78,6 +43,8 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
 
     struct Vault {
         uint256 margin;
+        uint256 collateralAmount0;
+        uint256 collateralAmount1;
         uint128[] collateralIndex;
         uint128[] collateralLiquidity;
         uint256[] collateralFeeGrowth;
@@ -93,11 +60,6 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
         InstantDebtType[] debtInstant;
         uint256[] fee0Last;
         uint256[] fee1Last;
-    }
-
-    struct VaultWithdrawList {
-        uint256 amount0;
-        uint256 amount1;
     }
 
     address token0;
@@ -124,7 +86,6 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
     mapping(uint256 => ExtraVaultParam) extraVaultParams;
     mapping(uint256 => BaseToken.AccountState) public accountState0;
     mapping(uint256 => BaseToken.AccountState) public accountState1;
-    mapping(uint256 => VaultWithdrawList) withdrawList;
     
     uint256 volatility;
 
@@ -239,6 +200,7 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
         boardIdCount++;
     }
 
+    // User API
     function openStrategy(
         address _strategyId,
         uint256 _boardId,
@@ -303,11 +265,11 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
 
         require(extraVaultParams[_vaultId].isClosed);
 
-        uint256 withdrawAmount0 = withdrawList[_vaultId].amount0;
-        uint256 withdrawAmount1 = withdrawList[_vaultId].amount1;
+        uint256 withdrawAmount0 = vault.collateralAmount0;
+        uint256 withdrawAmount1 = vault.collateralAmount1;
 
-        withdrawList[_vaultId].amount0 = 0;
-        withdrawList[_vaultId].amount1 = 0;
+        vault.collateralAmount0 = 0;
+        vault.collateralAmount1 = 0;
 
         TransferHelper.safeTransfer(
             token0,
@@ -321,15 +283,135 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
         );
     }
 
+
+    /**
+     * Liquidates if margin value is less than min collateral
+     */
+    function liquidate(
+        uint256 _vaultId,
+        uint256 _boardId,
+        bool _zeroToOne,
+        uint256 _amount,
+        uint256 _amountOutMinimum
+    ) external {
+        applyPerpFee(_boardId);
+
+        // check liquidation
+        uint256 currentMargin = getMarginValue(_vaultId, _boardId);
+        uint256 minCollateral = getMinCollateral(_vaultId, _boardId);
+        require(currentMargin < minCollateral, "vault is not danger");
+
+        // calculate reward
+        uint256 reward = minCollateral / 100;
+        decreaseReward(_vaultId, reward);
+        sendReward(msg.sender, reward);
+
+        // close position
+        _closePositionsInVault(_vaultId, _boardId, _zeroToOne, _amount, _amountOutMinimum);
+    }
+
+    /**
+     * Liquidates if perp option becomes ITM
+     */
+    function liquidate2(
+        uint256 _vaultId,
+        uint256 _boardId,
+        uint256 _debtIndex,
+        bool _zeroToOne,
+        uint256 _amount,
+        uint256 _amountOutMinimum
+    ) external {
+        Board memory board = boards[_boardId];
+        Vault memory vault = vaults[_vaultId];
+
+        applyPerpFee(_boardId);
+
+        // check liquidation
+        require(extraVaultParams[_vaultId].debtInstant[_debtIndex] != InstantDebtType.NONE);
+
+        // check ITM
+        (uint256 sqrtPrice, ) = callUniswapObserve(1 minutes);
+
+        if (extraVaultParams[_vaultId].debtInstant[_debtIndex] == InstantDebtType.LONG) {
+            uint256 lowerPrice = TickMath.getSqrtRatioAtTick(board.lowers[vault.debtIndex[_debtIndex]]);
+            require(sqrtPrice < lowerPrice);
+        }
+
+        if (extraVaultParams[_vaultId].debtInstant[_debtIndex] == InstantDebtType.SHORT) {
+            uint256 upperPrice = TickMath.getSqrtRatioAtTick(board.uppers[vault.debtIndex[_debtIndex]]);
+            require(sqrtPrice < upperPrice);
+        }
+
+        // calculate reward
+        uint256 reward = getDebtPositionValue(_vaultId, _boardId, decodeSqrtPriceX96(sqrtPrice)) / 100;
+        decreaseReward(_vaultId, reward);
+        sendReward(msg.sender, reward);
+
+        // close position
+        _closePositionsInVault(_vaultId, _boardId, _zeroToOne, _amount, _amountOutMinimum);
+    }
+
+    /**
+     * Liquidates if 75% of collateral value is less than debt value.
+     */
+    function liquidate3(
+        uint256 _vaultId,
+        uint256 _boardId,
+        bool _zeroToOne,
+        uint256 _amount,
+        uint256 _amountOutMinimum
+    ) external {
+        applyPerpFee(_boardId);
+
+        // check liquidation
+        require(extraVaultParams[_vaultId].isLiquidationRequired);
+
+        (uint256 sqrtPrice, ) = callUniswapObserve(1 minutes);
+        uint256 price = decodeSqrtPriceX96(sqrtPrice);
+
+        // calculate value using TWAP price
+        uint256 debtValue = getDebtPositionValue(_vaultId, _boardId, price);
+
+        require(
+            getCollateralPositionValue(_vaultId, _boardId, price) * 3 / 4 < debtValue
+        );
+
+        // calculate reward
+        uint256 reward = debtValue / 100;
+        decreaseReward(_vaultId, reward);
+        sendReward(msg.sender, reward);
+
+        // close position
+        _closePositionsInVault(_vaultId, _boardId, _zeroToOne, _amount, _amountOutMinimum);
+    }
+
+    function forceClose(uint256 _boardId, bytes[] memory _data) external onlyOwner {
+        for(uint256 i = 0;i < _data.length;i++) {
+            (uint256 vaultId, bool _zeroToOne, uint256 _amount, uint256 _amountOutMinimum) = abi.decode(
+                _data[i],
+                (uint256, bool, uint256, uint256)
+            );
+            
+            _closePositionsInVault(vaultId, _boardId, _zeroToOne, _amount, _amountOutMinimum);
+        }
+    }
+
+    // Strategy API
+
     function depositTokens(
         uint256 _vaultId,
         uint256 _amount0,
-        uint256 _amount1
+        uint256 _amount1,
+        bool _withEnteringMarket
     ) external override onlyStrategy {
-        Vault storage vault = vaults[_vaultId];
-
-        tokenState0.addCollateral(accountState0[_vaultId], _amount0);
-        tokenState1.addCollateral(accountState1[_vaultId], _amount0);
+        if(_withEnteringMarket) {
+            tokenState0.addCollateral(accountState0[_vaultId], _amount0);
+            tokenState1.addCollateral(accountState1[_vaultId], _amount0);
+        } else {
+            Vault storage vault = vaults[_vaultId];
+            vault.collateralAmount0 += _amount0;
+            vault.collateralAmount1 += _amount1;
+        }
     }
 
     function borrowTokens(
@@ -337,8 +419,6 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
         uint256 _amount0,
         uint256 _amount1
     ) external override onlyStrategy {
-        Vault storage vault = vaults[_vaultId];
-
         tokenState0.addDebt(accountState0[_vaultId], _amount0);
         tokenState1.addDebt(accountState1[_vaultId], _amount0);
     }
@@ -439,6 +519,8 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
         return (amount0, amount1);
     }
 
+    // Private Functions
+
     function createVault() internal returns (uint256 vaultId, Vault storage) {
         vaultId = vaultIdCount;
         vaultIdCount++;
@@ -489,8 +571,8 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
             tmpVaultAmount1 += totalWithdrawAmount1 + remainMargin - totalRepayAmount1;
         }
 
-        withdrawList[_vaultId].amount0 = tmpVaultAmount0;
-        withdrawList[_vaultId].amount1 = tmpVaultAmount1;
+        vault.collateralAmount0 = tmpVaultAmount0;
+        vault.collateralAmount1 = tmpVaultAmount1;
 
         extraVaultParams[_vaultId].isClosed = true;
 
@@ -604,117 +686,6 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
         perpStatuses[_boardId][_index].cumFee0 += ((a0 - _amount0) * FixedPoint128.Q128) / _preLiquidity;
         perpStatuses[_boardId][_index].cumFee1 += ((a1 - _amount1) * FixedPoint128.Q128) / _preLiquidity;
     }
-
-    /**
-     * Liquidates if margin value is less than min collateral
-     */
-    function liquidate(
-        uint256 _vaultId,
-        uint256 _boardId,
-        bool _zeroToOne,
-        uint256 _amount,
-        uint256 _amountOutMinimum
-    ) external {
-        applyPerpFee(_boardId);
-
-        uint256 currentMargin = getMarginValue(_vaultId, _boardId);
-
-        // TODO: calculate min collateral
-        uint256 minCollateral = getMinCollateral(_vaultId, _boardId);
-        require(currentMargin < minCollateral, "vault is not danger");
-
-        uint256 reward = minCollateral / 100;
-
-        decreaseReward(_vaultId, reward);
-
-        _closePositionsInVault(_vaultId, _boardId, _zeroToOne, _amount, _amountOutMinimum);
-
-        sendReward(msg.sender, reward);
-    }
-
-    /**
-     * Liquidates if perp option becomes ITM
-     */
-    function liquidate2(
-        uint256 _vaultId,
-        uint256 _boardId,
-        uint256 _debtIndex,
-        bool _zeroToOne,
-        uint256 _amount,
-        uint256 _amountOutMinimum
-    ) external {
-        Board memory board = boards[_boardId];
-        Vault memory vault = vaults[_vaultId];
-
-        applyPerpFee(_boardId);
-
-        require(extraVaultParams[_vaultId].debtInstant[_debtIndex] != InstantDebtType.NONE);
-
-        // check ITM
-        (uint256 sqrtPrice, ) = callUniswapObserve(1 minutes);
-
-        if (extraVaultParams[_vaultId].debtInstant[_debtIndex] == InstantDebtType.LONG) {
-            uint256 lowerPrice = TickMath.getSqrtRatioAtTick(board.lowers[vault.debtIndex[_debtIndex]]);
-            require(sqrtPrice < lowerPrice);
-        }
-
-        if (extraVaultParams[_vaultId].debtInstant[_debtIndex] == InstantDebtType.SHORT) {
-            uint256 upperPrice = TickMath.getSqrtRatioAtTick(board.uppers[vault.debtIndex[_debtIndex]]);
-            require(sqrtPrice < upperPrice);
-        }
-
-        uint256 reward = getDebtPositionValue(_vaultId, _boardId, decodeSqrtPriceX96(sqrtPrice)) / 100;
-
-        decreaseReward(_vaultId, reward);
-
-        _closePositionsInVault(_vaultId, _boardId, _zeroToOne, _amount, _amountOutMinimum);
-
-        sendReward(msg.sender, reward);
-    }
-
-    /**
-     * Liquidates if 75% of collateral value is less than debt value.
-     */
-    function liquidate3(
-        uint256 _vaultId,
-        uint256 _boardId,
-        bool _zeroToOne,
-        uint256 _amount,
-        uint256 _amountOutMinimum
-    ) external {
-        applyPerpFee(_boardId);
-
-        require(extraVaultParams[_vaultId].isLiquidationRequired);
-
-        (uint256 sqrtPrice, ) = callUniswapObserve(1 minutes);
-        uint256 price = decodeSqrtPriceX96(sqrtPrice);
-
-        // calculate value using TWAP price
-        uint256 debtValue = getDebtPositionValue(_vaultId, _boardId, price);
-
-        require(
-            getCollateralPositionValue(_vaultId, _boardId, price) * 3 / 4 < debtValue
-        );
-
-        uint256 reward = debtValue / 100;
-        decreaseReward(_vaultId, reward);
-
-        _closePositionsInVault(_vaultId, _boardId, _zeroToOne, _amount, _amountOutMinimum);
-
-        sendReward(msg.sender, reward);
-    }
-
-    function forceClose(uint256 _boardId, bytes[] memory _data) external onlyOwner {
-        for(uint256 i = 0;i < _data.length;i++) {
-            (uint256 vaultId, bool _zeroToOne, uint256 _amount, uint256 _amountOutMinimum) = abi.decode(
-                _data[i],
-                (uint256, bool, uint256, uint256)
-            );
-            
-            _closePositionsInVault(vaultId, _boardId, _zeroToOne, _amount, _amountOutMinimum);
-        }
-    }
-
 
     function decreaseReward(uint256 _vaultId, uint256 _reward) internal {
         vaults[_vaultId].margin -=_reward;
@@ -1004,6 +975,8 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
 
         totalAmount0 += tokenState0.getCollateralValue(accountState0[_vaultId]);
         totalAmount1 += tokenState1.getCollateralValue(accountState1[_vaultId]);
+        totalAmount0 += vault.collateralAmount0;
+        totalAmount1 += vault.collateralAmount1;
     }
 
     function getDebtPositionAmounts(uint256 _vaultId, uint256 _boardId)

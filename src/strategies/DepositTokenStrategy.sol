@@ -19,7 +19,7 @@ contract DepositTokenStrategy is BaseStrategy {
     ) external override returns (uint256, uint256) {
         (uint256 amount0, uint256 amount1) = abi.decode(_data, (uint256, uint256));
 
-        pool.depositTokens(_vaultId, amount0, amount1);
+        pool.depositTokens(_vaultId, amount0, amount1, true);
 
         return (amount0, amount1);
     }

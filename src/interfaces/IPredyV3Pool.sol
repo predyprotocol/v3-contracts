@@ -56,7 +56,8 @@ interface IPredyV3Pool {
     function depositTokens(
         uint256 _vaultId,
         uint256 _amount0,
-        uint256 _amount1
+        uint256 _amount1,
+        bool _withEnteringMarket
     ) external;
 
     function depositLPT(

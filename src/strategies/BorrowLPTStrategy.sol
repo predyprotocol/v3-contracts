@@ -55,7 +55,7 @@ contract BorrowLPTStrategy is BaseStrategy {
 
         (uint256 aa0, uint256 aa1) = pool.borrowLPT(_vaultId, _boardId, index, liquidity, isInstant);
 
-        pool.depositTokens(_vaultId, a0, a1);
+        pool.depositTokens(_vaultId, a0, a1, false);
 
         if (a0 > aa0) {
             // token0 is required
