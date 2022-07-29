@@ -63,6 +63,64 @@ abstract contract BaseTestHelper {
             );
     }
 
+    function borrowLPT(
+        uint256 _boardId,
+        uint256 _vaultId,
+        uint256 _margin,
+        uint128 _index,
+        uint256 _ethAmount,
+        bool _isCall,
+        uint256 _limitPrice
+    ) public returns (uint256) {
+        bytes memory data;
+        uint256 buffer0;
+        uint256 buffer1;
+
+        {
+            uint128 liquidity = pool.getLiquidityForOptionAmount(0, _index, _ethAmount);
+
+            // Call or Put
+            uint160 sqrtPrice;
+            {
+                PredyV3Pool.Board memory board = pool.getBoard(_boardId);
+                if(_isCall) {
+                    sqrtPrice = TickMath.getSqrtRatioAtTick(board.uppers[_index]);
+                }else {
+                    sqrtPrice = TickMath.getSqrtRatioAtTick(board.lowers[_index]);
+                }
+            }
+
+            // calculate USDC amount
+            uint256 amountMaximum;
+
+            (amountMaximum, buffer0, buffer1) = getAmountInMaximum(_boardId, _index, liquidity, sqrtPrice, _limitPrice);
+
+            data = abi.encode(_index, liquidity, sqrtPrice, IPredyV3Pool.InstantDebtType.NONE, amountMaximum);
+        }
+        
+        return pool.openPosition(address(borrowLPTProduct), _boardId, _vaultId, _margin, data, buffer0, buffer1);
+    }
+
+    function getAmountInMaximum(
+        uint256 _boardId,
+        uint128 _index,
+        uint128 _liquidity,
+        uint160 _sqrtPrice,
+        uint256 _limitPrice
+    ) internal returns (uint256 amountMaximum, uint256 buffer0, uint256 buffer1) {
+        (int256 requiredAmount0, int256 requiredAmount1) = borrowLPTProduct.getRequiredTokenAmounts(_boardId, _index, _liquidity, _sqrtPrice);
+
+        if(requiredAmount0 > 0) {
+            amountMaximum = uint256(requiredAmount0) * 1e12 / _limitPrice;
+            buffer1 = amountMaximum - uint256(-requiredAmount1);
+        }
+        if(requiredAmount1 > 0) {
+            amountMaximum = uint256(requiredAmount1) * _limitPrice / 1e12;
+            buffer0 = amountMaximum - uint256(requiredAmount0);
+        }
+
+    }
+
     function swap(address recipient, bool _priceUp) internal {
         uint256 ethAmount;
         uint256 usdcAmount;

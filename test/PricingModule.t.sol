@@ -69,7 +69,7 @@ contract PricingModuleTest is TestDeployer, Test {
             })
         );
 
-        uint256 dailyPremium = (pricingModule.calculateDailyPremium(uniPool, 202560, 202570) * 2000000000000000) / 1e16;
+        uint256 dailyPremium = pricingModule.calculateDailyPremium(uniPool, 202560, 202570);
 
         assertGt(dailyPremium, 0);
         assertLt(dailyPremium, dailyFeeAmount);
@@ -85,5 +85,9 @@ contract PricingModuleTest is TestDeployer, Test {
         assertEq(ir1, 2001000000000000);
         assertEq(ir30, 60001000000000000);
         assertEq(ir60, 210001000000000000);
+    }
+
+    function testCalculateInterestRateFuzzing(uint256 _ur) public {
+        pricingModule.calculateInterestRate(_ur);
     }
 }

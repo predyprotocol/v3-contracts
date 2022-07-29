@@ -10,7 +10,6 @@ import "../src/PredyV3Pool.sol";
 
 contract BorrowLPTTest is TestDeployer, Test {
     address owner;
-    uint256 margin = 10000000;
 
     function setUp() public {
         owner = 0x503828976D22510aad0201ac7EC88293211D23Da;
@@ -43,9 +42,6 @@ contract BorrowLPTTest is TestDeployer, Test {
     }
 
     function testBorrow0() public {
-        // uint128 liquidity = 2000000000000000;
-        // vm.assume(liquidity >= 100000000000000);
-        // vm.assume(liquidity <= 300000000000000);
         uint128 index = 0;
         uint256 margin = 100000000;
 
@@ -57,37 +53,26 @@ contract BorrowLPTTest is TestDeployer, Test {
         bytes memory data = abi.encode(index, liquidity, TickMath.getSqrtRatioAtTick(202570), 0, usdcAmount);
         uint256 vaultId = pool.openPosition(address(borrowLPTProduct), 0, 0, 100000000, data, usdcAmount, 0);
 
-        vm.warp(block.timestamp + 1 days);
+        vm.warp(block.timestamp + 1 minutes);
         swap(owner, false);
-
-        //(, uint256 collateralAmount0, uint256 collateralAmount1, , ) = pool.vaults(vaultId);
 
         pool.closePositionsInVault(vaultId, 0, false, ethAmount, (ethAmount * 1000) / 1e12);
     }
 
     function testBorrow1() public {
-        // uint128 liquidity = 2000000000000000;
-        // vm.assume(liquidity >= 100000000000000);
-        // vm.assume(liquidity <= 300000000000000);
         uint128 index = 1;
+        uint256 margin = 10000000;
 
         uint256 ethAmount = 1 * 1e16;
         uint256 usdcAmount = (ethAmount * 2000) / 1e12;
 
         uint128 liquidity = pool.getLiquidityForOptionAmount(0, index, ethAmount);
 
-        console.log(2, liquidity);
-
         bytes memory data = abi.encode(index, liquidity, TickMath.getSqrtRatioAtTick(202570), 0, usdcAmount);
         uint256 vaultId = pool.openPosition(address(borrowLPTProduct), 0, 0, margin, data, usdcAmount, 0);
 
-        vm.warp(block.timestamp + 1 days);
+        vm.warp(block.timestamp + 1 minutes);
         swap(owner, true);
-
-        showCurrentTick();
-        pool.getVaultStatus(vaultId, 0);
-
-        // (, uint256 collateralAmount0, uint256 collateralAmount1, , ) = pool.vaults(vaultId);
 
         pool.closePositionsInVault(vaultId, 0, true, usdcAmount, (usdcAmount * 1e12) / 2000);
     }

@@ -4,6 +4,7 @@ pragma abicoder v2;
 
 import "openzeppelin-contracts/access/Ownable.sol";
 import "openzeppelin-contracts/token/ERC20/ERC20.sol";
+import "openzeppelin-contracts/math/SafeMath.sol";
 import "v3-periphery/interfaces/INonfungiblePositionManager.sol";
 import "v3-periphery/libraries/LiquidityAmounts.sol";
 import "v3-periphery/libraries/TransferHelper.sol";
@@ -22,6 +23,7 @@ import "./Constants.sol";
 
 contract PredyV3Pool is IPredyV3Pool, Ownable, Constants {
     using BaseToken for BaseToken.TokenState;
+    using SafeMath for uint256;
 
     struct Board {
         uint256 expiration;
@@ -310,6 +312,8 @@ contract PredyV3Pool is IPredyV3Pool, Ownable, Constants {
         // check liquidation
         uint256 currentMargin = getMarginValue(_vaultId, _boardId);
         uint256 minCollateral = getMinCollateral(_vaultId, _boardId);
+
+        console2.log(8, currentMargin, minCollateral);
         require(currentMargin < minCollateral, "vault is not danger");
 
         // calculate reward
@@ -546,6 +550,10 @@ contract PredyV3Pool is IPredyV3Pool, Ownable, Constants {
     }
 
     // Getter Functions
+
+    function getBoard(uint256 _boardId) external view returns(Board memory) {
+        return boards[_boardId];
+    }
 
     function getVaultStatus(uint256 _vaultId, uint256 _boardId)
         external
@@ -802,15 +810,18 @@ contract PredyV3Pool is IPredyV3Pool, Ownable, Constants {
         for (uint256 i = 0; i < vault.collateralIndex.length; i++) {
             PerpStatus memory perpStatus = perpStatuses[_boardId][vault.collateralIndex[i]];
 
-            marginValue +=
-                ((perpStatus.cumulativeFeeForLP - vault.collateralFeeGrowth[i]) * vault.collateralLiquidity[i]) /
-                ONE;
+            marginValue =
+                marginValue.add(((perpStatus.cumulativeFeeForLP.sub(vault.collateralFeeGrowth[i])) * vault.collateralLiquidity[i]) /
+                ONE);
         }
 
         for (uint256 i = 0; i < vault.debtIndex.length; i++) {
             PerpStatus memory perpStatus = perpStatuses[_boardId][vault.debtIndex[i]];
 
-            marginValue -= ((perpStatus.cumulativeFee - vault.debtFeeGrowth[i]) * vault.debtLiquidity[i]) / ONE;
+            console2.log(8, ((perpStatus.cumulativeFee.sub(vault.debtFeeGrowth[i])) * vault.debtLiquidity[i]) / ONE);
+
+
+            marginValue = marginValue.sub(((perpStatus.cumulativeFee.sub(vault.debtFeeGrowth[i])) * vault.debtLiquidity[i]) / ONE);
         }
     }
 

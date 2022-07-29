@@ -99,8 +99,8 @@ abstract contract TestDeployer is BaseTestHelper {
         pricingModule = new PricingModule();
         pool.setPricingModule(address(pricingModule));
         
-        pricingModule.updateDaylyFeeAmount(28 * 1e15);
-        pricingModule.updateMinCollateralPerLiquidity(10000);
+        pricingModule.updateDaylyFeeAmount(120 * 1e12);
+        pricingModule.updateMinCollateralPerLiquidity(1e10);
         pricingModule.updateIRMParams(1e12, 30 * 1e16, 20 * 1e16, 50 * 1e16);
     }
 }

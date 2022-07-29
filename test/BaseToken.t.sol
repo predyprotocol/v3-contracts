@@ -48,6 +48,5 @@ contract BaseTokenTest is Test {
         uint256 debtValue = BaseToken.getDebtValue(tokenState, accountState);
 
         assertEq(collateralValue - debtValue, 800000000);
-        // assertLt(collateralValue - debtValue, 800000000 + 1);
     }
 }
