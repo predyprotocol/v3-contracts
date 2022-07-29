@@ -1,5 +1,5 @@
 PredyV3
 =====
 
-![](https://github.com/predyprotocol/predy_v3/workflows/test/badge.svg)
+![](https://github.com/predyprotocol/v3-draft/workflows/test/badge.svg)
 
