@@ -9,8 +9,8 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "lint:check": "prettier --check \"src/**/*.sol\" \"deploy/**/*.ts\"",
-    "lint:write": "prettier --write \"src/**/*.sol\" \"deploy/**/*.ts\""
+    "lint:check": "prettier --check \"src/**/*.sol\" \"test/**/*.sol\" \"deploy/**/*.ts\"",
+    "lint:write": "prettier --write \"src/**/*.sol\" \"test/**/*.sol\" \"deploy/**/*.ts\""
   },
   "repository": {
     "type": "git",

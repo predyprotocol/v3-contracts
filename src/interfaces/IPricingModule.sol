@@ -4,25 +4,23 @@ pragma solidity ^0.7.6;
 import "v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
 interface IPricingModule {
-    function takeSnapshot(IUniswapV3Pool uniPool) external;
-
     function takeSnapshotForRange(
         IUniswapV3Pool uniPool,
         int24 _lowerTick,
         int24 _upperTick
     ) external;
 
-    function calculatePerpFee(
+    function calculateDailyPremium(
         IUniswapV3Pool uniPool,
         int24 _lowerTick,
         int24 _upperTick
     ) external pure returns (uint256);
-
-    function calculateInstantRate(uint256 _price, uint256 _utilizationRatio) external pure returns (uint256);
 
     function calculateMinCollateral(
         IUniswapV3Pool uniPool,
         int24 _lowerTick,
         int24 _upperTick
     ) external pure returns (uint256);
+
+    function calculateInterestRate(uint256 _utilizationRatio) external view returns (uint256);
 }

@@ -50,6 +50,4 @@ contract BaseTokenTest is Test {
         assertEq(collateralValue - debtValue, 800000000);
         // assertLt(collateralValue - debtValue, 800000000 + 1);
     }
-
-
 }

@@ -4,89 +4,86 @@ pragma abicoder v2;
 
 import "forge-std/Test.sol";
 import "forge-std/Vm.sol";
-import "forge-std/console.sol";
-
+import "forge-std/console2.sol";
+import "./utils/TestDeployer.sol";
 import "../src/PricingModule.sol";
-import "v3-core/contracts/libraries/TickMath.sol";
-import 'v3-core/contracts/libraries/FullMath.sol';
 
+contract PricingModuleTest is TestDeployer, Test {
+    address owner;
+    uint256 constant dailyFeeAmount = 28 * 1e15;
 
-contract PricingModuleTest is Test {
-    PricingModule pricingModule;
+    uint256 baseRate = 1e12;
+    uint256 kinkRate = 30 * 1e16;
+    uint256 slope1 = 20 * 1e16;
+    uint256 slope2 = 50 * 1e16;
 
     function setUp() public {
-        pricingModule = new PricingModule();
+        owner = 0x503828976D22510aad0201ac7EC88293211D23Da;
+        vm.startPrank(owner);
 
-        console.log(11, decodeSqrtPriceX96(false, 0, TickMath.getSqrtRatioAtTick(202562)));
-        console.log(11, decodeSqrtPriceX96(true, 0, TickMath.getSqrtRatioAtTick(-202562)));
+        address factory = deployCode(
+            "../node_modules/@uniswap/v3-core/artifacts/contracts/UniswapV3Factory.sol:UniswapV3Factory"
+        );
+
+        deployContracts(owner, factory);
+
+        createBoard();
+
+        uint256 vaultId = depositLPT(0, 0, 0, 0, pool.getLiquidityForOptionAmount(0, 0, 1e17));
+        depositLPT(0, vaultId, 0, 1, pool.getLiquidityForOptionAmount(0, 1, 1e17));
+
+        token0.approve(address(swapRouter), 1e24);
+        token1.approve(address(swapRouter), 1e24);
+
+        pricingModule.updateDaylyFeeAmount(dailyFeeAmount);
+
+        pricingModule.updateIRMParams(baseRate, kinkRate, slope1, slope2);
     }
 
-    function decodeSqrtPriceX96(bool _isTokenAToken0, uint256 _decimalsOfToken0, uint256 sqrtPriceX96) internal pure returns (uint256 price) {
-        uint256 scaler = 10**_decimalsOfToken0;
+    function testCalculateDailyPremium() public {
+        pricingModule.takeSnapshotForRange(uniPool, 202560, 202570);
 
-        if (_isTokenAToken0) {
-            price = FullMath.mulDiv(sqrtPriceX96, sqrtPriceX96, uint256(2**96)) * scaler / uint256(2**96);
-        } else {
-            price = FullMath.mulDiv(sqrtPriceX96, sqrtPriceX96, uint256(2**(96 * 2)) / (1e18 * scaler));
-            if (price == 0) return 1e36;
-            price = 1e36 / price;
-        }
+        swapRouter.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token0),
+                tokenOut: address(token1),
+                fee: 500,
+                recipient: owner,
+                deadline: block.timestamp,
+                amountIn: 500000 * 1e6,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
 
-        if (price > 1e36) price = 1e36;
-        else if (price == 0) price = 1;
+        swapRouter.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token1),
+                tokenOut: address(token0),
+                fee: 500,
+                recipient: owner,
+                deadline: block.timestamp,
+                amountIn: 5 * 1e18,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        uint256 dailyPremium = (pricingModule.calculateDailyPremium(uniPool, 202560, 202570) * 2000000000000000) / 1e16;
+
+        assertGt(dailyPremium, 0);
+        assertLt(dailyPremium, dailyFeeAmount);
     }
 
-    /*
-    function testPrices(
-    ) public {
-        uint256 sqrtPrice1 = TickMath.getSqrtRatioAtTick(202562);
-        uint256 sqrtPrice2 = TickMath.getSqrtRatioAtTick(-202562);
+    function testCalculateInterestRate() public {
+        uint256 ir0 = pricingModule.calculateInterestRate(0);
+        uint256 ir1 = pricingModule.calculateInterestRate(1e16);
+        uint256 ir30 = pricingModule.calculateInterestRate(30 * 1e16);
+        uint256 ir60 = pricingModule.calculateInterestRate(60 * 1e16);
 
-        assertEq(decodeSqrtPriceX96(false, 12, sqrtPrice1), decodeSqrtPriceX96(true, 12, sqrtPrice2));
-    }
-    */
-
-    function testCalculatePerpFee(
-        uint256 _volatility
-    ) public {
-        vm.assume(_volatility >= 5 * 1e11);
-        vm.assume(_volatility <= 2 * 1e12);
-
-        uint160 lowerSqrtPrice = TickMath.getSqrtRatioAtTick(202560);
-        uint160 upperSqrtPrice = TickMath.getSqrtRatioAtTick(202570);
-        uint256 price = decodeSqrtPriceX96(false, 0, TickMath.getSqrtRatioAtTick(202565));
-        
-        uint256 a = pricingModule.calculatePerpFee(false, price * 1e6, lowerSqrtPrice, upperSqrtPrice, _volatility);
-
-        // assertLt(a, 10 * 1e12);
-        assertEq(a, 500);
-    }
-
-    function testCalculateMinCollateral() public {
-        uint160 lowerSqrtPrice = TickMath.getSqrtRatioAtTick(202760);
-        uint160 upperSqrtPrice = TickMath.getSqrtRatioAtTick(202770);
-        
-        uint256 a = pricingModule.calculateMinCollateral(false, 2002335799292703061291668062173864, 2003337167445953701273470060329132);
-        // uint256 a = pricingModule.calculateMinCollateral(false, lowerSqrtPrice, upperSqrtPrice);
-
-        //assertGt(a, 0);
-        assertEq(a, 500);
-    }
-
-    function testVolIs0(
-        uint256 _volatility
-    ) public {
-        vm.expectRevert(bytes("PM0"));
-
-        pricingModule.calculatePerpFee(false, 0, 0, 0, 0);
-    }
-
-    function testCalculateInstantRate(uint256 _price, uint256 _utilizationRatio) public view returns(uint256) {
-        return pricingModule.calculateInstantRate(_price, _utilizationRatio);
-    }
-
-    function testInterestRateIs500() public {
-        uint256 interestRate = pricingModule.calculateInstantRate(0, 0);
-        assertEq(interestRate, 500);
+        assertEq(ir0, 1000000000000);
+        assertEq(ir1, 2001000000000000);
+        assertEq(ir30, 60001000000000000);
+        assertEq(ir60, 210001000000000000);
     }
 }

@@ -10,7 +10,6 @@ import "./utils/TestDeployer.sol";
 import "../src/PredyV3Pool.sol";
 import "../src/mocks/MockERC20.sol";
 
-
 contract PredyV3PoolTest is TestDeployer, Test {
     address owner;
 
@@ -18,10 +17,11 @@ contract PredyV3PoolTest is TestDeployer, Test {
         owner = 0x503828976D22510aad0201ac7EC88293211D23Da;
         vm.startPrank(owner);
 
-        address factory = deployCode("../node_modules/@uniswap/v3-core/artifacts/contracts/UniswapV3Factory.sol:UniswapV3Factory");
+        address factory = deployCode(
+            "../node_modules/@uniswap/v3-core/artifacts/contracts/UniswapV3Factory.sol:UniswapV3Factory"
+        );
 
         deployContracts(owner, factory);
-
     }
 
     function testCreateBoard(uint256 _expiration, uint128 _l) public {
@@ -35,10 +35,10 @@ contract PredyV3PoolTest is TestDeployer, Test {
         uppers[0] = -207230;
 
         pool.createBoard(_expiration, lowers, uppers);
-        
+
         (uint256 a0, uint256 a1) = pool.getTokenAmountsToDepositLPT(0, 0, _l);
 
-        pool.openPosition(address(depositLPTProduct), 0, 1000000, abi.encode(0, _l), a0, a1);
+        pool.openPosition(address(depositLPTProduct), 0, 0, 1000000, abi.encode(0, _l), a0, a1);
     }
 
     function testCreateBoard2(uint256 _expiration, uint24 _spacing) public {
@@ -52,5 +52,4 @@ contract PredyV3PoolTest is TestDeployer, Test {
 
         pool.createBoard(_expiration, lowers, uppers);
     }
-
 }

@@ -18,8 +18,9 @@ import "./interfaces/IPricingModule.sol";
 import "./vendors/IUniswapV3PoolOracle.sol";
 import "forge-std/console2.sol";
 import "./libraries/BaseToken.sol";
+import "./Constants.sol";
 
-contract PredyV3Pool is IPredyV3Pool, Ownable {
+contract PredyV3Pool is IPredyV3Pool, Ownable, Constants {
     using BaseToken for BaseToken.TokenState;
 
     struct Board {
@@ -32,9 +33,7 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
 
     struct PerpStatus {
         uint128 borrowedLiquidity;
-        uint128 instantBorrowedLiquidity;
         uint256 cumulativeFee;
-        uint256 instantCumulativeFee;
         uint256 cumulativeFeeForLP;
         uint256 cumFee0;
         uint256 cumFee1;
@@ -172,7 +171,7 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
 
         (uint160 sqrtPriceX96, , , , , , ) = uniswapPool.slot0();
 
-        (uint256 vaultId, Vault storage vault) = createVault();
+        (uint256 vaultId, Vault storage vault) = createOrGetVault(0);
 
         for (uint128 i = 0; i < _lowers.length; i++) {
             uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(_lowers[i]);
@@ -223,21 +222,24 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
     function openPosition(
         address _strategyId,
         uint256 _boardId,
+        uint256 _vaultId,
         uint256 _margin,
         bytes memory _data,
         uint256 _buffer0,
         uint256 _buffer1
     ) external override returns (uint256 vaultId) {
         Vault storage vault;
-        (vaultId, vault) = createVault();
+        (vaultId, vault) = createOrGetVault(_vaultId);
 
         // check board
         require(_boardId < boardIdCount, "P1");
 
         vault.margin += _margin;
-        extraVaultParams[vaultId].owner = msg.sender;
 
-        extraVaultParams[vaultId].isLiquidationRequired = BaseProduct(strategies[_strategyId]).isLiquidationRequired();
+        extraVaultParams[vaultId].owner = msg.sender;
+        extraVaultParams[vaultId].isLiquidationRequired =
+            BaseProduct(strategies[_strategyId]).isLiquidationRequired() ||
+            extraVaultParams[vaultId].isLiquidationRequired;
 
         if (isMarginZero) {
             TransferHelper.safeTransferFrom(token0, msg.sender, address(this), _margin + _buffer0);
@@ -536,22 +538,13 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
 
         (uint256 amount0, uint256 amount1) = decreaseLiquidityFromUni(_boardId, _index, params);
 
-        if (_isInstant != InstantDebtType.NONE) {
-            perpStatuses[_boardId][_index].instantBorrowedLiquidity += _liquidity;
-        } else {
-            perpStatuses[_boardId][_index].borrowedLiquidity += _liquidity;
-        }
+        perpStatuses[_boardId][_index].borrowedLiquidity += _liquidity;
 
         Vault storage vault = vaults[_vaultId];
 
         vault.debtIndex.push(_index);
         vault.debtLiquidity.push(_liquidity);
-
-        if (_isInstant != InstantDebtType.NONE) {
-            vault.debtFeeGrowth.push(perpStatuses[_boardId][_index].instantCumulativeFee);
-        } else {
-            vault.debtFeeGrowth.push(perpStatuses[_boardId][_index].cumulativeFee);
-        }
+        vault.debtFeeGrowth.push(perpStatuses[_boardId][_index].cumulativeFee);
 
         extraVaultParams[_vaultId].debtInstant.push(_isInstant);
 
@@ -562,7 +555,6 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
 
     function getVaultStatus(uint256 _vaultId, uint256 _boardId)
         external
-        view
         returns (
             uint256,
             uint256,
@@ -570,6 +562,8 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
         )
     {
         (uint160 sqrtPriceX96, , , , , , ) = uniswapPool.slot0();
+
+        applyPerpFee(_boardId, _vaultId);
 
         uint256 debtValue = getDebtPositionValue(_vaultId, _boardId, sqrtPriceX96);
         uint256 collateralValue = getCollateralPositionValue(_vaultId, _boardId, sqrtPriceX96);
@@ -580,11 +574,16 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
 
     // Private Functions
 
-    function createVault() internal returns (uint256 vaultId, Vault storage) {
-        vaultId = vaultIdCount;
-        vaultIdCount++;
+    function createOrGetVault(uint256 _vaultId) internal returns (uint256 vaultId, Vault storage) {
+        if (_vaultId == 0) {
+            vaultId = vaultIdCount;
+            vaultIdCount++;
 
-        emit VaultCreated(vaultId);
+            emit VaultCreated(vaultId);
+        } else {
+            vaultId = _vaultId;
+            require(extraVaultParams[vaultId].owner == msg.sender);
+        }
 
         return (vaultId, vaults[vaultId]);
     }
@@ -811,18 +810,13 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
 
             marginValue +=
                 ((perpStatus.cumulativeFeeForLP - vault.collateralFeeGrowth[i]) * vault.collateralLiquidity[i]) /
-                1e16;
+                ONE;
         }
+
         for (uint256 i = 0; i < vault.debtIndex.length; i++) {
             PerpStatus memory perpStatus = perpStatuses[_boardId][vault.debtIndex[i]];
 
-            if (extraVaultParams[_vaultId].debtInstant[i] != InstantDebtType.NONE) {
-                marginValue -=
-                    ((perpStatus.instantCumulativeFee - vault.debtFeeGrowth[i]) * vault.debtLiquidity[i]) /
-                    1e16;
-            } else {
-                marginValue -= ((perpStatus.cumulativeFee - vault.debtFeeGrowth[i]) * vault.debtLiquidity[i]) / 1e16;
-            }
+            marginValue -= ((perpStatus.cumulativeFee - vault.debtFeeGrowth[i]) * vault.debtLiquidity[i]) / ONE;
         }
     }
 
@@ -865,13 +859,12 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
         }
 
         // calculate interest for tokens
-        {
-            uint256 a = ((block.timestamp - board.lastTouchedTimestamp) *
-                pricingModule.calculateInstantRate(_sqrtPrice, getUR())) / 1 days;
+        uint256 interest = ((block.timestamp - board.lastTouchedTimestamp) *
+            pricingModule.calculateInterestRate(getUR())) / 365 days;
 
-            tokenState0.updateScaler(a);
-            tokenState1.updateScaler(a);
-        }
+        tokenState0.updateScaler(interest);
+        tokenState1.updateScaler(interest);
+
         board.lastTouchedTimestamp = block.timestamp;
     }
 
@@ -887,25 +880,15 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
         }
 
         if (perpStatus.borrowedLiquidity > 0) {
-            uint256 feeAmount = ((block.timestamp - perpStatus.lastTouchedTimestamp) *
-                pricingModule.calculatePerpFee(
+            uint256 premium = ((block.timestamp - perpStatus.lastTouchedTimestamp) *
+                pricingModule.calculateDailyPremium(
                     uniswapPool,
                     boards[_boardId].lowers[_index],
                     boards[_boardId].uppers[_index]
-                    // getPerpUR(_boardId, _index)
                 )) / 1 days;
-            perpStatus.cumulativeFee += feeAmount;
+            perpStatus.cumulativeFee += premium;
             perpStatus.cumulativeFeeForLP +=
-                (feeAmount * perpStatus.borrowedLiquidity) /
-                getTotalLiquidityAmount(_boardId, _index);
-        }
-
-        if (perpStatus.instantBorrowedLiquidity > 0) {
-            uint256 feeAmount = ((block.timestamp - perpStatus.lastTouchedTimestamp) *
-                pricingModule.calculateInstantRate(_sqrtPrice, getInstantUR(_boardId, _index))) / 1 days;
-            perpStatus.instantCumulativeFee += feeAmount;
-            perpStatus.cumulativeFeeForLP +=
-                (feeAmount * perpStatus.instantBorrowedLiquidity) /
+                (premium * perpStatus.borrowedLiquidity) /
                 getTotalLiquidityAmount(_boardId, _index);
         }
 
@@ -937,7 +920,7 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
                     uniswapPool,
                     boards[_boardId].lowers[_index],
                     boards[_boardId].uppers[_index]
-                )) / 1e18;
+                )) / ONE;
     }
 
     function getPerpUR(uint256 _boardId, uint256 _index) internal view returns (uint256) {
@@ -945,22 +928,14 @@ contract PredyV3Pool is IPredyV3Pool, Ownable {
 
         uint128 liquidityAmount = getTotalLiquidityAmount(_boardId, _index);
 
-        return (perpStatus.borrowedLiquidity * 1e10) / liquidityAmount;
-    }
-
-    function getInstantUR(uint256 _boardId, uint256 _index) internal view returns (uint256) {
-        PerpStatus memory perpStatus = perpStatuses[_boardId][_index];
-
-        uint128 liquidityAmount = getTotalLiquidityAmount(_boardId, _index);
-
-        return (perpStatus.instantBorrowedLiquidity * 1e10) / liquidityAmount;
+        return (perpStatus.borrowedLiquidity * ONE) / liquidityAmount;
     }
 
     function getUR() internal view returns (uint256) {
         if (tokenState0.totalDeposited == 0) {
-            return 1e10;
+            return ONE;
         }
-        return (tokenState0.totalBorrowed * 1e10) / tokenState0.totalDeposited;
+        return (tokenState0.totalBorrowed * ONE) / tokenState0.totalDeposited;
     }
 
     /**

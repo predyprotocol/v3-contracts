@@ -4,134 +4,212 @@ pragma solidity ^0.7.6;
 import "./libraries/Sqrt.sol";
 import "forge-std/console2.sol";
 import "v3-periphery/libraries/LiquidityAmounts.sol";
+import "v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import "v3-core/contracts/libraries/Tick.sol";
+import "openzeppelin-contracts/access/Ownable.sol";
+import "./Constants.sol";
 
-contract PricingModule {
-    uint256 constant ONE = 1e12;
-    uint256 constant PI_E8 = 3.1415926535 * 1e12;
+contract PricingModule is Constants, Ownable {
+    struct TickSnapshot {
+        uint256 lastFeeGrowthInside0X128;
+        uint256 lastFeeGrowthInside1X128;
+        uint256 lastFeeGrowthGlobal0X128;
+        uint256 lastFeeGrowthGlobal1X128;
+    }
+
+    struct TickInfo {
+        uint256 feeGrowthOutside0X128;
+        uint256 feeGrowthOutside1X128;
+    }
+
+    mapping(bytes32 => TickSnapshot) snapshots;
+
+    uint256 dailyFeeAmount;
+    uint256 minCollateralPerLiquidity;
+
+    uint256 baseRate;
+    uint256 kinkRate;
+    uint256 slope1;
+    uint256 slope2;
 
     constructor() {}
+
+    function updateDaylyFeeAmount(uint256 _dailyFeeAmount) external onlyOwner {
+        dailyFeeAmount = _dailyFeeAmount;
+    }
+
+    function updateMinCollateralPerLiquidity(uint256 _minCollateralPerLiquidity) external onlyOwner {
+        minCollateralPerLiquidity = _minCollateralPerLiquidity;
+    }
+
+    function updateIRMParams(
+        uint256 _base,
+        uint256 _kink,
+        uint256 _slope1,
+        uint256 _slope2
+    ) external onlyOwner {
+        baseRate = _base;
+        kinkRate = _kink;
+        slope1 = _slope1;
+        slope2 = _slope2;
+    }
 
     /**
      * Calculates daily premium for range per liquidity
      */
-    function calculatePerpFee(
-        bool _isMarginZero,
-        uint256 _price,
-        uint160 _lowerSqrtPrice,
-        uint160 _upperSqrtPrice,
-        uint256 _volatility
+    function calculateDailyPremium(
+        IUniswapV3Pool uniPool,
+        int24 _lowerTick,
+        int24 _upperTick
     ) public view returns (uint256) {
-        require(_volatility > 0, "PM0");
+        {
+            uint256 feeGrowthGlobal0X128 = uniPool.feeGrowthGlobal0X128();
+            uint256 feeGrowthGlobal1X128 = uniPool.feeGrowthGlobal1X128();
 
-        uint256 value;
+            (, int24 tickCurrent, , , , , ) = uniPool.slot0();
 
-        if (_isMarginZero) {
-            value = calculatePerpValue(
-                _price,
-                (1e12 * _lowerSqrtPrice) / (2**96),
-                (1e12 * _upperSqrtPrice) / (2**96),
-                _volatility
+            (uint256 feeGrowthInside0X128, uint256 feeGrowthInside1X128) = getFeeGrowthInside(
+                getFeeGrowthOutside(uniPool, _lowerTick),
+                getFeeGrowthOutside(uniPool, _upperTick),
+                _lowerTick,
+                _upperTick,
+                tickCurrent,
+                feeGrowthGlobal0X128,
+                feeGrowthGlobal1X128
             );
+
+            bytes32 key = keccak256(abi.encodePacked(_lowerTick, _upperTick));
+
+            return
+                calculateRatio(
+                    snapshots[key],
+                    feeGrowthInside0X128,
+                    feeGrowthInside1X128,
+                    feeGrowthGlobal0X128,
+                    feeGrowthGlobal1X128
+                );
+        }
+    }
+
+    function takeSnapshotForRange(
+        IUniswapV3Pool uniPool,
+        int24 _lowerTick,
+        int24 _upperTick
+    ) external {
+        uint256 feeGrowthGlobal0X128 = uniPool.feeGrowthGlobal0X128();
+        uint256 feeGrowthGlobal1X128 = uniPool.feeGrowthGlobal1X128();
+
+        (, int24 tickCurrent, , , , , ) = uniPool.slot0();
+
+        (uint256 feeGrowthInside0X128, uint256 feeGrowthInside1X128) = getFeeGrowthInside(
+            getFeeGrowthOutside(uniPool, _lowerTick),
+            getFeeGrowthOutside(uniPool, _upperTick),
+            _lowerTick,
+            _upperTick,
+            tickCurrent,
+            feeGrowthGlobal0X128,
+            feeGrowthGlobal1X128
+        );
+
+        bytes32 key = keccak256(abi.encodePacked(_lowerTick, _upperTick));
+
+        snapshots[key] = TickSnapshot(
+            feeGrowthInside0X128,
+            feeGrowthInside1X128,
+            feeGrowthGlobal0X128,
+            feeGrowthGlobal1X128
+        );
+    }
+
+    function calculateRatio(
+        TickSnapshot memory snapshot,
+        uint256 feeGrowthInside0X128,
+        uint256 feeGrowthInside1X128,
+        uint256 feeGrowthGlobal0X128,
+        uint256 feeGrowthGlobal1X128
+    ) internal view returns (uint256) {
+        uint256 a = (ONE * (feeGrowthInside0X128 - snapshot.lastFeeGrowthInside0X128)) /
+            (feeGrowthGlobal0X128 - snapshot.lastFeeGrowthGlobal0X128);
+        uint256 b = (ONE * (feeGrowthInside1X128 - snapshot.lastFeeGrowthInside1X128)) /
+            (feeGrowthGlobal1X128 - snapshot.lastFeeGrowthGlobal1X128);
+
+        return (dailyFeeAmount * (a + b)) / (2 * ONE);
+    }
+
+    function getFeeGrowthOutside(IUniswapV3Pool uniPool, int24 _tickId) internal view returns (TickInfo memory) {
+        (, , uint256 feeGrowthOutside0X128, uint256 feeGrowthOutside1X128, , , , bool initialized) = uniPool.ticks(
+            _tickId
+        );
+
+        require(initialized, "initialized");
+
+        return TickInfo(feeGrowthOutside0X128, feeGrowthOutside1X128);
+    }
+
+    function getFeeGrowthInside(
+        TickInfo memory lower,
+        TickInfo memory upper,
+        int24 tickLower,
+        int24 tickUpper,
+        int24 tickCurrent,
+        uint256 feeGrowthGlobal0X128,
+        uint256 feeGrowthGlobal1X128
+    ) internal view returns (uint256 feeGrowthInside0X128, uint256 feeGrowthInside1X128) {
+        // calculate fee growth below
+        uint256 feeGrowthBelow0X128;
+        uint256 feeGrowthBelow1X128;
+
+        if (tickCurrent >= tickLower) {
+            // 1808790600867964665724044468235309
+            feeGrowthBelow0X128 = lower.feeGrowthOutside0X128;
+            feeGrowthBelow1X128 = lower.feeGrowthOutside1X128;
         } else {
-            value = calculatePerpValue(
-                _price,
-                ((2**96) * 1e12) / _upperSqrtPrice,
-                ((2**96) * 1e12) / _lowerSqrtPrice,
-                _volatility
-            );
+            feeGrowthBelow0X128 = feeGrowthGlobal0X128 - lower.feeGrowthOutside0X128;
+            feeGrowthBelow1X128 = feeGrowthGlobal1X128 - lower.feeGrowthOutside1X128;
         }
 
-        return convertSizeToLiq(_isMarginZero, _lowerSqrtPrice, _upperSqrtPrice, 1e18, value);
-    }
+        // calculate fee growth above
+        uint256 feeGrowthAbove0X128;
+        uint256 feeGrowthAbove1X128;
+        if (tickCurrent < tickUpper) {
+            //  1808790600867964665724044468235309
+            feeGrowthAbove0X128 = upper.feeGrowthOutside0X128;
+            feeGrowthAbove1X128 = upper.feeGrowthOutside1X128;
+        } else {
+            feeGrowthAbove0X128 = feeGrowthGlobal0X128 - upper.feeGrowthOutside0X128;
+            feeGrowthAbove1X128 = feeGrowthGlobal1X128 - upper.feeGrowthOutside1X128;
+        }
 
-    function calculatePerpValue(
-        uint256 _price,
-        uint160 _lowerSqrtPrice,
-        uint160 _upperSqrtPrice,
-        uint256 _volatility
-    ) public view returns (uint256) {
-        uint256 r = (_upperSqrtPrice * ONE) / _lowerSqrtPrice;
-        uint256 k = _upperSqrtPrice * _lowerSqrtPrice;
-
-        uint256 r2 = calculateR2(calculateT(r, _volatility) + ONE, _volatility);
-
-        uint256 v1 = calculateValue(_price, k, r);
-        uint256 v2 = calculateValue(_price, k, r2);
-
-        return v1 > v2 ? v1 - v2 : 0;
-    }
-
-    function calculateT(uint256 _r, uint256 _volatility) internal pure returns (uint256) {
-        uint256 sqrtR = Sqrt.sqrt(_r * ONE);
-        uint256 a = ((sqrtR - ONE) * ONE) / (sqrtR + ONE);
-        return (2 * 365 * PI_E8 * a * a) / (_volatility * _volatility);
-    }
-
-    function calculateR2(uint256 _t, uint256 _volatility) internal pure returns (uint256) {
-        uint256 a = (_volatility * Sqrt.sqrt((_t * ONE * ONE) / (365 * 2 * PI_E8))) / ONE;
-
-        uint256 b = (ONE * (ONE + a)) / (ONE - a);
-
-        return (b * b) / ONE;
-    }
-
-    function calculateValue(
-        uint256 _price,
-        uint256 _k,
-        uint256 _r
-    ) internal view returns (uint256) {
-        return ((2 * Sqrt.sqrt((_price * _k * _r) / ONE) - _price - _k) * ONE) / (_r - ONE);
-    }
-
-    /**
-     * Calculates daily interest rate for range per liquidity
-     */
-    function calculateInstantRate(uint256 _price, uint256 _utilizationRatio) external pure returns (uint256) {
-        // TODO
-        return 500;
+        feeGrowthInside0X128 = feeGrowthGlobal0X128 - feeGrowthBelow0X128 - feeGrowthAbove0X128;
+        feeGrowthInside1X128 = feeGrowthGlobal1X128 - feeGrowthBelow1X128 - feeGrowthAbove1X128;
     }
 
     /**
      * Calculates min. collateral per liquidity
-     *
      */
     function calculateMinCollateral(
-        bool _isMarginZero,
-        uint160 _lowerSqrtPrice,
-        uint160 _upperSqrtPrice
-    ) external view returns (uint256 minCollateral) {
+        IUniswapV3Pool uniPool,
+        int24 _lowerTick,
+        int24 _upperTick
+    ) external view returns (uint256) {
         // TODO
-        uint256 atmPrice;
-
-        if (_isMarginZero) {
-            uint256 l = ((2**96) * _lowerSqrtPrice) / 1e12;
-            uint256 u = ((2**96) * _upperSqrtPrice) / 1e12;
-            atmPrice = l * u;
-        } else {
-            uint256 l = ((2**96) * 1e12) / _upperSqrtPrice;
-            uint256 u = ((2**96) * 1e12) / _lowerSqrtPrice;
-            atmPrice = l * u;
-        }
-
-        minCollateral = calculatePerpFee(_isMarginZero, atmPrice, _lowerSqrtPrice, _upperSqrtPrice, 2 * 1e12);
+        return minCollateralPerLiquidity;
     }
 
-    function convertSizeToLiq(
-        bool _isMarginZero,
-        uint160 lowerSqrtPrice,
-        uint160 upperSqrtPrice,
-        uint256 _amount,
-        uint256 _value
-    ) public view returns (uint256) {
-        uint160 liquidity;
-        if (_isMarginZero) {
-            // amount / (sqrt(upper) - sqrt(lower))
-            liquidity = LiquidityAmounts.getLiquidityForAmount1(lowerSqrtPrice, upperSqrtPrice, _amount);
+    /**
+     * Calculates daily interest rate for range per liquidity
+     * scaled by 1e18;
+     */
+    function calculateInterestRate(uint256 _utilizationRatio) external view returns (uint256) {
+        uint256 ir = baseRate;
+
+        if (_utilizationRatio <= kinkRate) {
+            ir += (_utilizationRatio * slope1) / ONE;
         } else {
-            // amount * (sqrt(upper) * sqrt(lower)) / (sqrt(upper) - sqrt(lower))
-            liquidity = LiquidityAmounts.getLiquidityForAmount0(lowerSqrtPrice, upperSqrtPrice, _amount);
+            ir += (kinkRate * slope1) / ONE;
+            ir += (slope2 * (_utilizationRatio - kinkRate)) / ONE;
         }
 
-        return (_value * _amount) / liquidity;
+        return ir;
     }
 }

@@ -6,7 +6,10 @@
   "semi": false,
   "overrides": [
     {
-      "files": "src/**/*.sol",
+      "files": [
+        "src/**/*.sol",
+        "test/**/*.sol"
+      ],
       "options": {
         "tabWidth": 4,
         "singleQuote": false

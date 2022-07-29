@@ -12,6 +12,7 @@ interface IPredyV3Pool {
     function openPosition(
         address _strategyId,
         uint256 _boardId,
+        uint256 _vaultId,
         uint256 _margin,
         bytes memory _data,
         uint256 _buffer0,

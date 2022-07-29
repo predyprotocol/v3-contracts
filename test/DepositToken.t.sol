@@ -21,7 +21,9 @@ contract DepositTokenTest is TestDeployer, Test {
         vm.deal(owner, 1000 ether);
         vm.startPrank(owner);
 
-        address factory = deployCode("../node_modules/@uniswap/v3-core/artifacts/contracts/UniswapV3Factory.sol:UniswapV3Factory");
+        address factory = deployCode(
+            "../node_modules/@uniswap/v3-core/artifacts/contracts/UniswapV3Factory.sol:UniswapV3Factory"
+        );
 
         deployContracts(owner, factory);
 
@@ -33,6 +35,6 @@ contract DepositTokenTest is TestDeployer, Test {
         vm.assume(_a1 < 1e6);
 
         uint256 margin = 0;
-        pool.openPosition(address(depositTokenProduct), boardId, margin, abi.encode(_a0, _a1), _a0, _a1);
+        pool.openPosition(address(depositTokenProduct), boardId, 0, margin, abi.encode(_a0, _a1), _a0, _a1);
     }
 }

@@ -4,16 +4,16 @@ pragma abicoder v2;
 
 import "./BaseTestHelper.sol";
 import "../../src/PredyV3Pool.sol";
-import "../../src/PricingModule2.sol";
+import "../../src/PricingModule.sol";
 import "../../src/products/DepositLPTProduct.sol";
 import "../../src/products/BorrowLPTProduct.sol";
 import "../../src/products/LevLPTProduct.sol";
 import "../../src/products/DepositTokenProduct.sol";
 import "../../src/mocks/MockERC20.sol";
 import {NonfungiblePositionManager} from "v3-periphery/NonfungiblePositionManager.sol";
-import {UniswapV3Factory } from "v3-core/contracts/UniswapV3Factory.sol";
+import {UniswapV3Factory} from "v3-core/contracts/UniswapV3Factory.sol";
 import {SwapRouter} from "v3-periphery/SwapRouter.sol";
-import 'v3-periphery/interfaces/external/IWETH9.sol';
+import "v3-periphery/interfaces/external/IWETH9.sol";
 import "v3-core/contracts/interfaces/pool/IUniswapV3PoolActions.sol";
 import "v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 import "forge-std/console.sol";
@@ -21,7 +21,7 @@ import "forge-std/Vm.sol";
 import "forge-std/Test.sol";
 
 abstract contract TestDeployer is BaseTestHelper {
-    PricingModule2 pricingModule;
+    PricingModule pricingModule;
 
     function deployContracts(address owner, address factory) public {
         MockERC20 tokenA = new MockERC20("WETH", "WETH", 18);
@@ -32,16 +32,19 @@ abstract contract TestDeployer is BaseTestHelper {
 
         bool isTokenAToken0 = uint160(address(tokenA)) < uint160(address(tokenB));
 
-        if(isTokenAToken0) {
+        if (isTokenAToken0) {
             token0 = tokenA;
             token1 = tokenB;
-        }else {
+        } else {
             token0 = tokenB;
             token1 = tokenA;
         }
 
-        
-        NonfungiblePositionManager positionManager = new NonfungiblePositionManager(factory, address(tokenA), address(0));
+        NonfungiblePositionManager positionManager = new NonfungiblePositionManager(
+            factory,
+            address(tokenA),
+            address(0)
+        );
         swapRouter = new SwapRouter(factory, address(tokenA));
 
         uint160 sqrtPrice = 1982611457661667117153625747031458;
@@ -51,7 +54,14 @@ abstract contract TestDeployer is BaseTestHelper {
         uniPool = IUniswapV3Pool(IUniswapV3Factory(factory).getPool(address(token0), address(token1), 500));
         IUniswapV3PoolActions(uniPool).increaseObservationCardinalityNext(180);
 
-        pool = new PredyV3Pool(address(token0), address(token1), true, address(positionManager), factory, address(swapRouter));
+        pool = new PredyV3Pool(
+            address(token0),
+            address(token1),
+            true,
+            address(positionManager),
+            factory,
+            address(swapRouter)
+        );
 
         INonfungiblePositionManager.MintParams memory params = INonfungiblePositionManager.MintParams(
             address(token0),
@@ -59,7 +69,7 @@ abstract contract TestDeployer is BaseTestHelper {
             500,
             -887220,
             887220,
-            (1e20 * 1005 / 1e12),
+            ((1e20 * 1005) / 1e12),
             1e20,
             1,
             1,
@@ -86,9 +96,12 @@ abstract contract TestDeployer is BaseTestHelper {
         pool.addProduct(address(levLPProduct));
         pool.addProduct(address(depositTokenProduct));
 
-        pricingModule = new PricingModule2();
+        pricingModule = new PricingModule();
         pool.setPricingModule(address(pricingModule));
         pool.updateVolatility(1e12);
+
         pricingModule.updateDaylyFeeAmount(28 * 1e15);
+        pricingModule.updateMinCollateralPerLiquidity(10000);
+        pricingModule.updateIRMParams(1e12, 30 * 1e16, 20 * 1e16, 50 * 1e16);
     }
 }
