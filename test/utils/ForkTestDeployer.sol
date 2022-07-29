@@ -67,7 +67,6 @@ abstract contract ForkTestDeployer is BaseTestHelper {
 
         pricingModule = new PricingModule();
         pool.setPricingModule(address(pricingModule));
-        pool.updateVolatility(1e12);
         pricingModule.updateDaylyFeeAmount(28 * 1e15);
     }
 }

@@ -12,7 +12,6 @@ import "../src/mocks/MockERC20.sol";
 
 contract DepositTokenTest is TestDeployer, Test {
     address owner;
-    uint256 margin = 10000000;
     uint256 vaultId;
     uint256 constant boardId = 0;
 

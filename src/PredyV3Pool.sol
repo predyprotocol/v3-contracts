@@ -94,8 +94,6 @@ contract PredyV3Pool is IPredyV3Pool, Ownable, Constants {
     mapping(uint256 => BaseToken.AccountState) public accountState0;
     mapping(uint256 => BaseToken.AccountState) public accountState1;
 
-    uint256 volatility;
-
     BaseToken.TokenState tokenState0;
     BaseToken.TokenState tokenState1;
 
@@ -155,11 +153,7 @@ contract PredyV3Pool is IPredyV3Pool, Ownable, Constants {
     function setPricingModule(address _pricingModule) external onlyOwner {
         pricingModule = IPricingModule(_pricingModule);
     }
-
-    function updateVolatility(uint256 _volatility) external onlyOwner {
-        volatility = _volatility;
-    }
-
+    
     function createBoard(
         uint256 _expiration,
         int24[] memory _lowers,
