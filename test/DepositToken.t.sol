@@ -10,6 +10,7 @@ import "./utils/TestDeployer.sol";
 import "../src/PredyV3Pool.sol";
 import "../src/mocks/MockERC20.sol";
 
+/*
 contract DepositTokenTest is TestDeployer, Test {
     address owner;
     uint256 vaultId;
@@ -34,6 +35,7 @@ contract DepositTokenTest is TestDeployer, Test {
         vm.assume(_a1 < 1e6);
 
         uint256 margin = 0;
-        pool.openPosition(address(depositTokenProduct), boardId, 0, margin, abi.encode(_a0, _a1), _a0, _a1);
+        pool.openPosition(0, false, margin, abi.encode(_a0, _a1), _a0, _a1);
     }
 }
+*/

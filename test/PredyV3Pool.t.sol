@@ -24,24 +24,17 @@ contract PredyV3PoolTest is TestDeployer, Test {
         deployContracts(owner, factory);
     }
 
-    function testCreateBoard(uint256 _expiration, uint128 _l) public {
-        vm.assume(_l > 1000000000000);
-        vm.assume(_l < 100000000000000);
-
+    function testCreateRanges() public {
         int24[] memory lowers = new int24[](1);
         int24[] memory uppers = new int24[](1);
 
         lowers[0] = -207240;
         uppers[0] = -207230;
 
-        pool.createBoard(_expiration, lowers, uppers);
-
-        (uint256 a0, uint256 a1) = pool.getTokenAmountsToDepositLPT(0, 0, _l);
-
-        pool.openPosition(address(depositLPTProduct), 0, 0, 1000000, abi.encode(0, _l), a0, a1);
+        pool.createRanges(lowers, uppers);
     }
 
-    function testCreateBoard2(uint256 _expiration, uint24 _spacing) public {
+    function testCreateRanges2(uint24 _spacing) public {
         vm.assume(_spacing < 2000);
 
         int24[] memory lowers = new int24[](1);
@@ -50,6 +43,6 @@ contract PredyV3PoolTest is TestDeployer, Test {
         lowers[0] = -207240;
         uppers[0] = -207230 + int24(_spacing * 10);
 
-        pool.createBoard(_expiration, lowers, uppers);
+        pool.createRanges(lowers, uppers);
     }
 }

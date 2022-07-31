@@ -28,7 +28,7 @@ contract DepositLPTTest is TestDeployer, Test {
         deployContracts(owner, factory);
 
         createBoard();
-        vaultId = depositLPT(0, 0, 0, 1, pool.getLiquidityForOptionAmount(0, 1, 1e17));
+        vaultId = depositLPT(0, 0, rangeIds[1], pool.getLiquidityForOptionAmount(rangeIds[1], 1e17));
     }
 
     function testDepositLPT(uint128 _liquidity) public {
@@ -38,14 +38,15 @@ contract DepositLPTTest is TestDeployer, Test {
         uint128 index = 0;
         uint256 margin = 0;
 
-        (uint256 a0, uint256 a1) = pool.getTokenAmountsToDepositLPT(boardId, index, _liquidity);
-        pool.openPosition(address(depositLPTProduct), boardId, 0, margin, abi.encode(index, _liquidity), a0, a1);
+        depositLPT(0, margin, rangeIds[0], pool.getLiquidityForOptionAmount(rangeIds[0], _liquidity));
+
+
     }
 
     function testClosePosition() public {
         vm.warp(block.timestamp + 1 days);
         swap(owner, false);
 
-        pool.closePositionsInVault(vaultId, boardId, false, 0, 0);
+        pool.closePositionsInVault(vaultId, false, 0, 0);
     }
 }
