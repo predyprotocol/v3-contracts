@@ -26,6 +26,7 @@ contract DepositLPTTest is TestDeployer, Test {
         );
 
         deployContracts(owner, factory);
+        vm.warp(block.timestamp + 1 minutes);
 
         createBoard();
         vaultId = depositLPT(0, 0, rangeIds[1], pool.getLiquidityForOptionAmount(rangeIds[1], 1e17));

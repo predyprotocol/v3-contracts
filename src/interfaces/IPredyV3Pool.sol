@@ -2,6 +2,8 @@
 pragma solidity ^0.7.6;
 pragma abicoder v2;
 
+import "../libraries/PositionVerifier.sol";
+
 interface IPredyV3Pool {
     enum InstantDebtType {
         NONE,
@@ -49,6 +51,10 @@ interface IPredyV3Pool {
         uint128 _liquidity,
         uint160 _sqrtPrice
     ) external view returns (uint256, uint256);
+
+    function getPosition(
+        uint256 _vaultId
+    ) external view returns (PositionVerifier.Position memory position);
 
     function depositTokens(
         uint256 _vaultId,

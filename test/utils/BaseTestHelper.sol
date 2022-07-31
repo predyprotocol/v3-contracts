@@ -187,6 +187,68 @@ abstract contract BaseTestHelper {
         );
     }
 
+    function slip(address recipient, bool _priceUp, uint256 _amount) internal {
+        if (_priceUp) {
+            uint256 usdcAmount = _amount * 1200 / 1e12;
+            swapRouter.exactInputSingle(
+                ISwapRouter.ExactInputSingleParams({
+                    tokenIn: address(token0),
+                    tokenOut: address(token1),
+                    fee: 500,
+                    recipient: recipient,
+                    deadline: block.timestamp,
+                    amountIn: usdcAmount,
+                    amountOutMinimum: 0,
+                    sqrtPriceLimitX96: 0
+                })
+            );
+
+        } else {
+            uint256 ethAmount = _amount;
+            swapRouter.exactInputSingle(
+                ISwapRouter.ExactInputSingleParams({
+                    tokenIn: address(token1),
+                    tokenOut: address(token0),
+                    fee: 500,
+                    recipient: recipient,
+                    deadline: block.timestamp,
+                    amountIn: ethAmount,
+                    amountOutMinimum: 0,
+                    sqrtPriceLimitX96: 0
+                })
+            );
+        }
+    }
+
+    function swapToSamePrice(address recipient) internal {
+        uint256 usdcAmount = 1000 * 1e6;
+
+        swapRouter.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token0),
+                tokenOut: address(token1),
+                fee: 500,
+                recipient: recipient,
+                deadline: block.timestamp,
+                amountIn: usdcAmount,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+        swapRouter.exactOutputSingle(
+            ISwapRouter.ExactOutputSingleParams({
+                tokenIn: address(token1),
+                tokenOut: address(token0),
+                fee: 500,
+                recipient: recipient,
+                deadline: block.timestamp,
+                amountOut: usdcAmount,
+                amountInMaximum: type(uint256).max,
+                sqrtPriceLimitX96: 0
+            })
+        );
+    }
+
     function showCurrentTick() internal {
         (, int24 tick, , , , , ) = IUniswapV3Pool(address(uniPool)).slot0();
         console.log(6, uint256(tick));

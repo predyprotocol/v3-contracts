@@ -22,6 +22,7 @@ contract LiquidationTest is TestDeployer, Test {
         );
 
         deployContracts(owner, factory);
+        vm.warp(block.timestamp + 1 minutes);
 
         createBoard();
 

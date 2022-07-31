@@ -41,12 +41,10 @@ contract PredyV3Pool is IPredyV3Pool, Ownable, Constants {
         uint256 margin;
         uint256 collateralAmount0;
         uint256 collateralAmount1;
-        bytes32[] collateralIndex;
-        uint128[] collateralLiquidity;
-        uint256[] collateralFeeGrowth;
-        bytes32[] debtIndex;
-        uint128[] debtLiquidity;
-        uint256[] debtFeeGrowth;
+        bool[] isCollateral;
+        bytes32[] lptIndex;
+        uint128[] lptLiquidity;
+        uint256[] lptFeeGrowth;
     }
 
     struct ExtraVaultParam {
@@ -204,9 +202,10 @@ contract PredyV3Pool is IPredyV3Pool, Ownable, Constants {
             ranges[rangeId].lower = _lowers[i];
             ranges[rangeId].upper = _uppers[i];
 
-            vault.collateralIndex.push(rangeId);
-            vault.collateralLiquidity.push(1e10);
-            vault.collateralFeeGrowth.push(0);
+            vault.isCollateral.push(true);
+            vault.lptIndex.push(rangeId);
+            vault.lptLiquidity.push(1e10);
+            vault.lptFeeGrowth.push(0);
             extraVaultParams[vaultId].fee0Last.push(0);
             extraVaultParams[vaultId].fee1Last.push(0);
         }
@@ -225,6 +224,8 @@ contract PredyV3Pool is IPredyV3Pool, Ownable, Constants {
         uint256 _buffer0,
         uint256 _buffer1
     ) external override returns (uint256 vaultId) {
+        applyPerpFee(_vaultId);
+
         Vault storage vault;
         (vaultId, vault) = createOrGetVault(_vaultId);
 
@@ -247,12 +248,10 @@ contract PredyV3Pool is IPredyV3Pool, Ownable, Constants {
             _data
         );
 
-        console2.log(amount0, amount1);
-
-        // applyPerpFee(vaultId);
-
         uint256 minCollateral = getMinCollateral(vaultId);
         require(vault.margin >= minCollateral, "P2");
+
+        require(!checkLiquidatable(vaultId), "P3");
 
         if (_buffer0 > amount0) {
             TransferHelper.safeTransfer(token0, msg.sender, _buffer0 - amount0);
@@ -328,52 +327,6 @@ contract PredyV3Pool is IPredyV3Pool, Ownable, Constants {
     }
 
     /**
-     * Liquidates if perp option becomes ITM
-     */
-    function liquidate2(
-        uint256 _vaultId,
-        uint256 _debtIndex,
-        bool _zeroToOne,
-        uint256 _amount,
-        uint256 _amountOutMinimum
-    ) external {
-        Vault memory vault = vaults[_vaultId];
-
-        applyPerpFee(_vaultId);
-
-        // check liquidation
-        require(extraVaultParams[_vaultId].debtInstant[_debtIndex] != InstantDebtType.NONE);
-
-        // check ITM
-        (uint160 sqrtPrice, ) = callUniswapObserve(1 minutes);
-
-        if (extraVaultParams[_vaultId].debtInstant[_debtIndex] == InstantDebtType.LONG) {
-            uint256 lowerPrice = TickMath.getSqrtRatioAtTick(ranges[vault.debtIndex[_debtIndex]].lower);
-            require(sqrtPrice < lowerPrice);
-        }
-
-        if (extraVaultParams[_vaultId].debtInstant[_debtIndex] == InstantDebtType.SHORT) {
-            uint256 upperPrice = TickMath.getSqrtRatioAtTick(ranges[vault.debtIndex[_debtIndex]].upper);
-            require(sqrtPrice < upperPrice);
-        }
-
-        // calculate reward
-        uint256 reward = getDebtPositionValue(_vaultId, sqrtPrice) / 100;
-
-        CloseParams memory params = CloseParams(_zeroToOne, _amount, _amountOutMinimum, 0, 0);
-        if (isMarginZero) {
-            params.penaltyAmount0 = reward;
-        } else {
-            params.penaltyAmount1 = reward;
-        }
-
-        // close position
-        _closePositionsInVault(_vaultId, params);
-
-        sendReward(msg.sender, reward);
-    }
-
-    /**
      * Liquidates if 75% of collateral value is less than debt value.
      */
     function liquidate3(
@@ -402,6 +355,21 @@ contract PredyV3Pool is IPredyV3Pool, Ownable, Constants {
         _closePositionsInVault(_vaultId, params);
 
         sendReward(msg.sender, params.penaltyAmount0, params.penaltyAmount1);
+    }
+
+    function checkLiquidatable(
+        uint256 _vaultId
+    ) internal view returns(bool) {
+        if(extraVaultParams[_vaultId].isLiquidationRequired) {
+            (uint160 sqrtPrice, ) = callUniswapObserve(1 minutes);
+
+            // calculate value using TWAP price
+            uint256 debtValue = getDebtPositionValue(_vaultId, sqrtPrice);
+
+            return (getCollateralPositionValue(_vaultId, sqrtPrice) * 3) / 4 < debtValue;
+        }
+
+        return false;
     }
 
     function forceClose(bytes[] memory _data) external onlyOwner {
@@ -496,9 +464,10 @@ contract PredyV3Pool is IPredyV3Pool, Ownable, Constants {
 
         Vault storage vault = vaults[_vaultId];
 
-        vault.collateralIndex.push(rangeId);
-        vault.collateralLiquidity.push(liquidity);
-        vault.collateralFeeGrowth.push(ranges[rangeId].cumulativeFee);
+        vault.isCollateral.push(true);
+        vault.lptIndex.push(rangeId);
+        vault.lptLiquidity.push(liquidity);
+        vault.lptFeeGrowth.push(ranges[rangeId].cumulativeFee);
 
         extraVaultParams[_vaultId].fee0Last.push(ranges[rangeId].cumFee0);
         extraVaultParams[_vaultId].fee1Last.push(ranges[rangeId].cumFee1);
@@ -525,9 +494,10 @@ contract PredyV3Pool is IPredyV3Pool, Ownable, Constants {
 
         Vault storage vault = vaults[_vaultId];
 
-        vault.debtIndex.push(rangeId);
-        vault.debtLiquidity.push(_liquidity);
-        vault.debtFeeGrowth.push(ranges[rangeId].cumulativeFee);
+        vault.isCollateral.push(false);
+        vault.lptIndex.push(rangeId);
+        vault.lptLiquidity.push(_liquidity);
+        vault.lptFeeGrowth.push(ranges[rangeId].cumulativeFee);
 
         return (amount0, amount1);
     }
@@ -627,10 +597,13 @@ contract PredyV3Pool is IPredyV3Pool, Ownable, Constants {
     {
         Vault storage vault = vaults[_vaultId];
 
-        for (uint256 i = 0; i < vault.collateralIndex.length; i++) {
-            bytes32 rangeId = vault.collateralIndex[i];
+        for (uint256 i = 0; i < vault.lptIndex.length; i++) {
+            if(!vault.isCollateral[i]) {
+                continue;
+            }
+            bytes32 rangeId = vault.lptIndex[i];
             INonfungiblePositionManager.DecreaseLiquidityParams memory params = INonfungiblePositionManager
-                .DecreaseLiquidityParams(ranges[rangeId].tokenId, vault.collateralLiquidity[i], 0, 0, block.timestamp);
+                .DecreaseLiquidityParams(ranges[rangeId].tokenId, vault.lptLiquidity[i], 0, 0, block.timestamp);
 
             {
                 (uint256 amount0, uint256 amount1) = decreaseLiquidityFromUni(rangeId, params);
@@ -645,13 +618,16 @@ contract PredyV3Pool is IPredyV3Pool, Ownable, Constants {
             totalAmount1 += fee1;
         }
 
-        for (uint256 i = 0; i < vault.collateralIndex.length; i++) {
-            bytes32 rangeId = vault.collateralIndex[i];
+        for (uint256 i = 0; i < vault.lptIndex.length; i++) {
+            if(!vault.isCollateral[i]) {
+                continue;
+            }
+            bytes32 rangeId = vault.lptIndex[i];
 
             extraVaultParams[_vaultId].fee0Last[i] = ranges[rangeId].cumFee0;
             extraVaultParams[_vaultId].fee1Last[i] = ranges[rangeId].cumFee1;
 
-            vault.collateralLiquidity[i] = 0;
+            vault.lptLiquidity[i] = 0;
         }
     }
 
@@ -666,27 +642,32 @@ contract PredyV3Pool is IPredyV3Pool, Ownable, Constants {
 
         (uint160 sqrtPriceX96, , , , , , ) = uniswapPool.slot0();
 
-        for (uint256 i = 0; i < vault.debtIndex.length; i++) {
-            (uint160 sqrtRatioAX96, uint160 sqrtRatioBX96) = getSqrtPriceRange(vault.debtIndex[i]);
+        for (uint256 i = 0; i < vault.lptIndex.length; i++) {
+            if(vault.isCollateral[i]) {
+                continue;
+            }
+            bytes32 rangeId = vault.lptIndex[i];
+
+            (uint160 sqrtRatioAX96, uint160 sqrtRatioBX96) = getSqrtPriceRange(rangeId);
 
             (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
                 sqrtPriceX96,
                 sqrtRatioAX96,
                 sqrtRatioBX96,
-                vault.debtLiquidity[i]
+                vault.lptLiquidity[i]
             );
 
-            ranges[vault.debtIndex[i]].borrowedLiquidity -= vault.debtLiquidity[i];
+            ranges[rangeId].borrowedLiquidity -= vault.lptLiquidity[i];
 
             INonfungiblePositionManager.IncreaseLiquidityParams memory params = INonfungiblePositionManager
-                .IncreaseLiquidityParams(ranges[vault.debtIndex[i]].tokenId, amount0, amount1, 0, 0, block.timestamp);
+                .IncreaseLiquidityParams(ranges[rangeId].tokenId, amount0, amount1, 0, 0, block.timestamp);
 
             (, uint256 actualAmount0, uint256 actualAmount1) = positionManager.increaseLiquidity(params);
 
             totalAmount0 += actualAmount0;
             totalAmount1 += actualAmount1;
 
-            vault.debtLiquidity[i] = 0;
+            vault.lptLiquidity[i] = 0;
         }
     }
 
@@ -783,21 +764,17 @@ contract PredyV3Pool is IPredyV3Pool, Ownable, Constants {
 
         marginValue = vault.margin;
 
-        for (uint256 i = 0; i < vault.collateralIndex.length; i++) {
-            PerpStatus memory perpStatus = ranges[vault.collateralIndex[i]];
+        for (uint256 i = 0; i < vault.lptIndex.length; i++) {
+            bytes32 rangeId = vault.lptIndex[i];
+            PerpStatus memory perpStatus = ranges[rangeId];
 
-            marginValue =
-                marginValue.add(((perpStatus.cumulativeFeeForLP.sub(vault.collateralFeeGrowth[i])) * vault.collateralLiquidity[i]) /
-                ONE);
-        }
-
-        for (uint256 i = 0; i < vault.debtIndex.length; i++) {
-            PerpStatus memory perpStatus = ranges[vault.debtIndex[i]];
-
-            console2.log(8, ((perpStatus.cumulativeFee.sub(vault.debtFeeGrowth[i])) * vault.debtLiquidity[i]) / ONE);
-
-
-            marginValue = marginValue.sub(((perpStatus.cumulativeFee.sub(vault.debtFeeGrowth[i])) * vault.debtLiquidity[i]) / ONE);
+            if(vault.isCollateral[i]) {
+                marginValue =
+                    marginValue.add(((perpStatus.cumulativeFeeForLP.sub(vault.lptFeeGrowth[i])) * vault.lptLiquidity[i]) /
+                    ONE);
+            } else {
+                marginValue = marginValue.sub(((perpStatus.cumulativeFee.sub(vault.lptFeeGrowth[i])) * vault.lptLiquidity[i]) / ONE);
+            }
         }
     }
 
@@ -807,12 +784,8 @@ contract PredyV3Pool is IPredyV3Pool, Ownable, Constants {
         // calculate fee for perps
         (uint160 sqrtPrice, ) = callUniswapObserve(1 minutes);
 
-        for (uint256 i = 0; i < vault.collateralIndex.length; i++) {
-            applyPerpFee(vault.collateralIndex[i]);
-        }
-
-        for (uint256 i = 0; i < vault.debtIndex.length; i++) {
-            applyPerpFee(vault.debtIndex[i]);
+        for (uint256 i = 0; i < vault.lptIndex.length; i++) {
+            applyPerpFee(vault.lptIndex[i]);
         }
 
         updateInterest();
@@ -867,8 +840,11 @@ contract PredyV3Pool is IPredyV3Pool, Ownable, Constants {
     function getMinCollateral(uint256 _vaultId) internal view returns (uint256 minCollateral) {
         Vault memory vault = vaults[_vaultId];
 
-        for (uint256 i = 0; i < vault.debtIndex.length; i++) {
-            minCollateral += getMinCollateral(vault.debtIndex[i], vault.debtLiquidity[i]);
+        for (uint256 i = 0; i < vault.lptIndex.length; i++) {
+            if(vault.isCollateral[i]) {
+                continue;
+            }
+            minCollateral += getMinCollateral(vault.lptIndex[i], vault.lptLiquidity[i]);
         }
     }
 
@@ -997,14 +973,17 @@ contract PredyV3Pool is IPredyV3Pool, Ownable, Constants {
 
         // (uint160 sqrtPriceX96, , , , , , ) = uniswapPool.slot0();
 
-        for (uint256 i = 0; i < vault.collateralIndex.length; i++) {
-            (uint160 sqrtRatioAX96, uint160 sqrtRatioBX96) = getSqrtPriceRange(vault.collateralIndex[i]);
+        for (uint256 i = 0; i < vault.lptIndex.length; i++) {
+            if(!vault.isCollateral[i]) {
+                continue;
+            }
+            (uint160 sqrtRatioAX96, uint160 sqrtRatioBX96) = getSqrtPriceRange(vault.lptIndex[i]);
 
             (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
                 _sqrtPrice,
                 sqrtRatioAX96,
                 sqrtRatioBX96,
-                vault.collateralLiquidity[i]
+                vault.lptLiquidity[i]
             );
 
             totalAmount0 += amount0;
@@ -1028,15 +1007,18 @@ contract PredyV3Pool is IPredyV3Pool, Ownable, Constants {
     {
         Vault memory vault = vaults[_vaultId];
 
-        for (uint256 i = 0; i < vault.collateralIndex.length; i++) {
-            bytes32 rangeId = vault.collateralIndex[i];
+        for (uint256 i = 0; i < vault.lptIndex.length; i++) {
+            if(!vault.isCollateral[i]) {
+                continue;
+            }
+            bytes32 rangeId = vault.lptIndex[i];
             totalAmount0 =
                 ((ranges[rangeId].cumFee0 - extraVaultParams[_vaultId].fee0Last[i]) *
-                    vault.collateralLiquidity[i]) /
+                    vault.lptLiquidity[i]) /
                 FixedPoint128.Q128;
             totalAmount1 =
                 ((ranges[rangeId].cumFee1 - extraVaultParams[_vaultId].fee1Last[i]) *
-                    vault.collateralLiquidity[i]) /
+                    vault.lptLiquidity[i]) /
                 FixedPoint128.Q128;
         }
     }
@@ -1049,14 +1031,17 @@ contract PredyV3Pool is IPredyV3Pool, Ownable, Constants {
 
         // (uint160 sqrtPriceX96, , , , , , ) = uniswapPool.slot0();
 
-        for (uint256 i = 0; i < vault.debtIndex.length; i++) {
-            (uint160 sqrtRatioAX96, uint160 sqrtRatioBX96) = getSqrtPriceRange(vault.debtIndex[i]);
+        for (uint256 i = 0; i < vault.lptIndex.length; i++) {
+            if(vault.isCollateral[i]) {
+                continue;
+            }
+            (uint160 sqrtRatioAX96, uint160 sqrtRatioBX96) = getSqrtPriceRange(vault.lptIndex[i]);
 
             (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
                 _sqrtPrice,
                 sqrtRatioAX96,
                 sqrtRatioBX96,
-                vault.debtLiquidity[i]
+                vault.lptLiquidity[i]
             );
 
             totalAmount0 += amount0;
@@ -1065,6 +1050,28 @@ contract PredyV3Pool is IPredyV3Pool, Ownable, Constants {
 
         totalAmount0 += tokenState0.getDebtValue(accountState0[_vaultId]);
         totalAmount1 += tokenState1.getDebtValue(accountState1[_vaultId]);
+    }
+
+    function getPosition(
+        uint256 _vaultId
+    ) external view override returns (PositionVerifier.Position memory position) {
+        Vault memory vault = vaults[_vaultId];
+
+        PositionVerifier.LPT[] memory lpts = new PositionVerifier.LPT[](vault.lptIndex.length);
+
+        for (uint256 i = 0; i < vault.lptIndex.length; i++) {
+            bytes32 rangeId = vault.lptIndex[i];
+            PerpStatus memory range = ranges[rangeId];
+            lpts[i] = PositionVerifier.LPT(vault.isCollateral[i], vault.lptLiquidity[i], range.lower, range.upper);
+        }
+        
+        position = PositionVerifier.Position(
+            tokenState0.getCollateralValue(accountState0[_vaultId]) + vault.collateralAmount0,
+            tokenState1.getCollateralValue(accountState1[_vaultId]) + vault.collateralAmount1,
+            tokenState0.getDebtValue(accountState0[_vaultId]),
+            tokenState1.getDebtValue(accountState1[_vaultId]),
+            lpts
+        );
     }
 
     function getTickAtSqrtRatio(uint160 sqrtPriceX96) external pure returns (int24) {

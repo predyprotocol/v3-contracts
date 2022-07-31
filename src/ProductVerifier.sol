@@ -45,10 +45,6 @@ contract ProductVerifier {
         int256 requiredAmount0 = int256(position.collateral0) - int256(position.debt0);
         int256 requiredAmount1 = int256(position.collateral1) - int256(position.debt1);
 
-        if(!_isLiquidationRequired) {
-            PositionVerifier.verifyPosition(position, proofs);
-        }
-
         pool.depositTokens(_vaultId, position.collateral0, position.collateral1, false);
         pool.borrowTokens(_vaultId, position.debt0, position.debt1);
 
@@ -62,6 +58,10 @@ contract ProductVerifier {
                 requiredAmount0 = requiredAmount0.sub(int256(amount0InLPT));
                 requiredAmount1 = requiredAmount1.sub(int256(amount1InLPT));
             }
+        }
+
+        if(!_isLiquidationRequired) {
+            PositionVerifier.verifyPosition(pool.getPosition(_vaultId), proofs);
         }
 
         if (requiredAmount0 > 0 && requiredAmount1 < 0) {

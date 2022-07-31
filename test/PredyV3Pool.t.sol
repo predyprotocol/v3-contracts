@@ -22,6 +22,7 @@ contract PredyV3PoolTest is TestDeployer, Test {
         );
 
         deployContracts(owner, factory);
+        vm.warp(block.timestamp + 1 minutes);
     }
 
     function testCreateRanges() public {
