@@ -5,8 +5,7 @@ pragma abicoder v2;
 import "./BaseTestHelper.sol";
 import "../../src/PredyV3Pool.sol";
 import "../../src/PricingModule.sol";
-import "../../src/products/DepositLPTProduct.sol";
-import "../../src/products/BorrowLPTProduct.sol";
+import "../../src/ProductVerifier.sol";
 import "../../src/mocks/MockERC20.sol";
 import {NonfungiblePositionManager} from "v3-periphery/NonfungiblePositionManager.sol";
 import {UniswapV3Factory} from "v3-core/contracts/UniswapV3Factory.sol";
@@ -53,12 +52,6 @@ abstract contract ForkTestDeployer is BaseTestHelper {
             address(factory),
             address(swapRouter)
         );
-
-        depositLPTProduct = new DepositLPTProduct(pool);
-        borrowLPTProduct = new BorrowLPTProduct(address(token0), address(token1), pool);
-
-        pool.addProduct(address(depositLPTProduct));
-        pool.addProduct(address(borrowLPTProduct));
 
         token0.approve(address(pool), 1e24);
         token1.approve(address(pool), 1e24);

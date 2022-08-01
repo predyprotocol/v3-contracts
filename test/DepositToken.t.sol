@@ -25,15 +25,17 @@ contract DepositTokenTest is TestDeployer, Test {
         );
 
         deployContracts(owner, factory);
+        vm.warp(block.timestamp + 1 minutes);
 
         createBoard();
     }
 
     function testDepositToken(uint256 _a0, uint256 _a1) public {
-        vm.assume(_a0 < 1e6);
-        vm.assume(_a1 < 1e6);
+        vm.assume(_a0 <= 1e8);
+        vm.assume(_a1 <= 1e8);
 
         uint256 margin = 0;
-        pool.openPosition(address(depositTokenProduct), boardId, 0, margin, abi.encode(_a0, _a1), _a0, _a1);
+        (bytes memory data, uint256 buffer0, uint256 buffer1) = preDepositTokens(_a0, _a1);
+        pool.openPosition(0, margin, true, data, buffer0, buffer1);
     }
 }

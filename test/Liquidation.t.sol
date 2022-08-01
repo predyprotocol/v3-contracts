@@ -22,12 +22,13 @@ contract LiquidationTest is TestDeployer, Test {
         );
 
         deployContracts(owner, factory);
+        vm.warp(block.timestamp + 1 minutes);
 
         createBoard();
 
-        depositLPT(0, 0, 0, 0, pool.getLiquidityForOptionAmount(0, 0, 1e17));
-        depositLPT(0, 0, 0, 1, pool.getLiquidityForOptionAmount(0, 1, 1e17));
-        vaultId = borrowLPT(0, 0, 50000000, 0, 1e16, true, 2000);
+        depositLPT(0, 0, rangeIds[0], 1e17);
+        depositLPT(0, 0, rangeIds[1], 1e17);
+        vaultId = borrowLPT(0, 50000000, rangeIds[0], 1e16, true, 2000);
 
         vm.warp(block.timestamp + 1 hours);
         swap(owner, false);
@@ -38,7 +39,7 @@ contract LiquidationTest is TestDeployer, Test {
         uint256 minUsdcAmount = (ethAmount * 1000) / 1e12;
 
         vm.expectRevert(bytes("vault is not danger"));
-        pool.liquidate(vaultId, 0, false, ethAmount, minUsdcAmount);
+        pool.liquidate(vaultId, false, ethAmount, minUsdcAmount);
     }
 
     function testLiquidate() public {
@@ -50,7 +51,6 @@ contract LiquidationTest is TestDeployer, Test {
         vm.warp(block.timestamp + 1 hours);
         swap(owner, false);
 
-        pool.liquidate(vaultId, 0, false, ethAmount, minUsdcAmount);
+        pool.liquidate(vaultId, false, ethAmount, minUsdcAmount);
     }
-
 }

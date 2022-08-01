@@ -21,59 +21,55 @@ contract BorrowLPTTest is TestDeployer, Test {
         );
 
         deployContracts(owner, factory);
+        vm.warp(block.timestamp + 1 minutes);
 
         createBoard();
 
-        depositLPT(0, 0, 0, 0, pool.getLiquidityForOptionAmount(0, 0, 1e17));
-        depositLPT(0, 0, 0, 1, pool.getLiquidityForOptionAmount(0, 1, 1e17));
+        depositLPT(0, 0, rangeIds[0], 1e17);
+        depositLPT(0, 0, rangeIds[1], 1e17);
     }
 
     function testCannotBorrow() public {
-        uint128 index = 0;
         uint256 ethAmount = 1 * 1e16;
-        uint256 usdcAmount = (ethAmount * 2000) / 1e12;
 
-        uint128 liquidity = pool.getLiquidityForOptionAmount(0, index, ethAmount);
         uint256 margin = 0;
 
-        bytes memory data = abi.encode(index, liquidity, TickMath.getSqrtRatioAtTick(202570), 0, usdcAmount);
+        (bytes memory data, uint256 buffer0, uint256 buffer1) = preBorrowLPT(rangeIds[0], ethAmount, true, 2000);
+
         vm.expectRevert(bytes("P2"));
-        pool.openPosition(address(borrowLPTProduct), 0, 0, margin, data, usdcAmount, 0);
+        pool.openPosition(0, margin, false, data, buffer0, buffer1);
+    }
+
+    function testSlip() public {
+        uint256 ethAmount = 1 * 1e16;
+        uint256 margin = 50000000;
+
+        (bytes memory data, uint256 buffer0, uint256 buffer1) = preBorrowLPT(rangeIds[0], ethAmount, true, 2000);
+
+        slip(owner, true, 1e16);
+        pool.openPosition(0, margin, false, data, buffer0, buffer1);
     }
 
     function testBorrow0() public {
-        uint128 index = 0;
-        uint256 margin = 100000000;
-
         uint256 ethAmount = 1 * 1e16;
-        uint256 usdcAmount = (ethAmount * 2000) / 1e12;
 
-        uint128 liquidity = pool.getLiquidityForOptionAmount(0, index, ethAmount);
-
-        bytes memory data = abi.encode(index, liquidity, TickMath.getSqrtRatioAtTick(202570), 0, usdcAmount);
-        uint256 vaultId = pool.openPosition(address(borrowLPTProduct), 0, 0, 100000000, data, usdcAmount, 0);
+        uint256 vaultId = borrowLPT(0, 50000000, rangeIds[0], 1e16, true, 2000);
 
         vm.warp(block.timestamp + 1 minutes);
         swap(owner, false);
 
-        pool.closePositionsInVault(vaultId, 0, false, ethAmount, (ethAmount * 1000) / 1e12);
+        pool.closePositionsInVault(vaultId, false, ethAmount, (ethAmount * 1000) / 1e12);
     }
 
     function testBorrow1() public {
-        uint128 index = 1;
-        uint256 margin = 10000000;
-
         uint256 ethAmount = 1 * 1e16;
         uint256 usdcAmount = (ethAmount * 2000) / 1e12;
 
-        uint128 liquidity = pool.getLiquidityForOptionAmount(0, index, ethAmount);
-
-        bytes memory data = abi.encode(index, liquidity, TickMath.getSqrtRatioAtTick(202570), 0, usdcAmount);
-        uint256 vaultId = pool.openPosition(address(borrowLPTProduct), 0, 0, margin, data, usdcAmount, 0);
+        uint256 vaultId = borrowLPT(0, 50000000, rangeIds[1], 1e16, false, 2000);
 
         vm.warp(block.timestamp + 1 minutes);
         swap(owner, true);
 
-        pool.closePositionsInVault(vaultId, 0, true, usdcAmount, (usdcAmount * 1e12) / 2000);
+        pool.closePositionsInVault(vaultId, true, usdcAmount, (usdcAmount * 1e12) / 2000);
     }
 }
