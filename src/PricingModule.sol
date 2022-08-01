@@ -131,13 +131,15 @@ contract PricingModule is Constants, Ownable {
         uint256 a;
         uint256 b;
 
-        if(feeGrowthGlobal0X128 > snapshot.lastFeeGrowthGlobal0X128) {
-            a = (ONE * (feeGrowthInside0X128 - snapshot.lastFeeGrowthInside0X128)) /
+        if (feeGrowthGlobal0X128 > snapshot.lastFeeGrowthGlobal0X128) {
+            a =
+                (ONE * (feeGrowthInside0X128 - snapshot.lastFeeGrowthInside0X128)) /
                 (feeGrowthGlobal0X128 - snapshot.lastFeeGrowthGlobal0X128);
         }
-        
-        if(feeGrowthGlobal1X128 > snapshot.lastFeeGrowthGlobal1X128) {
-            b = (ONE * (feeGrowthInside1X128 - snapshot.lastFeeGrowthInside1X128)) /
+
+        if (feeGrowthGlobal1X128 > snapshot.lastFeeGrowthGlobal1X128) {
+            b =
+                (ONE * (feeGrowthInside1X128 - snapshot.lastFeeGrowthInside1X128)) /
                 (feeGrowthGlobal1X128 - snapshot.lastFeeGrowthGlobal1X128);
         }
 

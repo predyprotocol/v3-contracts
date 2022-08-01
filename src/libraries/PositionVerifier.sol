@@ -30,45 +30,69 @@ library PositionVerifier {
         int24 tick;
     }
 
-    function verifyPosition(Position memory position, Proof[] memory proofs) internal view returns(bool) {
+    function verifyPosition(
+        Position memory position,
+        Proof[] memory proofs,
+        bool isMarginZero
+    ) internal view returns (bool) {
+        if (position.lpts.length == 0) {
+            return false;
+        }
         require(position.lpts.length == proofs.length, "0");
 
         checkOrder(position);
 
-        for(uint256 i = 0;i < proofs.length;i++) {
-            if(proofs[i].isDebt) {
+        for (uint256 i = 0; i < proofs.length; i++) {
+            if (proofs[i].isDebt) {
                 require(!position.lpts[i].isCollateral);
-                if(proofs[i].isMin) {
+                if (proofs[i].isMin) {
                     require(
-                        position.lpts[i].lowerTick <= proofs[i].tick && proofs[i].tick <= position.lpts[i].upperTick, "1");
-                    require(getDelta(position, proofs[i].tick) == 0, "2");
-                    require(getValue(position, TickMath.getSqrtRatioAtTick(proofs[i].tick)) >= 0, "3");
+                        position.lpts[i].lowerTick <= proofs[i].tick && proofs[i].tick <= position.lpts[i].upperTick,
+                        "1"
+                    );
+                    int256 delta = getDelta(position, proofs[i].tick, isMarginZero);
+                    require(0 == delta, "2");
+                    require(getValue(position, TickMath.getSqrtRatioAtTick(proofs[i].tick), isMarginZero) >= 0, "3");
                 } else {
-                    require(getDelta(position, position.lpts[i].lowerTick) * getDelta(position, position.lpts[i].upperTick) >= 0, "4");
+                    require(
+                        getDelta(position, position.lpts[i].lowerTick, isMarginZero) *
+                            getDelta(position, position.lpts[i].upperTick, isMarginZero) >=
+                            0,
+                        "4"
+                    );
                 }
             } else {
                 require(position.lpts[i].isCollateral);
             }
         }
 
-        require(getLeftSideDelta(position) <= 0, "5");
-        require(getRightSideDelta(position) >= 0, "6");
+        if (isMarginZero) {
+            require(getLeftSideDelta(position, isMarginZero) >= 0, "5");
+            require(getRightSideDelta(position, isMarginZero) <= 0, "6");
+        } else {
+            require(getLeftSideDelta(position, isMarginZero) <= 0, "5");
+            require(getRightSideDelta(position, isMarginZero) >= 0, "6");
+        }
 
         return true;
     }
 
-    function checkOrder(Position memory position) internal pure returns(int256) {
+    function checkOrder(Position memory position) internal pure returns (int256) {
         int24 tick;
 
-        for(uint256 i = 0;i < position.lpts.length;i++) {
+        for (uint256 i = 0; i < position.lpts.length; i++) {
             require(position.lpts[i].lowerTick < position.lpts[i].upperTick);
             require(tick <= position.lpts[i].lowerTick);
             tick = position.lpts[i].upperTick;
         }
     }
 
-    function getAmounts(Position memory position, uint160 sqrtPrice) internal view returns(int256 totalAmount0, int256 totalAmount1) {
-        for(uint256 i = 0;i < position.lpts.length;i++) {
+    function getAmounts(Position memory position, uint160 sqrtPrice)
+        internal
+        view
+        returns (int256 totalAmount0, int256 totalAmount1)
+    {
+        for (uint256 i = 0; i < position.lpts.length; i++) {
             (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
                 sqrtPrice,
                 TickMath.getSqrtRatioAtTick(position.lpts[i].lowerTick),
@@ -76,7 +100,7 @@ library PositionVerifier {
                 position.lpts[i].liquidity
             );
 
-            if(position.lpts[i].isCollateral) {
+            if (position.lpts[i].isCollateral) {
                 totalAmount0 += int256(amount0);
                 totalAmount1 += int256(amount1);
             } else {
@@ -89,40 +113,52 @@ library PositionVerifier {
         totalAmount1 += int256(position.collateral1);
         totalAmount0 -= int256(position.debt0);
         totalAmount1 -= int256(position.debt1);
-
     }
 
-    function getValue(Position memory position, uint160 sqrtPrice) internal view returns(int256) {
+    function getValue(
+        Position memory position,
+        uint160 sqrtPrice,
+        bool isMarginZero
+    ) internal view returns (int256) {
         uint256 price = decodeSqrtPriceX96(sqrtPrice);
 
         (int256 amount0, int256 amount1) = getAmounts(position, sqrtPrice);
 
-        return amount0 * int256(price) / 1e18 + amount1;
-    }
-
-    function getLeftSideDelta(Position memory position) internal view returns(int256) {
-        if(position.lpts.length == 0) {
-            return getDelta(position, 0);
+        if (isMarginZero) {
+            return amount0 + (amount1 * int256(price)) / 1e18;
+        } else {
+            return (amount0 * int256(price)) / 1e18 + amount1;
         }
-        
-        return getDelta(position, position.lpts[0].lowerTick);
     }
 
-    function getRightSideDelta(Position memory position) internal view returns(int256) {
-        if(position.lpts.length == 0) {
-            return getDelta(position, 0);
+    function getLeftSideDelta(Position memory position, bool isMarginZero) internal view returns (int256) {
+        if (position.lpts.length == 0) {
+            return getDelta(position, 0, isMarginZero);
         }
 
-        return getDelta(position, position.lpts[0].upperTick);
+        return getDelta(position, position.lpts[0].lowerTick, isMarginZero);
     }
 
+    function getRightSideDelta(Position memory position, bool isMarginZero) internal view returns (int256) {
+        if (position.lpts.length == 0) {
+            return getDelta(position, 0, isMarginZero);
+        }
 
-    function getDelta(Position memory position, int24 tick) internal view returns(int256) {
-        (int256 amount0, ) = getAmounts(position, TickMath.getSqrtRatioAtTick(tick));
+        return getDelta(position, position.lpts[0].upperTick, isMarginZero);
+    }
 
-        // console.log(amount0);
+    function getDelta(
+        Position memory position,
+        int24 tick,
+        bool isMarginZero
+    ) internal view returns (int256) {
+        (int256 amount0, int256 amount1) = getAmounts(position, TickMath.getSqrtRatioAtTick(tick));
 
-        return amount0;
+        if (isMarginZero) {
+            return amount1;
+        } else {
+            return amount0;
+        }
     }
 
     function decodeSqrtPriceX96(uint256 sqrtPriceX96) private view returns (uint256 price) {
@@ -134,4 +170,138 @@ library PositionVerifier {
         else if (price == 0) price = 1;
     }
 
+    // generate proof
+
+    function generateProof(Position memory position, bool isMarginZero) internal view returns (Proof[] memory proofs) {
+        proofs = new Proof[](position.lpts.length);
+
+        for (uint256 i = 0; i < position.lpts.length; i++) {
+            if (position.lpts[i].isCollateral) {
+                proofs[i] = Proof(false, false, 0);
+            } else {
+                (int256 amount0, int256 amount1) = getAmounts(
+                    omitLPT(position, i),
+                    uint160(TickMath.getSqrtRatioAtTick(position.lpts[i].lowerTick))
+                );
+
+                int24 tick = TickMath.getTickAtSqrtRatio(
+                    isMarginZero
+                        ? getSqrtPriceForAmount1(
+                            uint256(amount1),
+                            TickMath.getSqrtRatioAtTick(position.lpts[i].lowerTick),
+                            position.lpts[i].liquidity
+                        )
+                        : getSqrtPriceForAmount0(
+                            uint256(amount0),
+                            TickMath.getSqrtRatioAtTick(position.lpts[i].upperTick),
+                            position.lpts[i].liquidity
+                        )
+                );
+
+                {
+                    int24 a = tick / 10;
+                    int24 b = tick % 10;
+                    tick = a * 10;
+                    if (b >= 5) {
+                        tick += 10;
+                    }
+                }
+
+                bool isMin = position.lpts[i].lowerTick <= tick && tick <= position.lpts[i].upperTick;
+                proofs[i] = Proof(true, isMin, tick);
+            }
+        }
+
+        return proofs;
+    }
+
+    function omitLPT(Position memory position, uint256 target) internal pure returns (Position memory) {
+        LPT[] memory lpts = new LPT[](position.lpts.length - 1);
+        uint256 j = 0;
+
+        for (uint256 i = 0; i < position.lpts.length; i++) {
+            if (i == target) continue;
+            lpts[j] = position.lpts[i];
+            j++;
+        }
+
+        return Position(position.collateral0, position.collateral1, position.debt0, position.debt1, lpts);
+    }
+
+    function getSqrtPriceForAmount0(
+        uint256 amount0,
+        uint160 sqrtRatioBX96,
+        uint128 liquidity
+    ) internal pure returns (uint160) {
+        return
+            uint160(
+                FullMath.mulDiv(
+                    uint256(liquidity) << FixedPoint96.RESOLUTION,
+                    sqrtRatioBX96,
+                    (amount0 * sqrtRatioBX96 + uint256(liquidity)) << FixedPoint96.RESOLUTION
+                )
+            );
+    }
+
+    function getSqrtPriceForAmount1(
+        uint256 amount1,
+        uint160 sqrtRatioAX96,
+        uint128 liquidity
+    ) internal view returns (uint160) {
+        return uint160(FullMath.mulDiv(amount1, FixedPoint96.Q96, liquidity) + sqrtRatioAX96);
+    }
+
+    function getLiquidityAndAmount(
+        bool isMarginZero,
+        uint256 requestedAmount,
+        int24 tick,
+        int24 lower,
+        int24 upper
+    )
+        internal
+        pure
+        returns (
+            uint128 liquidity,
+            uint256 amount0,
+            uint256 amount1
+        )
+    {
+        if (isMarginZero) {
+            return getLiquidityAndAmount(0, requestedAmount, upper, tick, lower, upper);
+        } else {
+            return getLiquidityAndAmount(requestedAmount, 0, lower, tick, lower, upper);
+        }
+    }
+
+    function getLiquidityAndAmount(
+        uint256 requestedAmount0,
+        uint256 requestedAmount1,
+        int24 tick1,
+        int24 tick2,
+        int24 lower,
+        int24 upper
+    )
+        internal
+        pure
+        returns (
+            uint128 liquidity,
+            uint256 amount0,
+            uint256 amount1
+        )
+    {
+        (liquidity) = LiquidityAmounts.getLiquidityForAmounts(
+            TickMath.getSqrtRatioAtTick(tick1),
+            TickMath.getSqrtRatioAtTick(lower),
+            TickMath.getSqrtRatioAtTick(upper),
+            requestedAmount0,
+            requestedAmount1
+        );
+
+        (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
+            TickMath.getSqrtRatioAtTick(tick2),
+            TickMath.getSqrtRatioAtTick(lower),
+            TickMath.getSqrtRatioAtTick(upper),
+            liquidity
+        );
+    }
 }

@@ -30,8 +30,8 @@ contract PricingModuleTest is TestDeployer, Test {
 
         createBoard();
 
-        uint256 vaultId = depositLPT(0, 0, rangeIds[0], pool.getLiquidityForOptionAmount(rangeIds[0], 1e17));
-        depositLPT(vaultId, 0, rangeIds[1], pool.getLiquidityForOptionAmount(rangeIds[1], 1e17));
+        uint256 vaultId = depositLPT(0, 0, rangeIds[0], 1e17);
+        depositLPT(vaultId, 0, rangeIds[1], 1e17);
 
         token0.approve(address(swapRouter), 1e24);
         token1.approve(address(swapRouter), 1e24);

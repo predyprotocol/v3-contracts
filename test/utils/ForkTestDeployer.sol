@@ -52,7 +52,7 @@ abstract contract ForkTestDeployer is BaseTestHelper {
             address(factory),
             address(swapRouter)
         );
-        
+
         token0.approve(address(pool), 1e24);
         token1.approve(address(pool), 1e24);
         token0.approve(address(swapRouter), 1e24);

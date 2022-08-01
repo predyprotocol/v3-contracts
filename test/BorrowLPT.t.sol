@@ -25,8 +25,8 @@ contract BorrowLPTTest is TestDeployer, Test {
 
         createBoard();
 
-        depositLPT(0, 0, rangeIds[0], pool.getLiquidityForOptionAmount(rangeIds[0], 1e17));
-        depositLPT(0, 0, rangeIds[1], pool.getLiquidityForOptionAmount(rangeIds[1], 1e17));
+        depositLPT(0, 0, rangeIds[0], 1e17);
+        depositLPT(0, 0, rangeIds[1], 1e17);
     }
 
     function testCannotBorrow() public {
@@ -34,25 +34,21 @@ contract BorrowLPTTest is TestDeployer, Test {
 
         uint256 margin = 0;
 
-        (bytes memory data,
-        uint256 buffer0,
-        uint256 buffer1) = preBorrowLPT(rangeIds[0], ethAmount, true, 2000);
-        
+        (bytes memory data, uint256 buffer0, uint256 buffer1) = preBorrowLPT(rangeIds[0], ethAmount, true, 2000);
+
         vm.expectRevert(bytes("P2"));
         pool.openPosition(0, margin, false, data, buffer0, buffer1);
     }
-
 
     function testSlip() public {
         uint256 ethAmount = 1 * 1e16;
         uint256 margin = 50000000;
 
         (bytes memory data, uint256 buffer0, uint256 buffer1) = preBorrowLPT(rangeIds[0], ethAmount, true, 2000);
-        
+
         slip(owner, true, 1e16);
         pool.openPosition(0, margin, false, data, buffer0, buffer1);
     }
-
 
     function testBorrow0() public {
         uint256 ethAmount = 1 * 1e16;

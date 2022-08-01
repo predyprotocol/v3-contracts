@@ -6,8 +6,8 @@ import {SwapRouter} from "v3-periphery/SwapRouter.sol";
 import "v3-core/contracts/libraries/TickMath.sol";
 import "../../src/PredyV3Pool.sol";
 import "../../src/ProductVerifier.sol";
+import "../../src/BorrowLPTProduct.sol";
 import "../../src/mocks/MockERC20.sol";
-import "../../src/libraries/ProofGenerator.sol";
 import "forge-std/console.sol";
 import "forge-std/Vm.sol";
 import "forge-std/Test.sol";
@@ -19,6 +19,7 @@ abstract contract BaseTestHelper {
     SwapRouter swapRouter;
     IUniswapV3Pool uniPool;
     ProductVerifier productVerifier;
+    BorrowLPTProduct borrowLPTProduct;
 
     bytes32[] rangeIds;
 
@@ -41,41 +42,45 @@ abstract contract BaseTestHelper {
         rangeIds = pool.createRanges(lowers, uppers);
     }
 
+    function preDepositTokens(uint256 _amount0, uint256 _amount1)
+        public
+        returns (
+            bytes memory data,
+            uint256 buffer0,
+            uint256 buffer1
+        )
+    {
+        PositionVerifier.LPT[] memory lpts = new PositionVerifier.LPT[](0);
+
+        PositionVerifier.Position memory position = PositionVerifier.Position(_amount0, _amount1, 0, 0, lpts);
+
+        PositionVerifier.Proof[] memory proofs = new PositionVerifier.Proof[](0);
+
+        data = abi.encode(position, proofs, 0);
+    }
+
     function depositLPT(
         uint256 _vaultId,
         uint256 _margin,
         bytes32 _rangeId,
-        uint128 _liquidity
+        uint256 _amount
     ) public returns (uint256) {
-        (uint256 a0, uint256 a1) = pool.getTokenAmountsToDepositLPT(_rangeId, _liquidity);
+        uint128 liquidity = getLiquidityForOptionAmount(_rangeId, _amount);
+        (uint256 a0, uint256 a1) = pool.getTokenAmountsToDepositLPT(_rangeId, liquidity);
 
         PositionVerifier.LPT[] memory lpts = new PositionVerifier.LPT[](1);
 
         {
             PredyV3Pool.PerpStatus memory range = pool.getRange(_rangeId);
-            lpts[0] = PositionVerifier.LPT(true, _liquidity, range.lower, range.upper);
+            lpts[0] = PositionVerifier.LPT(true, liquidity, range.lower, range.upper);
         }
 
-        PositionVerifier.Position memory position = PositionVerifier.Position(
-            0,
-            0,
-            0,
-            0,
-            lpts
-        );
+        PositionVerifier.Position memory position = PositionVerifier.Position(0, 0, 0, 0, lpts);
 
         PositionVerifier.Proof[] memory proofs = new PositionVerifier.Proof[](1);
         proofs[0] = PositionVerifier.Proof(false, false, 0);
 
-        return
-            pool.openPosition(
-                _vaultId,
-                _margin,
-                true,
-                abi.encode(position, proofs, 0),
-                a0,
-                a1
-            );
+        return pool.openPosition(_vaultId, _margin, true, abi.encode(position, proofs, 0), a0, a1);
     }
 
     function preBorrowLPT(
@@ -83,30 +88,18 @@ abstract contract BaseTestHelper {
         uint256 _ethAmount,
         bool _isCall,
         uint256 _limitPrice
-    ) internal returns (
-        bytes memory data,
-        uint256 buffer0,
-        uint256 buffer1
-    ) {
+    )
+        internal
+        returns (
+            bytes memory data,
+            uint256 buffer0,
+            uint256 buffer1
+        )
+    {
         {
-            uint128 liquidity = pool.getLiquidityForOptionAmount(_rangeId, _ethAmount);
-
-            PositionVerifier.LPT[] memory lpts = new PositionVerifier.LPT[](1);
-
             PredyV3Pool.PerpStatus memory range = pool.getRange(_rangeId);
-            lpts[0] = PositionVerifier.LPT(false, liquidity, range.lower, range.upper);
-
-            PositionVerifier.Proof[] memory proofs = new PositionVerifier.Proof[](1);
-
-            PositionVerifier.Position memory position = PositionVerifier.Position(
-                0,
-                0,
-                0,
-                0,
-                lpts
-            );
-
-            (position.collateral0, position.collateral1, proofs[0]) = ProofGenerator.generateProof(lpts[0], _isCall ? range.upper:range.lower);
+            (PositionVerifier.Position memory position, PositionVerifier.Proof[] memory proofs) = borrowLPTProduct
+                .createPositionAndProof(_ethAmount, range.lower, range.upper, _isCall ? range.upper : range.lower);
 
             // calculate USDC amount
             uint256 amountMaximum;
@@ -125,9 +118,12 @@ abstract contract BaseTestHelper {
         bool _isCall,
         uint256 _limitPrice
     ) internal returns (uint256) {
-        (bytes memory data,
-        uint256 buffer0,
-        uint256 buffer1) = preBorrowLPT(_rangeId, _ethAmount, _isCall, _limitPrice);
+        (bytes memory data, uint256 buffer0, uint256 buffer1) = preBorrowLPT(
+            _rangeId,
+            _ethAmount,
+            _isCall,
+            _limitPrice
+        );
 
         return pool.openPosition(_vaultId, _margin, false, data, buffer0, buffer1);
     }
@@ -136,18 +132,27 @@ abstract contract BaseTestHelper {
         PositionVerifier.Position memory _position,
         uint160 _sqrtPrice,
         uint256 _limitPrice
-    ) internal returns (uint256 amountMaximum, uint256 buffer0, uint256 buffer1) {
-        (int256 requiredAmount0, int256 requiredAmount1) = productVerifier.getRequiredTokenAmounts(_position, _sqrtPrice);
+    )
+        internal
+        returns (
+            uint256 amountMaximum,
+            uint256 buffer0,
+            uint256 buffer1
+        )
+    {
+        (int256 requiredAmount0, int256 requiredAmount1) = productVerifier.getRequiredTokenAmounts(
+            _position,
+            _sqrtPrice
+        );
 
-        if(requiredAmount0 > 0) {
-            amountMaximum = uint256(requiredAmount0) * 1e12 / _limitPrice;
+        if (requiredAmount0 > 0) {
+            amountMaximum = (uint256(requiredAmount0) * 1e12) / _limitPrice;
             buffer1 = amountMaximum - uint256(-requiredAmount1);
         }
-        if(requiredAmount1 > 0) {
-            amountMaximum = uint256(requiredAmount1) * _limitPrice / 1e12;
+        if (requiredAmount1 > 0) {
+            amountMaximum = (uint256(requiredAmount1) * _limitPrice) / 1e12;
             buffer0 = amountMaximum - uint256(requiredAmount0);
         }
-
     }
 
     function swap(address recipient, bool _priceUp) internal {
@@ -187,9 +192,13 @@ abstract contract BaseTestHelper {
         );
     }
 
-    function slip(address recipient, bool _priceUp, uint256 _amount) internal {
+    function slip(
+        address recipient,
+        bool _priceUp,
+        uint256 _amount
+    ) internal {
         if (_priceUp) {
-            uint256 usdcAmount = _amount * 1200 / 1e12;
+            uint256 usdcAmount = (_amount * 1200) / 1e12;
             swapRouter.exactInputSingle(
                 ISwapRouter.ExactInputSingleParams({
                     tokenIn: address(token0),
@@ -202,7 +211,6 @@ abstract contract BaseTestHelper {
                     sqrtPriceLimitX96: 0
                 })
             );
-
         } else {
             uint256 ethAmount = _amount;
             swapRouter.exactInputSingle(
@@ -252,5 +260,21 @@ abstract contract BaseTestHelper {
     function showCurrentTick() internal {
         (, int24 tick, , , , , ) = IUniswapV3Pool(address(uniPool)).slot0();
         console.log(6, uint256(tick));
+    }
+
+    /**
+     * option size -> liquidity
+     */
+    function getLiquidityForOptionAmount(bytes32 _rangeId, uint256 _amount) public view returns (uint128) {
+        PredyV3Pool.PerpStatus memory range = pool.getRange(_rangeId);
+        (uint128 liquidity, uint256 amount0, uint256 amount1) = PositionVerifier.getLiquidityAndAmount(
+            pool.isMarginZero(),
+            _amount,
+            range.lower,
+            range.lower,
+            range.upper
+        );
+
+        return liquidity;
     }
 }

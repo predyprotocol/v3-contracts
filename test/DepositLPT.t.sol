@@ -29,7 +29,7 @@ contract DepositLPTTest is TestDeployer, Test {
         vm.warp(block.timestamp + 1 minutes);
 
         createBoard();
-        vaultId = depositLPT(0, 0, rangeIds[1], pool.getLiquidityForOptionAmount(rangeIds[1], 1e17));
+        vaultId = depositLPT(0, 0, rangeIds[1], 1e17);
     }
 
     function testDepositLPT(uint128 _liquidity) public {
@@ -39,9 +39,7 @@ contract DepositLPTTest is TestDeployer, Test {
         uint128 index = 0;
         uint256 margin = 0;
 
-        depositLPT(0, margin, rangeIds[0], pool.getLiquidityForOptionAmount(rangeIds[0], _liquidity));
-
-
+        depositLPT(0, margin, rangeIds[0], _liquidity);
     }
 
     function testClosePosition() public {

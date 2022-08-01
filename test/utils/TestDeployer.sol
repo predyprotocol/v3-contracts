@@ -6,6 +6,7 @@ import "./BaseTestHelper.sol";
 import "../../src/PredyV3Pool.sol";
 import "../../src/PricingModule.sol";
 import "../../src/ProductVerifier.sol";
+import "../../src/BorrowLPTProduct.sol";
 import "../../src/mocks/MockERC20.sol";
 import {NonfungiblePositionManager} from "v3-periphery/NonfungiblePositionManager.sol";
 import {UniswapV3Factory} from "v3-core/contracts/UniswapV3Factory.sol";
@@ -87,9 +88,11 @@ abstract contract TestDeployer is BaseTestHelper {
 
         pool.setProductVerifier(address(productVerifier));
 
+        borrowLPTProduct = new BorrowLPTProduct(pool.isMarginZero());
+
         pricingModule = new PricingModule();
         pool.setPricingModule(address(pricingModule));
-        
+
         pricingModule.updateDaylyFeeAmount(120 * 1e12);
         pricingModule.updateMinCollateralPerLiquidity(1e10);
         pricingModule.updateIRMParams(1e12, 30 * 1e16, 20 * 1e16, 50 * 1e16);

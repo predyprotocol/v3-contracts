@@ -11,6 +11,8 @@ interface IPredyV3Pool {
         SHORT
     }
 
+    function isMarginZero() external view returns (bool);
+
     function openPosition(
         uint256 _vaultId,
         uint256 _margin,
@@ -41,10 +43,7 @@ interface IPredyV3Pool {
         uint256 _amountInMaximum
     ) external returns (uint256);
 
-    function getTokenAmountsToDepositLPT(
-        bytes32 _rangeId,
-        uint128 _liquidity
-    ) external view returns (uint256, uint256);
+    function getTokenAmountsToDepositLPT(bytes32 _rangeId, uint128 _liquidity) external view returns (uint256, uint256);
 
     function getTokenAmountsToBorrowLPT(
         bytes32 _rangeId,
@@ -52,9 +51,7 @@ interface IPredyV3Pool {
         uint160 _sqrtPrice
     ) external view returns (uint256, uint256);
 
-    function getPosition(
-        uint256 _vaultId
-    ) external view returns (PositionVerifier.Position memory position);
+    function getPosition(uint256 _vaultId) external view returns (PositionVerifier.Position memory position);
 
     function depositTokens(
         uint256 _vaultId,

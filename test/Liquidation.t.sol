@@ -26,8 +26,8 @@ contract LiquidationTest is TestDeployer, Test {
 
         createBoard();
 
-        depositLPT(0, 0, rangeIds[0], pool.getLiquidityForOptionAmount(rangeIds[0], 1e17));
-        depositLPT(0, 0, rangeIds[1], pool.getLiquidityForOptionAmount(rangeIds[1], 1e17));
+        depositLPT(0, 0, rangeIds[0], 1e17);
+        depositLPT(0, 0, rangeIds[1], 1e17);
         vaultId = borrowLPT(0, 50000000, rangeIds[0], 1e16, true, 2000);
 
         vm.warp(block.timestamp + 1 hours);
@@ -53,5 +53,4 @@ contract LiquidationTest is TestDeployer, Test {
 
         pool.liquidate(vaultId, false, ethAmount, minUsdcAmount);
     }
-
 }
