@@ -51,9 +51,10 @@ contract BorrowLPTTest is TestDeployer, Test {
     }
 
     function testBorrow0() public {
+        // TODO
         uint256 ethAmount = 1 * 1e16;
 
-        uint256 vaultId = borrowLPT(0, 50000000, rangeIds[0], 1e16, true, 2000);
+        uint256 vaultId = borrowLPT(0, 50000000, rangeIds[0], ethAmount, true, 2000);
 
         vm.warp(block.timestamp + 1 minutes);
         swap(owner, false);
@@ -65,7 +66,7 @@ contract BorrowLPTTest is TestDeployer, Test {
         uint256 ethAmount = 1 * 1e16;
         uint256 usdcAmount = (ethAmount * 2000) / 1e12;
 
-        uint256 vaultId = borrowLPT(0, 50000000, rangeIds[1], 1e16, false, 2000);
+        uint256 vaultId = borrowLPT(0, 50000000, rangeIds[1], ethAmount, false, 2000);
 
         vm.warp(block.timestamp + 1 minutes);
         swap(owner, true);

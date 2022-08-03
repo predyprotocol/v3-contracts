@@ -1,12 +1,10 @@
 //SPDX-License-Identifier: agpl-3.0
 pragma solidity ^0.7.6;
+pragma abicoder v2;
 
-import "./libraries/Sqrt.sol";
-import "forge-std/console2.sol";
-import "v3-periphery/libraries/LiquidityAmounts.sol";
-import "v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import "v3-core/contracts/libraries/Tick.sol";
-import "openzeppelin-contracts/access/Ownable.sol";
+import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import "@uniswap/v3-core/contracts/libraries/Tick.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "./Constants.sol";
 
 contract PricingModule is Constants, Ownable {
@@ -54,6 +52,17 @@ contract PricingModule is Constants, Ownable {
         slope2 = _slope2;
     }
 
+    struct LPTStatus {
+        uint256 lastTouchedTimestamp;
+        uint256 borrowedLiquidity;
+        uint256 cumulativeFee;
+        uint256 cumulativeFeeForLP;
+        int24 lower;
+        int24 upper;
+
+
+    }
+
     /**
      * Calculates daily premium for range per liquidity
      */
@@ -95,7 +104,7 @@ contract PricingModule is Constants, Ownable {
         IUniswapV3Pool uniPool,
         int24 _lowerTick,
         int24 _upperTick
-    ) external {
+    ) public {
         uint256 feeGrowthGlobal0X128 = uniPool.feeGrowthGlobal0X128();
         uint256 feeGrowthGlobal1X128 = uniPool.feeGrowthGlobal1X128();
 

@@ -5,6 +5,7 @@ pragma abicoder v2;
 import "./BaseTestHelper.sol";
 import "../../src/PredyV3Pool.sol";
 import "../../src/PricingModule.sol";
+import "../../src/LPTMathModule.sol";
 import "../../src/ProductVerifier.sol";
 import "../../src/BorrowLPTProduct.sol";
 import "../../src/mocks/MockERC20.sol";
@@ -84,7 +85,7 @@ abstract contract TestDeployer is BaseTestHelper {
 
         positionManager.mint(params);
 
-        productVerifier = new ProductVerifier(address(token0), address(token1), pool);
+        productVerifier = new ProductVerifier(pool);
 
         pool.setProductVerifier(address(productVerifier));
 
@@ -92,6 +93,9 @@ abstract contract TestDeployer is BaseTestHelper {
 
         pricingModule = new PricingModule();
         pool.setPricingModule(address(pricingModule));
+
+        lptMathModule = new LPTMathModule();
+        pool.setLPTMathModule(address(lptMathModule));
 
         pricingModule.updateDaylyFeeAmount(120 * 1e12);
         pricingModule.updateMinCollateralPerLiquidity(1e10);

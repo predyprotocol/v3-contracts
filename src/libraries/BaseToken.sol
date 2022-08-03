@@ -1,8 +1,7 @@
 //SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.7.6;
 
-import "v3-core/contracts/libraries/FullMath.sol";
-import "forge-std/console2.sol";
+import "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 
 library BaseToken {
     struct TokenState {

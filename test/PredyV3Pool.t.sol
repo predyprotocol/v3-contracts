@@ -25,6 +25,8 @@ contract PredyV3PoolTest is TestDeployer, Test {
         vm.warp(block.timestamp + 1 minutes);
     }
 
+    /*
+
     function testCreateRanges() public {
         int24[] memory lowers = new int24[](1);
         int24[] memory uppers = new int24[](1);
@@ -46,4 +48,5 @@ contract PredyV3PoolTest is TestDeployer, Test {
 
         pool.createRanges(lowers, uppers);
     }
+    */
 }

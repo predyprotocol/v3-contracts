@@ -3,6 +3,7 @@ pragma solidity =0.7.6;
 pragma abicoder v2;
 
 import "../libraries/PositionVerifier.sol";
+import "../libraries/LPTMath.sol";
 
 library BorrowLPTLib {
     function createPositionAndProof(
@@ -11,8 +12,8 @@ library BorrowLPTLib {
         int24 lower,
         int24 upper,
         int24 tick
-    ) external view returns (PositionVerifier.Position memory position, PositionVerifier.Proof[] memory proofs) {
-        (uint128 liquidity, uint256 amount0, uint256 amount1) = PositionVerifier.getLiquidityAndAmount(
+    ) external pure returns (PositionVerifier.Position memory position, PositionVerifier.Proof[] memory proofs) {
+        (uint128 liquidity, uint256 amount0, uint256 amount1) = LPTMath.getLiquidityAndAmountToBorrow(
             isMarginZero,
             requestedAmount,
             tick,

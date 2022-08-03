@@ -18,6 +18,7 @@ contract BorrowLPTProduct {
         int24 upper,
         int24 tick
     ) external view returns (PositionVerifier.Position memory position, PositionVerifier.Proof[] memory proofs) {
+        
         return BorrowLPTLib.createPositionAndProof(isMarginZero, requestedAmount, lower, upper, tick);
     }
 }

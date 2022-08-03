@@ -4,12 +4,10 @@ import fs from 'fs'
 import { HardhatUserConfig, task } from 'hardhat/config'
 import '@nomiclabs/hardhat-etherscan'
 import '@typechain/hardhat'
-import 'hardhat-gas-reporter'
-import 'solidity-coverage'
 import 'hardhat-contract-sizer'
 import 'hardhat-deploy'
 import '@eth-optimism/hardhat-ovm'
-
+import '@nomiclabs/hardhat-ethers'
 import 'hardhat-preprocessor'
 
 dotenv.config()
@@ -67,7 +65,7 @@ const config: HardhatUserConfig = {
     },
     rinkebyArbitrum: {
       url: 'https://rinkeby.arbitrum.io/rpc',
-      gasPrice: 30000000, // 0.03 gwei
+      gasPrice: 100000000, // 0.03 gwei
       gas: 30_000_000,
       accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
       companionNetworks: {
@@ -139,7 +137,7 @@ const config: HardhatUserConfig = {
 
 function getRemappings() {
   return fs
-    .readFileSync('remappings-hardhat.txt', 'utf8')
+    .readFileSync('remappings.txt', 'utf8')
     .split('\n')
     .filter(Boolean) // remove empty lines
     .map((line: any) => line.trim().split('='))

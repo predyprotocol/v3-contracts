@@ -2,35 +2,39 @@
 pragma solidity ^0.7.6;
 pragma abicoder v2;
 
-import "openzeppelin-contracts/math/SafeMath.sol";
-import "openzeppelin-contracts/math/SignedSafeMath.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/math/SignedSafeMath.sol";
 import "./interfaces/IPredyV3Pool.sol";
 import "./interfaces/IProductVerifier.sol";
 import "./libraries/PositionVerifier.sol";
+import "./libraries/LPTMath.sol";
 
-contract ProductVerifier is IProductVerifier {
+contract ProductVerifier is IProductVerifier, Ownable {
     using SafeMath for uint256;
     using SignedSafeMath for int256;
 
-    address public immutable token0;
-    address public immutable token1;
     IPredyV3Pool public pool;
+    int256 public threshold;
 
     event PositionUpdated(uint256 vaultId, uint256 amount0, uint256 amount1, bool zeroToOne);
 
     constructor(
-        address _token0,
-        address _token1,
         IPredyV3Pool _pool
     ) {
-        token0 = _token0;
-        token1 = _token1;
         pool = _pool;
+        threshold = 200;
+    }
+
+    function setThreshold(int256 _threshold)
+        external
+    {
+        threshold = _threshold;
     }
 
     function getRequiredTokenAmounts(PositionVerifier.Position memory position, uint160 sqrtPrice)
         external
-        view
+        pure
         returns (int256 totalAmount0, int256 totalAmount1)
     {
         return PositionVerifier.getAmounts(position, sqrtPrice);
@@ -77,11 +81,11 @@ contract ProductVerifier is IProductVerifier {
         }
 
         if (!_isLiquidationRequired) {
-            PositionVerifier.verifyPosition(pool.getPosition(_vaultId), proofs, true);
+            PositionVerifier.verifyPosition(pool.getPosition(_vaultId), proofs, true, threshold);
         }
 
         if (requiredAmount0 > 0 && requiredAmount1 < 0) {
-            uint256 requiredA1 = pool.swapExactOutput(token1, token0, uint256(requiredAmount0), amountInMaximum);
+            uint256 requiredA1 = pool.swapExactOutput(false, uint256(requiredAmount0), amountInMaximum);
 
             emit PositionUpdated(_vaultId, uint256(requiredAmount0), requiredA1, false);
 
@@ -89,7 +93,7 @@ contract ProductVerifier is IProductVerifier {
         }
 
         if (requiredAmount1 > 0 && requiredAmount0 < 0) {
-            uint256 requiredA0 = pool.swapExactOutput(token0, token1, uint256(requiredAmount1), amountInMaximum);
+            uint256 requiredA0 = pool.swapExactOutput(true, uint256(requiredAmount1), amountInMaximum);
 
             emit PositionUpdated(_vaultId, requiredA0, uint256(requiredAmount1), true);
 
@@ -119,6 +123,6 @@ contract ProductVerifier is IProductVerifier {
             uint256 amount1
         )
     {
-        return PositionVerifier.getLiquidityAndAmount(pool.isMarginZero(), requestedAmount, tick, lower, upper);
+        return LPTMath.getLiquidityAndAmountToBorrow(pool.isMarginZero(), requestedAmount, tick, lower, upper);
     }
 }

@@ -29,21 +29,11 @@ interface IPredyV3Pool {
         uint256 _amountOutMinimum
     ) external;
 
-    function swapExactInput(
-        address _tokenIn,
-        address _tokenOut,
-        uint256 _amountIn,
-        uint256 _amountOutMinimum
-    ) external returns (uint256);
-
     function swapExactOutput(
-        address _tokenIn,
-        address _tokenOut,
+        bool _zeroForOne,
         uint256 _amountOut,
         uint256 _amountInMaximum
     ) external returns (uint256);
-
-    function getTokenAmountsToDepositLPT(bytes32 _rangeId, uint128 _liquidity) external view returns (uint256, uint256);
 
     function getTokenAmountsToBorrowLPT(
         bytes32 _rangeId,

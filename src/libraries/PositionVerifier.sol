@@ -2,11 +2,10 @@
 pragma solidity =0.7.6;
 pragma abicoder v2;
 
-import "v3-periphery/libraries/LiquidityAmounts.sol";
-import "v3-core/contracts/libraries/TickMath.sol";
+import "@uniswap/v3-periphery/libraries/LiquidityAmounts.sol";
+import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import "forge-std/Test.sol";
 import "forge-std/Vm.sol";
-import "forge-std/console.sol";
 
 library PositionVerifier {
     struct LPT {
@@ -33,8 +32,9 @@ library PositionVerifier {
     function verifyPosition(
         Position memory position,
         Proof[] memory proofs,
-        bool isMarginZero
-    ) internal view returns (bool) {
+        bool isMarginZero,
+        int256 _threshold
+    ) internal pure returns (bool) {
         if (position.lpts.length == 0) {
             return false;
         }
@@ -51,7 +51,7 @@ library PositionVerifier {
                         "1"
                     );
                     int256 delta = getDelta(position, proofs[i].tick, isMarginZero);
-                    require(0 == delta, "2");
+                    require(-_threshold <= delta && delta <= _threshold, "2");
                     require(getValue(position, TickMath.getSqrtRatioAtTick(proofs[i].tick), isMarginZero) >= 0, "3");
                 } else {
                     require(
@@ -67,11 +67,11 @@ library PositionVerifier {
         }
 
         if (isMarginZero) {
-            require(getLeftSideDelta(position, isMarginZero) >= 0, "5");
-            require(getRightSideDelta(position, isMarginZero) <= 0, "6");
+            require(getLeftSideDelta(position, isMarginZero) >= -_threshold, "5");
+            require(getRightSideDelta(position, isMarginZero) <= _threshold, "6");
         } else {
-            require(getLeftSideDelta(position, isMarginZero) <= 0, "5");
-            require(getRightSideDelta(position, isMarginZero) >= 0, "6");
+            require(getLeftSideDelta(position, isMarginZero) <= _threshold, "5");
+            require(getRightSideDelta(position, isMarginZero) >= -_threshold, "6");
         }
 
         return true;
@@ -89,7 +89,7 @@ library PositionVerifier {
 
     function getAmounts(Position memory position, uint160 sqrtPrice)
         internal
-        view
+        pure
         returns (int256 totalAmount0, int256 totalAmount1)
     {
         for (uint256 i = 0; i < position.lpts.length; i++) {
@@ -119,7 +119,7 @@ library PositionVerifier {
         Position memory position,
         uint160 sqrtPrice,
         bool isMarginZero
-    ) internal view returns (int256) {
+    ) internal pure returns (int256) {
         uint256 price = decodeSqrtPriceX96(sqrtPrice);
 
         (int256 amount0, int256 amount1) = getAmounts(position, sqrtPrice);
@@ -131,7 +131,7 @@ library PositionVerifier {
         }
     }
 
-    function getLeftSideDelta(Position memory position, bool isMarginZero) internal view returns (int256) {
+    function getLeftSideDelta(Position memory position, bool isMarginZero) internal pure returns (int256) {
         if (position.lpts.length == 0) {
             return getDelta(position, 0, isMarginZero);
         }
@@ -139,7 +139,7 @@ library PositionVerifier {
         return getDelta(position, position.lpts[0].lowerTick, isMarginZero);
     }
 
-    function getRightSideDelta(Position memory position, bool isMarginZero) internal view returns (int256) {
+    function getRightSideDelta(Position memory position, bool isMarginZero) internal pure returns (int256) {
         if (position.lpts.length == 0) {
             return getDelta(position, 0, isMarginZero);
         }
@@ -151,7 +151,7 @@ library PositionVerifier {
         Position memory position,
         int24 tick,
         bool isMarginZero
-    ) internal view returns (int256) {
+    ) internal pure returns (int256) {
         (int256 amount0, int256 amount1) = getAmounts(position, TickMath.getSqrtRatioAtTick(tick));
 
         if (isMarginZero) {
@@ -161,7 +161,7 @@ library PositionVerifier {
         }
     }
 
-    function decodeSqrtPriceX96(uint256 sqrtPriceX96) private view returns (uint256 price) {
+    function decodeSqrtPriceX96(uint256 sqrtPriceX96) private pure returns (uint256 price) {
         uint256 scaler = 1; //10**ERC20(token0).decimals();
 
         price = (FullMath.mulDiv(sqrtPriceX96, sqrtPriceX96, uint256(2**96)) * scaler) / uint256(2**96);
@@ -172,7 +172,7 @@ library PositionVerifier {
 
     // generate proof
 
-    function generateProof(Position memory position, bool isMarginZero) internal view returns (Proof[] memory proofs) {
+    function generateProof(Position memory position, bool isMarginZero) internal pure returns (Proof[] memory proofs) {
         proofs = new Proof[](position.lpts.length);
 
         for (uint256 i = 0; i < position.lpts.length; i++) {
@@ -247,61 +247,7 @@ library PositionVerifier {
         uint256 amount1,
         uint160 sqrtRatioAX96,
         uint128 liquidity
-    ) internal view returns (uint160) {
+    ) internal pure returns (uint160) {
         return uint160(FullMath.mulDiv(amount1, FixedPoint96.Q96, liquidity) + sqrtRatioAX96);
-    }
-
-    function getLiquidityAndAmount(
-        bool isMarginZero,
-        uint256 requestedAmount,
-        int24 tick,
-        int24 lower,
-        int24 upper
-    )
-        internal
-        pure
-        returns (
-            uint128 liquidity,
-            uint256 amount0,
-            uint256 amount1
-        )
-    {
-        if (isMarginZero) {
-            return getLiquidityAndAmount(0, requestedAmount, upper, tick, lower, upper);
-        } else {
-            return getLiquidityAndAmount(requestedAmount, 0, lower, tick, lower, upper);
-        }
-    }
-
-    function getLiquidityAndAmount(
-        uint256 requestedAmount0,
-        uint256 requestedAmount1,
-        int24 tick1,
-        int24 tick2,
-        int24 lower,
-        int24 upper
-    )
-        internal
-        pure
-        returns (
-            uint128 liquidity,
-            uint256 amount0,
-            uint256 amount1
-        )
-    {
-        (liquidity) = LiquidityAmounts.getLiquidityForAmounts(
-            TickMath.getSqrtRatioAtTick(tick1),
-            TickMath.getSqrtRatioAtTick(lower),
-            TickMath.getSqrtRatioAtTick(upper),
-            requestedAmount0,
-            requestedAmount1
-        );
-
-        (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
-            TickMath.getSqrtRatioAtTick(tick2),
-            TickMath.getSqrtRatioAtTick(lower),
-            TickMath.getSqrtRatioAtTick(upper),
-            liquidity
-        );
     }
 }

@@ -7,13 +7,14 @@ import "forge-std/Vm.sol";
 import "forge-std/console.sol";
 import "../src/libraries/PositionVerifier.sol";
 import "../src/libraries/BorrowLPTLib.sol";
+import "../src/libraries/LPTMath.sol";
 
 contract PositionVerifierTest is Test {
     function testVerify() public {
         (PositionVerifier.Position memory position, PositionVerifier.Proof[] memory proofs) = BorrowLPTLib
             .createPositionAndProof(true, 10000000000, 100000, 400000, 100000);
 
-        assertTrue(PositionVerifier.verifyPosition(position, proofs, true));
+        assertTrue(PositionVerifier.verifyPosition(position, proofs, true, 0));
     }
 
     function testVerify2(uint128 ethAmount) public {
@@ -24,11 +25,11 @@ contract PositionVerifierTest is Test {
 
         PositionVerifier.LPT[] memory lpts = new PositionVerifier.LPT[](1);
 
-        (uint128 liquidity, uint256 amount0, uint256 amount1) = PositionVerifier.getLiquidityAndAmount(
+        (uint128 liquidity, uint256 amount0, uint256 amount1) = LPTMath.getLiquidityAndAmount(
             0,
             ethAmount,
-            upper,
-            upper,
+            TickMath.getSqrtRatioAtTick(upper),
+            TickMath.getSqrtRatioAtTick(upper),
             lower,
             upper
         );
@@ -39,7 +40,7 @@ contract PositionVerifierTest is Test {
 
         PositionVerifier.Proof[] memory proofs = PositionVerifier.generateProof(position, true);
 
-        assertTrue(PositionVerifier.verifyPosition(position, proofs, true));
+        assertTrue(PositionVerifier.verifyPosition(position, proofs, true, 0));
     }
 
     function testVerify3(uint128 liquidity) public {
@@ -60,7 +61,7 @@ contract PositionVerifierTest is Test {
 
         PositionVerifier.Proof[] memory proofs = PositionVerifier.generateProof(position, true);
 
-        assertTrue(PositionVerifier.verifyPosition(position, proofs, true));
+        assertTrue(PositionVerifier.verifyPosition(position, proofs, true, 0));
     }
 
     function testGenerateProof(uint256 ethAmount, bool isMarginZero) public {
