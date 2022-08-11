@@ -5,6 +5,7 @@ const uniswapPositionManager = '0xC36442b4a4522E871399CD717aBDD847Ab11FE88'
 const uniswapFactoryAddress = '0x1F98431c8aD98523631AE4a59f267346ea31F984'
 const swapRouterAddress = '0xE592427A0AEce92De3Edee1F18E0157C05861564'
 
+const wethAddress = '0x6466232Bf77e70bEa2535393DC9B2b0d94ea3C22'
 const usdcAddress = '0xF61Cffd6071a8DB7cD5E8DF1D3A5450D9903cF1c'
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -14,7 +15,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deploy } = deployments
 
   const predyV3Pool = await ethers.getContract('PredyV3Pool', deployer)
-
   await deploy('ProductVerifier', { from: deployer, args: [predyV3Pool.address], log: true })
   const productVerifier = await ethers.getContract('ProductVerifier', deployer)
 
@@ -22,15 +22,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   return
 
-  const mockWeth = await ethers.getContract('MockERC20', deployer)
+
   const isMarginZero = false
 
   const VaultLib = await ethers.getContract('VaultLib', deployer)
 
-
   const result = await deploy('PredyV3Pool', {
     from: deployer,
-    args: [mockWeth.address, usdcAddress, isMarginZero, uniswapPositionManager, uniswapFactoryAddress, swapRouterAddress],
+    args: [wethAddress, usdcAddress, isMarginZero, uniswapPositionManager, uniswapFactoryAddress, swapRouterAddress],
     libraries: {
       VaultLib: VaultLib.address,
     },

@@ -6,6 +6,8 @@ import "forge-std/Test.sol";
 import "forge-std/Vm.sol";
 import "forge-std/console.sol";
 
+    /*
+
 import "./utils/TestDeployer.sol";
 import "../src/PredyV3Pool.sol";
 import "../src/mocks/MockERC20.sol";
@@ -25,7 +27,6 @@ contract PredyV3PoolTest is TestDeployer, Test {
         vm.warp(block.timestamp + 1 minutes);
     }
 
-    /*
 
     function testCreateRanges() public {
         int24[] memory lowers = new int24[](1);
@@ -48,5 +49,5 @@ contract PredyV3PoolTest is TestDeployer, Test {
 
         pool.createRanges(lowers, uppers);
     }
-    */
 }
+    */

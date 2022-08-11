@@ -3,7 +3,7 @@ pragma solidity =0.7.6;
 pragma abicoder v2;
 
 import "./BaseTestHelper.sol";
-import "../../src/PredyV3Pool.sol";
+import "../../src/Controller.sol";
 import "../../src/PricingModule.sol";
 import "../../src/ProductVerifier.sol";
 import "../../src/mocks/MockERC20.sol";
@@ -44,7 +44,7 @@ abstract contract ForkTestDeployer is BaseTestHelper {
         swapRouter = SwapRouter(swapRouterAddress);
         uniPool = IUniswapV3Pool(factory.getPool(address(token0), address(token1), 500));
 
-        pool = new PredyV3Pool(
+        pool = new Controller(
             address(token0),
             address(token1),
             !isTokenAToken0,
@@ -58,8 +58,8 @@ abstract contract ForkTestDeployer is BaseTestHelper {
         token0.approve(address(swapRouter), 1e24);
         token1.approve(address(swapRouter), 1e24);
 
-        pricingModule = new PricingModule();
-        pool.setPricingModule(address(pricingModule));
-        pricingModule.updateDaylyFeeAmount(28 * 1e15);
+        // pricingModule = new PricingModule();
+        // pool.setPricingModule(address(pricingModule));
+        // pricingModule.updateDaylyFeeAmount(28 * 1e15);
     }
 }

@@ -6,19 +6,6 @@ import "@uniswap/v3-periphery/libraries/LiquidityAmounts.sol";
 import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 
 library LPTMath {
-
-    // calculate liquidity for amount
-    // amount -> liquidity, amount0, amount1
-    //
-    // borrow
-    //  tick1 -> upper, tick2 -> option type
-    //  enough amount to borrow
-    //
-    // deposit
-    //  tick1 -> current, tick2 -> current
-    //  
-    //
-
     function getLiquidityAndAmountToDeposit(
         bool isMarginZero,
         uint256 requestedAmount,

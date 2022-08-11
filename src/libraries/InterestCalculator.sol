@@ -1,12 +1,19 @@
-//SPDX-License-Identifier: agpl-3.0
-pragma solidity ^0.7.6;
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity =0.7.6;
 pragma abicoder v2;
 
+import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "./Constants.sol";
+import "@uniswap/v3-periphery/interfaces/INonfungiblePositionManager.sol";
 
-contract PricingModule is Constants, Ownable {
+import "./DataType.sol";
+
+
+library InterestCalculator {
+    using SafeMath for uint256;
+
+    uint256 internal constant ONE = 1e18;
+
     struct TickSnapshot {
         uint256 lastFeeGrowthInside0X128;
         uint256 lastFeeGrowthInside1X128;
@@ -19,46 +26,61 @@ contract PricingModule is Constants, Ownable {
         uint256 feeGrowthOutside1X128;
     }
 
-    mapping(bytes32 => TickSnapshot) snapshots;
-
-    uint256 dailyFeeAmount;
-    uint256 minCollateralPerLiquidity;
-
-    uint256 baseRate;
-    uint256 kinkRate;
-    uint256 slope1;
-    uint256 slope2;
-
-    constructor() {}
-
-    function updateDaylyFeeAmount(uint256 _dailyFeeAmount) external onlyOwner {
-        dailyFeeAmount = _dailyFeeAmount;
+    struct DPMParams {
+        mapping(bytes32 => TickSnapshot) snapshots;
+        uint256 dailyFeeAmount;
     }
 
-    function updateMinCollateralPerLiquidity(uint256 _minCollateralPerLiquidity) external onlyOwner {
-        minCollateralPerLiquidity = _minCollateralPerLiquidity;
+
+    struct IRMParams {
+        uint256 baseRate;
+        uint256 kinkRate;
+        uint256 slope1;
+        uint256 slope2;
     }
 
-    function updateIRMParams(
-        uint256 _base,
-        uint256 _kink,
-        uint256 _slope1,
-        uint256 _slope2
-    ) external onlyOwner {
-        baseRate = _base;
-        kinkRate = _kink;
-        slope1 = _slope1;
-        slope2 = _slope2;
+    function applyDailyPremium(
+        DPMParams storage _params,
+        DataType.Context memory _context,
+        DataType.PerpStatus storage _perpState
+    ) internal {
+        if (block.timestamp <= _perpState.lastTouchedTimestamp) {
+            return;
+        }
+
+        if (_perpState.borrowedLiquidity > 0) {
+            uint256 premium = ((block.timestamp - _perpState.lastTouchedTimestamp) *
+                calculateDailyPremium(_params, IUniswapV3Pool(_context.uniswapPool), _perpState.lowerTick, _perpState.upperTick)) / 1 days;
+            _perpState.premiumGrowthForBorrower = _perpState.premiumGrowthForBorrower.add(premium);
+            _perpState.premiumGrowthForLender =
+                _perpState.premiumGrowthForLender.add(PredyMath.mulDiv(premium, _perpState.borrowedLiquidity,
+                getTotalLiquidityAmount(INonfungiblePositionManager(_context.positionManager), _perpState.tokenId)));
+        }
+
+        takeSnapshotForRange(_params, IUniswapV3Pool(_context.uniswapPool), _perpState.lowerTick, _perpState.upperTick);
+
+        _perpState.lastTouchedTimestamp = block.timestamp;
     }
 
-    /**
-     * Calculates daily premium for range per liquidity
-     */
+    function getTotalLiquidityAmount(INonfungiblePositionManager _positionManager, uint256 _tokenId) internal view returns (uint256) {
+        (, , , , , , , uint128 liquidity, , , , ) = _positionManager.positions(_tokenId);
+
+        return liquidity;
+    }
+
+
+    function applyInterest(
+        DataType.Context storage _context
+    ) internal pure {
+    }
+
+
     function calculateDailyPremium(
+        DPMParams storage _params,
         IUniswapV3Pool uniPool,
         int24 _lowerTick,
         int24 _upperTick
-    ) public view returns (uint256) {
+    ) internal view returns (uint256) {
         uint256 feeGrowthGlobal0X128 = uniPool.feeGrowthGlobal0X128();
         uint256 feeGrowthGlobal1X128 = uniPool.feeGrowthGlobal1X128();
 
@@ -78,7 +100,8 @@ contract PricingModule is Constants, Ownable {
 
         return
             calculateRatio(
-                snapshots[key],
+                _params.dailyFeeAmount,
+                _params.snapshots[key],
                 feeGrowthInside0X128,
                 feeGrowthInside1X128,
                 feeGrowthGlobal0X128,
@@ -86,11 +109,42 @@ contract PricingModule is Constants, Ownable {
             );
     }
 
+    function calculateRatio(
+        uint256 _dailyFeeAmount,
+        TickSnapshot memory snapshot,
+        uint256 feeGrowthInside0X128,
+        uint256 feeGrowthInside1X128,
+        uint256 feeGrowthGlobal0X128,
+        uint256 feeGrowthGlobal1X128
+    ) internal pure returns (uint256) {
+        uint256 a;
+        uint256 b;
+
+        if (feeGrowthGlobal0X128 > snapshot.lastFeeGrowthGlobal0X128) {
+            a =
+                (ONE * (feeGrowthInside0X128 - snapshot.lastFeeGrowthInside0X128)) /
+                (feeGrowthGlobal0X128 - snapshot.lastFeeGrowthGlobal0X128);
+        }
+
+        if (feeGrowthGlobal1X128 > snapshot.lastFeeGrowthGlobal1X128) {
+            b =
+                (ONE * (feeGrowthInside1X128 - snapshot.lastFeeGrowthInside1X128)) /
+                (feeGrowthGlobal1X128 - snapshot.lastFeeGrowthGlobal1X128);
+        }
+
+        return (_dailyFeeAmount * (a + b)) / (2 * ONE);
+    }
+
+    function calculateInterestRate(uint256 _utilizationRatio) internal view returns (uint256) {
+        return 0;
+    }
+
     function takeSnapshotForRange(
+        DPMParams storage _params,
         IUniswapV3Pool uniPool,
         int24 _lowerTick,
         int24 _upperTick
-    ) public {
+    ) internal {
         uint256 feeGrowthGlobal0X128 = uniPool.feeGrowthGlobal0X128();
         uint256 feeGrowthGlobal1X128 = uniPool.feeGrowthGlobal1X128();
 
@@ -108,37 +162,10 @@ contract PricingModule is Constants, Ownable {
 
         bytes32 key = keccak256(abi.encodePacked(_lowerTick, _upperTick));
 
-        snapshots[key] = TickSnapshot(
-            feeGrowthInside0X128,
-            feeGrowthInside1X128,
-            feeGrowthGlobal0X128,
-            feeGrowthGlobal1X128
-        );
-    }
-
-    function calculateRatio(
-        TickSnapshot memory snapshot,
-        uint256 feeGrowthInside0X128,
-        uint256 feeGrowthInside1X128,
-        uint256 feeGrowthGlobal0X128,
-        uint256 feeGrowthGlobal1X128
-    ) internal view returns (uint256) {
-        uint256 a;
-        uint256 b;
-
-        if (feeGrowthGlobal0X128 > snapshot.lastFeeGrowthGlobal0X128) {
-            a =
-                (ONE * (feeGrowthInside0X128 - snapshot.lastFeeGrowthInside0X128)) /
-                (feeGrowthGlobal0X128 - snapshot.lastFeeGrowthGlobal0X128);
-        }
-
-        if (feeGrowthGlobal1X128 > snapshot.lastFeeGrowthGlobal1X128) {
-            b =
-                (ONE * (feeGrowthInside1X128 - snapshot.lastFeeGrowthInside1X128)) /
-                (feeGrowthGlobal1X128 - snapshot.lastFeeGrowthGlobal1X128);
-        }
-
-        return (dailyFeeAmount * (a + b)) / (2 * ONE);
+        _params.snapshots[key].lastFeeGrowthInside0X128 = feeGrowthInside0X128;
+        _params.snapshots[key].lastFeeGrowthInside1X128 = feeGrowthInside1X128;
+        _params.snapshots[key].lastFeeGrowthGlobal0X128 = feeGrowthGlobal0X128;
+        _params.snapshots[key].lastFeeGrowthGlobal1X128 = feeGrowthGlobal1X128;
     }
 
     function getFeeGrowthOutside(IUniswapV3Pool uniPool, int24 _tickId) internal view returns (TickInfo memory) {
@@ -187,34 +214,5 @@ contract PricingModule is Constants, Ownable {
 
         feeGrowthInside0X128 = feeGrowthGlobal0X128 - feeGrowthBelow0X128 - feeGrowthAbove0X128;
         feeGrowthInside1X128 = feeGrowthGlobal1X128 - feeGrowthBelow1X128 - feeGrowthAbove1X128;
-    }
-
-    /**
-     * Calculates min. collateral per liquidity
-     */
-    function calculateMinCollateral(
-        IUniswapV3Pool uniPool,
-        int24 _lowerTick,
-        int24 _upperTick
-    ) external view returns (uint256) {
-        // TODO
-        return minCollateralPerLiquidity;
-    }
-
-    /**
-     * Calculates daily interest rate for range per liquidity
-     * scaled by 1e18;
-     */
-    function calculateInterestRate(uint256 _utilizationRatio) external view returns (uint256) {
-        uint256 ir = baseRate;
-
-        if (_utilizationRatio <= kinkRate) {
-            ir += (_utilizationRatio * slope1) / ONE;
-        } else {
-            ir += (kinkRate * slope1) / ONE;
-            ir += (slope2 * (_utilizationRatio - kinkRate)) / ONE;
-        }
-
-        return ir;
     }
 }

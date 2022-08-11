@@ -5,108 +5,111 @@ pragma abicoder v2;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/math/SignedSafeMath.sol";
-import "./interfaces/IPredyV3Pool.sol";
+import "./interfaces/IController.sol";
 import "./interfaces/IProductVerifier.sol";
-import "./libraries/PositionVerifier.sol";
+import "./libraries/PositionCalculator.sol";
 import "./libraries/LPTMath.sol";
+    /*
 
 contract ProductVerifier is IProductVerifier, Ownable {
     using SafeMath for uint256;
     using SignedSafeMath for int256;
 
-    IPredyV3Pool public pool;
-    int256 public threshold;
+    IController public pool;
 
     event PositionUpdated(uint256 vaultId, uint256 amount0, uint256 amount1, bool zeroToOne);
 
     constructor(
-        IPredyV3Pool _pool
+        IController _pool
     ) {
         pool = _pool;
-        threshold = 200;
-    }
-
-    function setThreshold(int256 _threshold)
-        external
-    {
-        threshold = _threshold;
-    }
-
-    function getRequiredTokenAmounts(PositionVerifier.Position memory position, uint160 sqrtPrice)
-        external
-        pure
-        returns (int256 totalAmount0, int256 totalAmount1)
-    {
-        return PositionVerifier.getAmounts(position, sqrtPrice);
     }
 
     function openPosition(
         uint256 _vaultId,
-        bool _isLiquidationRequired,
-        bytes memory _data
-    ) external override returns (uint256, uint256) {
-        (
-            PositionVerifier.Position memory position,
-            PositionVerifier.Proof[] memory proofs,
-            uint256 amountInMaximum
-        ) = abi.decode(_data, (PositionVerifier.Position, PositionVerifier.Proof[], uint256));
+        PositionUpdate[] memory _positionUpdates
+    ) external override returns (int256, int256) {
+        int256 requiredAmount0;
+        int256 requiredAmount1;
 
-        int256 requiredAmount0 = int256(position.collateral0) - int256(position.debt0);
-        int256 requiredAmount1 = int256(position.collateral1) - int256(position.debt1);
+        for (uint256 i = 0; i < _positionUpdates.length; i++) {
+            PositionUpdate memory positionUpdate = _positionUpdates[i];
+            if(positionUpdate.positionUpdateType == PositionUpdateType.DEPOSIT_TOKEN) {
+                pool.depositTokens(_vaultId, positionUpdate.param0, positionUpdate.param1, true);
 
-        // TODO: enter market
-        pool.depositTokens(_vaultId, position.collateral0, position.collateral1, _isLiquidationRequired);
-        pool.borrowTokens(_vaultId, position.debt0, position.debt1);
+                requiredAmount0 = requiredAmount0.add(int256(positionUpdate.param0));
+                requiredAmount1 = requiredAmount1.add(int256(positionUpdate.param1));
 
-        for (uint256 i = 0; i < position.lpts.length; i++) {
-            if (position.lpts[i].isCollateral) {
+            }else if(positionUpdate.positionUpdateType == PositionUpdateType.BORROW_TOKEN) {
+                pool.borrowTokens(_vaultId, positionUpdate.param0, positionUpdate.param1);
+
+                requiredAmount0 = requiredAmount0.sub(int256(positionUpdate.param0));
+                requiredAmount1 = requiredAmount1.sub(int256(positionUpdate.param1));
+
+            }else if(positionUpdate.positionUpdateType == PositionUpdateType.DEPOSIT_LPT) {
                 (uint256 amount0InLPT, uint256 amount1InLPT) = pool.depositLPT(
                     _vaultId,
-                    position.lpts[i].lowerTick,
-                    position.lpts[i].upperTick,
-                    position.lpts[i].liquidity
+                    positionUpdate.lowerTick,
+                    positionUpdate.upperTick,
+                    positionUpdate.liquidity,
+                    positionUpdate.param0,
+                    positionUpdate.param1
                 );
+
                 requiredAmount0 = requiredAmount0.add(int256(amount0InLPT));
                 requiredAmount1 = requiredAmount1.add(int256(amount1InLPT));
-            } else {
+            }else if(positionUpdate.positionUpdateType == PositionUpdateType.BORROW_LPT) {
                 (uint256 amount0InLPT, uint256 amount1InLPT) = pool.borrowLPT(
                     _vaultId,
-                    position.lpts[i].lowerTick,
-                    position.lpts[i].upperTick,
-                    position.lpts[i].liquidity
+                    positionUpdate.lowerTick,
+                    positionUpdate.upperTick,
+                    positionUpdate.liquidity,
+                    positionUpdate.param0,
+                    positionUpdate.param1
                 );
+
                 requiredAmount0 = requiredAmount0.sub(int256(amount0InLPT));
                 requiredAmount1 = requiredAmount1.sub(int256(amount1InLPT));
+            }else if(positionUpdate.positionUpdateType == PositionUpdateType.SWAP_EXACT_IN) {
+                uint256 amountOut = pool.swapExactInput(positionUpdate.zeroForOne, positionUpdate.param0, positionUpdate.param1);
+
+                if(positionUpdate.zeroForOne) {
+                    requiredAmount0 = requiredAmount0.add(int256(positionUpdate.param0));
+                    requiredAmount1 = requiredAmount1.sub(int256(amountOut));
+                } else {
+                    requiredAmount0 = requiredAmount0.sub(int256(amountOut));
+                    requiredAmount1 = requiredAmount1.add(int256(positionUpdate.param0));
+                }
+
+            }else if(positionUpdate.positionUpdateType == PositionUpdateType.SWAP_EXACT_OUT) {
+                uint256 amountIn = pool.swapExactOutput(positionUpdate.zeroForOne, positionUpdate.param0, positionUpdate.param1);
+
+                if(positionUpdate.zeroForOne) {
+                    requiredAmount0 = requiredAmount0.add(int256(amountIn));
+                    requiredAmount1 = requiredAmount1.sub(int256(positionUpdate.param0));
+                } else {
+                    requiredAmount0 = requiredAmount0.sub(int256(positionUpdate.param0));
+                    requiredAmount1 = requiredAmount1.add(int256(amountIn));
+                }
             }
         }
 
-        if (!_isLiquidationRequired) {
-            PositionVerifier.verifyPosition(pool.getPosition(_vaultId), proofs, true, threshold);
-        }
-
-        if (requiredAmount0 > 0 && requiredAmount1 < 0) {
-            uint256 requiredA1 = pool.swapExactOutput(false, uint256(requiredAmount0), amountInMaximum);
-
-            emit PositionUpdated(_vaultId, uint256(requiredAmount0), requiredA1, false);
-
-            return (0, requiredA1.sub(uint256(-requiredAmount1)));
-        }
-
-        if (requiredAmount1 > 0 && requiredAmount0 < 0) {
-            uint256 requiredA0 = pool.swapExactOutput(true, uint256(requiredAmount1), amountInMaximum);
-
-            emit PositionUpdated(_vaultId, requiredA0, uint256(requiredAmount1), true);
-
-            return (requiredA0.sub(uint256(-requiredAmount0)), 0);
-        }
-
-        if (requiredAmount1 >= 0 && requiredAmount0 >= 0) {
-            return (uint256(requiredAmount0), uint256(requiredAmount1));
-        }
-
-        // out of the money
-        return (0, 0);
+        return (requiredAmount0, requiredAmount1);
     }
+
+    function calculateRequiredCollateral(
+        PositionCalculator.Position memory _position,     
+        uint160 _sqrtPrice,
+        bool _isMarginZero
+    )
+        external
+        pure
+        override
+        returns (int256)
+    {
+        return PositionCalculator.calculateRequiredCollateral(_position, _sqrtPrice, _isMarginZero);
+    }
+
 
     function getLiquidityAndAmount(
         uint256 requestedAmount,
@@ -126,3 +129,4 @@ contract ProductVerifier is IProductVerifier, Ownable {
         return LPTMath.getLiquidityAndAmountToBorrow(pool.isMarginZero(), requestedAmount, tick, lower, upper);
     }
 }
+    */

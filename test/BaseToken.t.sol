@@ -15,7 +15,7 @@ contract BaseTokenTest is Test {
         tokenState.collateralScaler = 1e18;
         tokenState.debtScaler = 1e18;
 
-        BaseToken.addCollateral(tokenState, accountState, 1000 * 1e6);
+        BaseToken.addCollateral(tokenState, accountState, 1000 * 1e6, true);
         BaseToken.addDebt(tokenState, accountState, 200 * 1e6);
     }
 
