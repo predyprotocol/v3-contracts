@@ -7,10 +7,12 @@ import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-periphery/interfaces/INonfungiblePositionManager.sol";
 
 import "./DataType.sol";
+import "./BaseToken.sol";
 
 
 library InterestCalculator {
     using SafeMath for uint256;
+    using BaseToken for BaseToken.TokenState;
 
     uint256 internal constant ONE = 1e18;
 
@@ -70,8 +72,23 @@ library InterestCalculator {
 
 
     function applyInterest(
-        DataType.Context storage _context
-    ) internal pure {
+        DataType.Context storage _context,
+        uint256 lastTouchedTimestamp
+    ) internal returns (uint256) {
+        if (block.timestamp <= lastTouchedTimestamp) {
+            return lastTouchedTimestamp;
+        }
+
+        // calculate interest for tokens
+        // TODO: Utilization Ratio
+        uint256 interest = ((block.timestamp - lastTouchedTimestamp) * calculateInterestRate(0)) /
+            365 days;
+
+        _context.tokenState0.updateScaler(interest);
+        _context.tokenState1.updateScaler(interest);
+
+        return block.timestamp;
+
     }
 
 

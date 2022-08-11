@@ -19,7 +19,7 @@ import "forge-std/Test.sol";
 abstract contract BaseTestHelper {
     IERC20 token0;
     IERC20 token1;
-    Controller pool;
+    Controller controller;
     NonfungiblePositionManager positionManager;
     SwapRouter swapRouter;
     IUniswapV3Pool uniPool;
@@ -33,6 +33,7 @@ abstract contract BaseTestHelper {
         return DataType.Context(
             address(token0),
             address(token1),
+            500,
             address(positionManager),
             address(swapRouter),
             address(uniPool),

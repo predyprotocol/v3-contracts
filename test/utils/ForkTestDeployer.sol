@@ -44,7 +44,7 @@ abstract contract ForkTestDeployer is BaseTestHelper {
         swapRouter = SwapRouter(swapRouterAddress);
         uniPool = IUniswapV3Pool(factory.getPool(address(token0), address(token1), 500));
 
-        pool = new Controller(
+        controller = new Controller(
             address(token0),
             address(token1),
             !isTokenAToken0,
@@ -53,8 +53,8 @@ abstract contract ForkTestDeployer is BaseTestHelper {
             address(swapRouter)
         );
 
-        token0.approve(address(pool), 1e24);
-        token1.approve(address(pool), 1e24);
+        token0.approve(address(controller), 1e24);
+        token1.approve(address(controller), 1e24);
         token0.approve(address(swapRouter), 1e24);
         token1.approve(address(swapRouter), 1e24);
 

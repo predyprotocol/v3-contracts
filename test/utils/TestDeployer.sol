@@ -52,7 +52,7 @@ abstract contract TestDeployer is BaseTestHelper {
         uniPool = IUniswapV3Pool(IUniswapV3Factory(factory).getPool(address(token0), address(token1), 500));
         IUniswapV3PoolActions(uniPool).increaseObservationCardinalityNext(180);
 
-        pool = new Controller(
+        controller = new Controller(
             address(token0),
             address(token1),
             true,
@@ -77,8 +77,8 @@ abstract contract TestDeployer is BaseTestHelper {
 
         token0.approve(address(positionManager), 1e24);
         token1.approve(address(positionManager), 1e24);
-        token0.approve(address(pool), 1e24);
-        token1.approve(address(pool), 1e24);
+        token0.approve(address(controller), 1e24);
+        token1.approve(address(controller), 1e24);
         token0.approve(address(swapRouter), 1e24);
         token1.approve(address(swapRouter), 1e24);
 

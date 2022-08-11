@@ -55,4 +55,21 @@ contract PositionUpdatorTest is TestDeployer, Test {
         assertEq(BaseToken.getCollateralValue(context.tokenState1, vault.balance1), 1e6);
     }
 
+    function testUpdatePositionDepositLPT() public {
+        DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](1);
+
+        positionUpdates[0] = DataType.PositionUpdate(
+            DataType.PositionUpdateType.DEPOSIT_LPT,
+            false,
+            1000000000000,
+            202560,
+            202570,
+            0,
+            0
+        );
+
+        PositionUpdator.updatePosition(vault, context, ranges, positionUpdates);
+
+        assertEq(vault.lpts.length, 1);
+    }
 }

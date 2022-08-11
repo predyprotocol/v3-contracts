@@ -54,7 +54,7 @@ contract InterestCalculatorTest is TestDeployer, Test {
     }
 
     function testApplyInterest() public {
-        InterestCalculator.applyInterest(context);
+        InterestCalculator.applyInterest(context, 0);
 
         assertGt(context.tokenState0.collateralScaler, 1e18);
         assertGt(context.tokenState0.debtScaler, 1e18);

@@ -9,6 +9,7 @@ import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "./DataType.sol";
 import "./VaultLib.sol";
 import "./LPTStateLib.sol";
+import "./UniHelper.sol";
 
 library PositionUpdator {
     using SafeMath for uint256;
@@ -26,10 +27,7 @@ library PositionUpdator {
         DataType.Context memory _context,
         mapping(bytes32 => DataType.PerpStatus) storage _ranges,
         DataType.PositionUpdate[] memory _positionUpdates
-    ) internal returns (int256, int256) {
-        int256 requiredAmount0;
-        int256 requiredAmount1;
-
+    ) internal returns (int256 requiredAmount0, int256 requiredAmount1) {
         for (uint256 i = 0; i < _positionUpdates.length; i++) {
             DataType.PositionUpdate memory positionUpdate = _positionUpdates[i];
 
@@ -53,8 +51,6 @@ library PositionUpdator {
             }else if(positionUpdate.positionUpdateType == DataType.PositionUpdateType.SWAP_EXACT_OUT) {
             }
         }
-
-        return (0, 0);
     }
 
     function depositTokens(
@@ -106,42 +102,32 @@ library PositionUpdator {
 
         uint128 liquidity;
         if(_ranges[rangeId].tokenId > 0) {
-            INonfungiblePositionManager.IncreaseLiquidityParams memory params = INonfungiblePositionManager
-                .IncreaseLiquidityParams(
-                    _ranges[rangeId].tokenId,
-                    amount0,
-                    amount1,
-                    _positionUpdate.param0,
-                    _positionUpdate.param1,
-                    block.timestamp
-                );
-
-            (liquidity, requiredAmount0, requiredAmount1) = INonfungiblePositionManager(_context.positionManager).increaseLiquidity(params);
-
+            (, liquidity, requiredAmount0, requiredAmount1) =  UniHelper.increaseLiquidity(
+                _context,
+                _ranges[rangeId].tokenId,
+                amount0,
+                amount1,
+                _positionUpdate.param0,
+                _positionUpdate.param1
+            );
         } else {
-            INonfungiblePositionManager.MintParams memory params = INonfungiblePositionManager.MintParams(
-                _context.token0,
-                _context.token1,
-                FEE_TIER,
+            uint256 tokenId = 0;
+
+            (tokenId, liquidity, requiredAmount0, requiredAmount1) =  UniHelper.mint(
+                _context,
                 _positionUpdate.lowerTick,
                 _positionUpdate.upperTick,
                 amount0,
                 amount1,
                 _positionUpdate.param0,
-                _positionUpdate.param1,
-                address(this),
-                block.timestamp
+                _positionUpdate.param1
             );
 
-            uint256 tokenId = 0;
-
-            (tokenId, liquidity, requiredAmount0, requiredAmount1) = INonfungiblePositionManager(_context.positionManager).mint(params);
             _ranges[rangeId].lowerTick = _positionUpdate.lowerTick;
             _ranges[rangeId].upperTick = _positionUpdate.upperTick;
             _ranges[rangeId].lastTouchedTimestamp = block.timestamp;
 
             _ranges[rangeId].registerNewLPTState(tokenId);
-
         }
 
 

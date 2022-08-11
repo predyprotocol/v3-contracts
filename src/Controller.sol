@@ -22,6 +22,7 @@ import "./libraries/DataType.sol";
 import "./libraries/VaultLib.sol";
 import "./libraries/PredyMath.sol";
 import "./libraries/PositionUpdator.sol";
+import "./libraries/InterestCalculator.sol";
 import "./Constants.sol";
 import "./LPTMathModule.sol";
 
@@ -43,12 +44,6 @@ contract Controller is IController, Ownable, Constants {
         uint256 penaltyAmount1;
     }
 
-    INonfungiblePositionManager private positionManager;
-    IUniswapV3Pool public uniswapPool;
-    ISwapRouter private immutable swapRouter;
-
-    IProductVerifier public productVerifier;
-    IPricingModule public pricingModule;
     LPTMathModule private lptMathModule;
 
     uint256 public lastTouchedTimestamp;
@@ -60,6 +55,7 @@ contract Controller is IController, Ownable, Constants {
     mapping(uint256 => DataType.Vault) public vaults;
 
     DataType.Context public context;
+    InterestCalculator.DPMParams private dpmParams;
 
     event VaultCreated(uint256 vaultId);
     event PositionClosed(
@@ -69,11 +65,6 @@ contract Controller is IController, Ownable, Constants {
         uint256 _penaltyAmount0,
         uint256 _penaltyAmount1
     );
-
-    modifier onlyProductVerifier() {
-        require(address(productVerifier) == msg.sender);
-        _;
-    }
 
     modifier onlyVaultOwner(uint256 _vaultId) {
         require(vaults[_vaultId].owner == msg.sender);
@@ -88,20 +79,21 @@ contract Controller is IController, Ownable, Constants {
         address _factory,
         address _swapRouter
     ) {
+        context.feeTier = FEE_TIER;
         context.token0 = _token0;
         context.token1 = _token1;
         context.isMarginZero = _isMarginZero;
-        positionManager = INonfungiblePositionManager(_positionManager);
-        swapRouter = ISwapRouter(_swapRouter);
+        context.positionManager = _positionManager;
+        context.swapRouter = _swapRouter;
 
         PoolAddress.PoolKey memory poolKey = PoolAddress.PoolKey({token0: context.token0, token1: context.token1, fee: FEE_TIER});
 
-        uniswapPool = IUniswapV3Pool(PoolAddress.computeAddress(_factory, poolKey));
+        context.uniswapPool = PoolAddress.computeAddress(_factory, poolKey);
 
         vaultIdCount = 1;
 
-        ERC20(context.token0).approve(address(positionManager), type(uint256).max);
-        ERC20(context.token1).approve(address(positionManager), type(uint256).max);
+        ERC20(context.token0).approve(address(_positionManager), type(uint256).max);
+        ERC20(context.token1).approve(address(_positionManager), type(uint256).max);
         ERC20(context.token0).approve(address(_swapRouter), type(uint256).max);
         ERC20(context.token1).approve(address(_swapRouter), type(uint256).max);
 
@@ -197,7 +189,7 @@ contract Controller is IController, Ownable, Constants {
         // check liquidation
         require(checkLiquidatable(_vaultId));
 
-        (uint160 sqrtPrice, ) = lptMathModule.callUniswapObserve(uniswapPool, 1 minutes);
+        (uint160 sqrtPrice, ) = lptMathModule.callUniswapObserve(IUniswapV3Pool(context.uniswapPool), 1 minutes);
 
         // calculate reward
         (uint256 amount0, uint256 amount1) = getDebtPositionAmounts(_vaultId, sqrtPrice);
@@ -210,7 +202,7 @@ contract Controller is IController, Ownable, Constants {
     }
 
     function checkLiquidatable(uint256 _vaultId) internal view returns (bool) {
-        (uint160 sqrtPrice, ) = lptMathModule.callUniswapObserve(uniswapPool, 1 minutes);
+        (uint160 sqrtPrice, ) = LPTMath.callUniswapObserve(IUniswapV3Pool(context.uniswapPool), 1 minutes);
 
         // calculate value using TWAP price
         int256 requiredCollateral = PositionCalculator.calculateRequiredCollateral(getPosition(_vaultId), sqrtPrice, context.isMarginZero);
@@ -479,7 +471,7 @@ contract Controller is IController, Ownable, Constants {
             INonfungiblePositionManager.IncreaseLiquidityParams memory params = INonfungiblePositionManager
                 .IncreaseLiquidityParams(ranges[rangeId].tokenId, amount0, amount1, 0, 0, block.timestamp);
 
-            (, uint256 actualAmount0, uint256 actualAmount1) = positionManager.increaseLiquidity(params);
+            (, uint256 actualAmount0, uint256 actualAmount1) = INonfungiblePositionManager(context.positionManager).increaseLiquidity(params);
 
             totalAmount0 += int256(actualAmount0);
             totalAmount1 += int256(actualAmount1);
@@ -507,7 +499,7 @@ contract Controller is IController, Ownable, Constants {
         INonfungiblePositionManager.DecreaseLiquidityParams memory params = INonfungiblePositionManager
             .DecreaseLiquidityParams(_tokenId, _liquidity, _amount0Min, _amount1Min, block.timestamp);
 
-        (amount0, amount1) = positionManager.decreaseLiquidity(params);
+        (amount0, amount1) = INonfungiblePositionManager(context.positionManager).decreaseLiquidity(params);
 
         collectTokenAmountsFromUni(_rangeId, amount0, amount1, liquidityAmount);
     }
@@ -525,7 +517,7 @@ contract Controller is IController, Ownable, Constants {
             type(uint128).max
         );
 
-        (uint256 a0, uint256 a1) = positionManager.collect(params);
+        (uint256 a0, uint256 a1) = INonfungiblePositionManager(context.positionManager).collect(params);
 
         // Update cumulative trade fee
         ranges[_rangeId].fee0Growth += ((a0 - _amount0) * FixedPoint128.Q128) / _preLiquidity;
@@ -562,14 +554,14 @@ contract Controller is IController, Ownable, Constants {
             sqrtPriceLimitX96: 0
         });
 
-        return swapRouter.exactInputSingle(params);
+        return ISwapRouter(context.swapRouter).exactInputSingle(params);
     }
 
     function swapExactOutput(
         bool _zeroForOne,
         uint256 _amountOut,
         uint256 _amountInMaximum
-    ) internal onlyProductVerifier returns (uint256) {
+    ) internal returns (uint256) {
         ISwapRouter.ExactOutputSingleParams memory params = ISwapRouter.ExactOutputSingleParams({
             tokenIn: _zeroForOne ? context.token0 : context.token1,
             tokenOut: _zeroForOne ? context.token1 : context.token0,
@@ -581,7 +573,7 @@ contract Controller is IController, Ownable, Constants {
             sqrtPriceLimitX96: 0
         });
 
-        return swapRouter.exactOutputSingle(params);
+        return ISwapRouter(context.swapRouter).exactOutputSingle(params);
     }
 
     function applyPerpFee(uint256 _vaultId) internal {
@@ -589,48 +581,13 @@ contract Controller is IController, Ownable, Constants {
 
         // calculate fee for perps
         for (uint256 i = 0; i < vault.lpts.length; i++) {
-            applyPerpFee(vault.lpts[i].rangeId);
+            InterestCalculator.applyDailyPremium(dpmParams, context, ranges[vault.lpts[i].rangeId]);
         }
 
-        updateInterest();
+        // updateInterest();
+        lastTouchedTimestamp = InterestCalculator.applyInterest(context, lastTouchedTimestamp);
     }
 
-    function updateInterest() internal {
-        if (block.timestamp <= lastTouchedTimestamp) {
-            return;
-        }
-
-        // calculate interest for tokens
-        uint256 interest = ((block.timestamp - lastTouchedTimestamp) * pricingModule.calculateInterestRate(getUR())) /
-            365 days;
-
-        context.tokenState0.updateScaler(interest);
-        context.tokenState1.updateScaler(interest);
-
-        lastTouchedTimestamp = block.timestamp;
-    }
-
-    function applyPerpFee(bytes32 _rangeId) internal {
-        DataType.PerpStatus storage perpStatus = ranges[_rangeId];
-
-        if (block.timestamp <= perpStatus.lastTouchedTimestamp) {
-            return;
-        }
-
-        if (perpStatus.borrowedLiquidity > 0) {
-            uint256 premium = ((block.timestamp - perpStatus.lastTouchedTimestamp) *
-                pricingModule.calculateDailyPremium(uniswapPool, perpStatus.lowerTick, perpStatus.upperTick)) / 1 days;
-            perpStatus.premiumGrowthForBorrower = perpStatus.premiumGrowthForBorrower.add(premium);
-            perpStatus.premiumGrowthForLender =
-                perpStatus.premiumGrowthForLender.add(PredyMath.mulDiv(premium, perpStatus.borrowedLiquidity,
-                getTotalLiquidityAmount(_rangeId)));
-        }
-
-        pricingModule.takeSnapshotForRange(uniswapPool, perpStatus.lowerTick, perpStatus.upperTick);
-
-        perpStatus.lastTouchedTimestamp = block.timestamp;
-    }
-    
     function getPerpUR(bytes32 _rangeId) internal view returns (uint256) {
         return PredyMath.mulDiv(ranges[_rangeId].borrowedLiquidity, ONE, getTotalLiquidityAmount(_rangeId));
     }
@@ -650,21 +607,21 @@ contract Controller is IController, Ownable, Constants {
     }
 
     function getSqrtPrice() public view returns (uint160 sqrtPriceX96) {
-        (sqrtPriceX96, , , , , , ) = uniswapPool.slot0();
+        (sqrtPriceX96, , , , , , ) = IUniswapV3Pool(context.uniswapPool).slot0();
     }
 
     /**
      * Gets Time Weighted Average Price of underlying token by margin token.
      */
     function getTWAP() external view returns (uint256) {
-        (uint256 sqrtPrice, ) = lptMathModule.callUniswapObserve(uniswapPool, 1 minutes);
+        (uint256 sqrtPrice, ) = lptMathModule.callUniswapObserve(IUniswapV3Pool(context.uniswapPool), 1 minutes);
 
         return lptMathModule.decodeSqrtPriceX96(context.isMarginZero, sqrtPrice);
 
     }
 
     function getTotalLiquidityAmount(bytes32 _rangeId) internal view returns (uint256) {
-        (, , , , , , , uint128 liquidity, , , , ) = positionManager.positions(ranges[_rangeId].tokenId);
+        (, , , , , , , uint128 liquidity, , , , ) = INonfungiblePositionManager(context.positionManager).positions(ranges[_rangeId].tokenId);
 
         return liquidity;
     }
