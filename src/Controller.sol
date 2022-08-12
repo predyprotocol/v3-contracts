@@ -35,14 +35,6 @@ contract Controller is IController, Ownable, Constants {
     using SafeCast for int256;
     using VaultLib for DataType.Vault;
 
-    struct CloseParams {
-        bool zeroToOne;
-        uint256 amount;
-        uint256 amountOutMinimum;
-        uint256 penaltyAmount0;
-        uint256 penaltyAmount1;
-    }
-
     uint256 public lastTouchedTimestamp;
 
     mapping(bytes32 => DataType.PerpStatus) private ranges;
@@ -56,13 +48,6 @@ contract Controller is IController, Ownable, Constants {
     InterestCalculator.DPMParams private dpmParams;
 
     event VaultCreated(uint256 vaultId);
-    event PositionClosed(
-        uint256 vaultId,
-        int256 _amount0,
-        int256 _amount1,
-        uint256 _penaltyAmount0,
-        uint256 _penaltyAmount1
-    );
 
     modifier onlyVaultOwner(uint256 _vaultId) {
         require(vaults[_vaultId].owner == msg.sender);
@@ -118,7 +103,7 @@ contract Controller is IController, Ownable, Constants {
     /**
      * @notice Opens new position.
      */
-    function openPosition(
+    function updatePosition(
         uint256 _vaultId,
         DataType.PositionUpdate[] memory _positionUpdates,
         uint256 _buffer0,

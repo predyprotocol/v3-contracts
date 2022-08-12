@@ -55,7 +55,7 @@ contract ControllerTest is TestDeployer, Test {
             0
         );
 
-        controller.openPosition(0, positionUpdates, amount0*2, amount1*2);
+        controller.updatePosition(0, positionUpdates, amount0*2, amount1*2);
     }
 
     function testBorrowLPT() public {
@@ -98,7 +98,7 @@ contract ControllerTest is TestDeployer, Test {
             1e18 * 1800 / 1e12
         );
 
-        controller.openPosition(0, positionUpdates, 1e18 * 1800 / 1e12, margin);
+        controller.updatePosition(0, positionUpdates, 1e18 * 1800 / 1e12, margin);
     }
 
 }

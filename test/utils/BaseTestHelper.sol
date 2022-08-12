@@ -167,7 +167,7 @@ abstract contract BaseTestHelper {
             0
         );
 
-        controller.openPosition(_vaultId, positionUpdates, amount0*105/100, amount1*105/100);
+        controller.updatePosition(_vaultId, positionUpdates, amount0*105/100, amount1*105/100);
     }
 
     /*
@@ -207,7 +207,7 @@ abstract contract BaseTestHelper {
 
         PositionVerifier.Position memory position = PositionVerifier.Position(0, 0, 0, 0, lpts);
 
-        return pool.openPosition(0, 0, IProductVerifier.OpenPositionParams(position, 0), buffer0*2, buffer1*2);
+        return pool.updatePosition(0, 0, IProductVerifier.OpenPositionParams(position, 0), buffer0*2, buffer1*2);
 
     }
 
@@ -269,7 +269,7 @@ abstract contract BaseTestHelper {
         buffer0 = _amount0;
         buffer1 = _amount1;
 
-        return pool.openPosition(_vaultId, params, a0, a1);
+        return pool.updatePosition(_vaultId, params, a0, a1);
     }
 
     function preBorrowLPT(
@@ -333,7 +333,7 @@ abstract contract BaseTestHelper {
             _limitPrice
         );
 
-        return pool.openPosition(_vaultId, _margin, params, buffer0, buffer1);
+        return pool.updatePosition(_vaultId, _margin, params, buffer0, buffer1);
     }
 
     function getAmountInMaximum(

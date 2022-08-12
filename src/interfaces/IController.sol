@@ -5,7 +5,7 @@ pragma abicoder v2;
 import "../libraries/DataType.sol";
 
 interface IController {
-    function openPosition(
+    function updatePosition(
         uint256 _vaultId,
         DataType.PositionUpdate[] memory _positionUpdates,
         uint256 _buffer0,
