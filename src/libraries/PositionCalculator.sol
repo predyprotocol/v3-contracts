@@ -20,17 +20,19 @@ library PositionCalculator {
         return DataType.Position(0, 0, 0, 0, lpts);
     }
 
-    function getRequiredTokenAmountsToOpen(
-        DataType.Position memory _destPosition,
-        uint160 _sqrtPrice
-    ) internal pure returns (int256, int256) {
+    function getRequiredTokenAmountsToOpen(DataType.Position memory _destPosition, uint160 _sqrtPrice)
+        internal
+        pure
+        returns (int256, int256)
+    {
         return getRequiredTokenAmounts(emptyPosition(), _destPosition, _sqrtPrice);
     }
-    
-    function getRequiredTokenAmountsToClose(
-        DataType.Position memory _srcPosition,
-        uint160 _sqrtPrice
-    ) internal pure returns (int256, int256) {
+
+    function getRequiredTokenAmountsToClose(DataType.Position memory _srcPosition, uint160 _sqrtPrice)
+        internal
+        pure
+        returns (int256, int256)
+    {
         return getRequiredTokenAmounts(_srcPosition, emptyPosition(), _sqrtPrice);
     }
 
@@ -39,7 +41,6 @@ library PositionCalculator {
         DataType.Position memory _destPosition,
         uint160 _sqrtPrice
     ) internal pure returns (int256 requiredAmount0, int256 requiredAmount1) {
-
         requiredAmount0 = requiredAmount0.sub(int256(_srcPosition.collateral0));
         requiredAmount1 = requiredAmount1.sub(int256(_srcPosition.collateral1));
         requiredAmount0 = requiredAmount0.add(int256(_srcPosition.debt0));
@@ -50,7 +51,7 @@ library PositionCalculator {
         requiredAmount0 = requiredAmount0.sub(int256(_destPosition.debt0));
         requiredAmount1 = requiredAmount1.sub(int256(_destPosition.debt1));
 
-        for(uint256 i = 0;i < _srcPosition.lpts.length;i++) {
+        for (uint256 i = 0; i < _srcPosition.lpts.length; i++) {
             DataType.LPT memory lpt = _srcPosition.lpts[i];
 
             (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
@@ -60,7 +61,7 @@ library PositionCalculator {
                 lpt.liquidity
             );
 
-            if(lpt.isCollateral) {
+            if (lpt.isCollateral) {
                 requiredAmount0 = requiredAmount0.sub(int256(amount0));
                 requiredAmount1 = requiredAmount1.sub(int256(amount1));
             } else {
@@ -69,7 +70,7 @@ library PositionCalculator {
             }
         }
 
-        for(uint256 i = 0;i < _destPosition.lpts.length;i++) {
+        for (uint256 i = 0; i < _destPosition.lpts.length; i++) {
             DataType.LPT memory lpt = _destPosition.lpts[i];
 
             (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
@@ -79,7 +80,7 @@ library PositionCalculator {
                 lpt.liquidity
             );
 
-            if(lpt.isCollateral) {
+            if (lpt.isCollateral) {
                 requiredAmount0 = requiredAmount0.add(int256(amount0));
                 requiredAmount1 = requiredAmount1.add(int256(amount1));
             } else {
@@ -107,23 +108,22 @@ library PositionCalculator {
         bool _isMarginZero
     ) internal pure returns (int256 minValue) {
         minValue = type(int256).max;
-        uint160 sqrtPriceLower = 86*_sqrtPrice/100;
-        uint160 sqrtPriceUpper = 112*_sqrtPrice/100;
+        uint160 sqrtPriceLower = (86 * _sqrtPrice) / 100;
+        uint160 sqrtPriceUpper = (112 * _sqrtPrice) / 100;
 
-        for(uint256 i = 0;i < _position.lpts.length;i++) {
+        for (uint256 i = 0; i < _position.lpts.length; i++) {
             DataType.LPT memory lpt = _position.lpts[i];
-            
-            if(!lpt.isCollateral) {
+
+            if (!lpt.isCollateral) {
                 uint160 sqrtPrice = uint160(TickMath.getSqrtRatioAtTick((lpt.upperTick + lpt.lowerTick) / 2));
 
-                if(sqrtPrice < sqrtPriceLower || sqrtPriceUpper < sqrtPrice) {
+                if (sqrtPrice < sqrtPriceLower || sqrtPriceUpper < sqrtPrice) {
                     continue;
                 }
 
-
                 int256 value = calculateValue(_position, sqrtPrice, _isMarginZero);
 
-                if(minValue > value) {
+                if (minValue > value) {
                     minValue = value;
                 }
             }
@@ -131,35 +131,38 @@ library PositionCalculator {
 
         {
             int256 value = calculateValue(_position, sqrtPriceUpper, _isMarginZero);
-            if(minValue > value) {
+            if (minValue > value) {
                 minValue = value;
             }
         }
 
         {
             int256 value = calculateValue(_position, sqrtPriceLower, _isMarginZero);
-            if(minValue > value) {
+            if (minValue > value) {
                 minValue = value;
             }
         }
     }
 
-    function calculateValue(DataType.Position memory _position, uint160 _sqrtPrice, bool isMarginZero)
-        internal
-        pure
-        returns (int256 value)
-    {
-        (uint256 collateralValue, uint256 debtValue) = calculateCollateralAndDebtValue(_position, _sqrtPrice, isMarginZero);
+    function calculateValue(
+        DataType.Position memory _position,
+        uint160 _sqrtPrice,
+        bool isMarginZero
+    ) internal pure returns (int256 value) {
+        (uint256 collateralValue, uint256 debtValue) = calculateCollateralAndDebtValue(
+            _position,
+            _sqrtPrice,
+            isMarginZero
+        );
 
         return int256(collateralValue) - int256(debtValue);
     }
 
-    function calculateCollateralAndDebtValue(DataType.Position memory _position, uint160 _sqrtPrice, bool isMarginZero)
-        internal
-        pure
-        returns (uint256 collateralValue, uint256 debtValue)
-    {
-
+    function calculateCollateralAndDebtValue(
+        DataType.Position memory _position,
+        uint160 _sqrtPrice,
+        bool isMarginZero
+    ) internal pure returns (uint256 collateralValue, uint256 debtValue) {
         uint256 collateralAmount0 = _position.collateral0;
         uint256 collateralAmount1 = _position.collateral1;
         uint256 debtAmount0 = _position.debt0;
@@ -171,8 +174,11 @@ library PositionCalculator {
             uint160 sqrtLowerPrice = TickMath.getSqrtRatioAtTick(lpt.lowerTick);
             uint160 sqrtUpperPrice = TickMath.getSqrtRatioAtTick(lpt.upperTick);
 
-            if(!lpt.isCollateral && sqrtLowerPrice <= _sqrtPrice && _sqrtPrice <= sqrtUpperPrice) {
-                debtValue = lpt.liquidity * (TickMath.getSqrtRatioAtTick(lpt.upperTick) - TickMath.getSqrtRatioAtTick(lpt.lowerTick)) / Q96;
+            if (!lpt.isCollateral && sqrtLowerPrice <= _sqrtPrice && _sqrtPrice <= sqrtUpperPrice) {
+                debtValue =
+                    (lpt.liquidity *
+                        (TickMath.getSqrtRatioAtTick(lpt.upperTick) - TickMath.getSqrtRatioAtTick(lpt.lowerTick))) /
+                    Q96;
                 continue;
             }
 
@@ -183,7 +189,7 @@ library PositionCalculator {
                 lpt.liquidity
             );
 
-            if(lpt.isCollateral) {
+            if (lpt.isCollateral) {
                 collateralAmount0 += (amount0);
                 collateralAmount1 += (amount1);
             } else {

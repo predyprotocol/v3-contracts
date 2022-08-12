@@ -24,7 +24,7 @@ contract BaseTokenTest is Test {
         assertEq(value, 1000 * 1e6);
     }
 
-    function testCollateralBecomesLarger(uint256 ) public {
+    function testCollateralBecomesLarger(uint256) public {
         uint256 valueBefore = BaseToken.getCollateralValue(tokenState, accountState);
         BaseToken.updateScaler(tokenState, 1e10);
         uint256 valueAfter = BaseToken.getCollateralValue(tokenState, accountState);
@@ -73,5 +73,4 @@ contract BaseTokenTest is Test {
         uint256 debtValue = BaseToken.getDebtValue(tokenState, accountState);
         assertEq(debtValue, 100 * 1e6);
     }
-
 }

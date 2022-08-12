@@ -18,10 +18,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await deploy('ProductVerifier', { from: deployer, args: [predyV3Pool.address], log: true })
   const productVerifier = await ethers.getContract('ProductVerifier', deployer)
 
-  await predyV3Pool.setProductVerifier(productVerifier.address);
+  await predyV3Pool.setProductVerifier(productVerifier.address)
 
   return
-
 
   const isMarginZero = false
 
@@ -33,7 +32,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     libraries: {
       VaultLib: VaultLib.address,
     },
-    log: true
+    log: true,
   })
 
   if (result.newlyDeployed) {
@@ -47,7 +46,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     await deploy('ProductVerifier', { from: deployer, args: [predyV3Pool.address], log: true })
     const productVerifier = await ethers.getContract('ProductVerifier', deployer)
 
-    await predyV3Pool.setProductVerifier(productVerifier.address);
+    await predyV3Pool.setProductVerifier(productVerifier.address)
   }
 }
 

@@ -27,34 +27,25 @@ abstract contract BaseTestHelper {
 
     function getContext() internal view returns (DataType.Context memory) {
         BaseToken.TokenState memory tokenState = BaseToken.TokenState(0, 0, 1e18, 1e18);
-        
-        return DataType.Context(
-            address(token0),
-            address(token1),
-            500,
-            address(positionManager),
-            address(swapRouter),
-            address(uniPool),
-            true,
-            tokenState,
-            tokenState
-        );
+
+        return
+            DataType.Context(
+                address(token0),
+                address(token1),
+                500,
+                address(positionManager),
+                address(swapRouter),
+                address(uniPool),
+                true,
+                tokenState,
+                tokenState
+            );
     }
 
     function getPerpState() internal view returns (DataType.PerpStatus memory) {
-        return DataType.PerpStatus(
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0
-        );
+        return DataType.PerpStatus(0, 0, 0, 0, 0, 0, 0, 0, 0);
     }
-    
+
     function depositToken(
         DataType.Vault storage _vault,
         DataType.Context storage _context,
@@ -62,14 +53,7 @@ abstract contract BaseTestHelper {
         uint256 _amount0,
         uint256 _amount1
     ) internal {
-        _updateTokenPosition(
-            _vault,
-            _context,
-            _ranges,
-            DataType.PositionUpdateType.DEPOSIT_TOKEN,
-            _amount0,
-            _amount1
-        );
+        _updateTokenPosition(_vault, _context, _ranges, DataType.PositionUpdateType.DEPOSIT_TOKEN, _amount0, _amount1);
     }
 
     function withdrawToken(
@@ -79,14 +63,7 @@ abstract contract BaseTestHelper {
         uint256 _amount0,
         uint256 _amount1
     ) internal {
-        _updateTokenPosition(
-            _vault,
-            _context,
-            _ranges,
-            DataType.PositionUpdateType.WITHDRAW_TOKEN,
-            _amount0,
-            _amount1
-        );
+        _updateTokenPosition(_vault, _context, _ranges, DataType.PositionUpdateType.WITHDRAW_TOKEN, _amount0, _amount1);
     }
 
     function borrowToken(
@@ -96,16 +73,8 @@ abstract contract BaseTestHelper {
         uint256 _amount0,
         uint256 _amount1
     ) internal {
-        _updateTokenPosition(
-            _vault,
-            _context,
-            _ranges,
-            DataType.PositionUpdateType.BORROW_TOKEN,
-            _amount0,
-            _amount1
-        );
+        _updateTokenPosition(_vault, _context, _ranges, DataType.PositionUpdateType.BORROW_TOKEN, _amount0, _amount1);
     }
-
 
     function repayToken(
         DataType.Vault storage _vault,
@@ -114,14 +83,7 @@ abstract contract BaseTestHelper {
         uint256 _amount0,
         uint256 _amount1
     ) internal {
-        _updateTokenPosition(
-            _vault,
-            _context,
-            _ranges,
-            DataType.PositionUpdateType.REPAY_TOKEN,
-            _amount0,
-            _amount1
-        );
+        _updateTokenPosition(_vault, _context, _ranges, DataType.PositionUpdateType.REPAY_TOKEN, _amount0, _amount1);
     }
 
     function _updateTokenPosition(
@@ -134,20 +96,17 @@ abstract contract BaseTestHelper {
     ) internal {
         DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](1);
 
-        positionUpdates[0] = DataType.PositionUpdate(
-            _positionUpdateType,
-            false,
-            0,
-            0,
-            0,
-            _amount0,
-            _amount1
-        );
+        positionUpdates[0] = DataType.PositionUpdate(_positionUpdateType, false, 0, 0, 0, _amount0, _amount1);
 
         PositionUpdator.updatePosition(_vault, _context, _ranges, positionUpdates, false);
     }
 
-    function depositLPT(uint256 _vaultId, int24 _lower, int24 _upper, uint256 _amount) public {
+    function depositLPT(
+        uint256 _vaultId,
+        int24 _lower,
+        int24 _upper,
+        uint256 _amount
+    ) public {
         DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](1);
 
         (uint128 liquidity, uint256 amount0, uint256 amount1) = LPTMath.getLiquidityAndAmountToDeposit(
@@ -167,7 +126,7 @@ abstract contract BaseTestHelper {
             0
         );
 
-        controller.updatePosition(_vaultId, positionUpdates, amount0*105/100, amount1*105/100);
+        controller.updatePosition(_vaultId, positionUpdates, (amount0 * 105) / 100, (amount1 * 105) / 100);
     }
 
     /*
@@ -474,7 +433,7 @@ abstract contract BaseTestHelper {
     /**
      * option size -> liquidity
      */
-     /*
+    /*
     function getLiquidityForOptionAmount(bytes32 _rangeId, uint256 _amount) public view returns (uint128) {
         DataType.PerpStatus memory range = pool.getRange(_rangeId);
 

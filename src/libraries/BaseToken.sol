@@ -31,12 +31,12 @@ library BaseToken {
         uint256 _amount,
         bool _withEnteringMarket
     ) internal returns (uint256 mintAmount) {
-        if(_withEnteringMarket) {
+        if (_withEnteringMarket) {
             mintAmount = PredyMath.mulDiv(_amount, 1e18, tokenState.collateralScaler);
 
             accountState.collateralAmount = accountState.collateralAmount.add(mintAmount);
             tokenState.totalDeposited = tokenState.totalDeposited.add(mintAmount);
-        } else{
+        } else {
             accountState.collateralAmountNotInMarket = accountState.collateralAmountNotInMarket.add(_amount);
         }
     }
@@ -52,9 +52,7 @@ library BaseToken {
         tokenState.totalBorrowed = tokenState.totalBorrowed.add(mintAmount);
     }
 
-    function clearCollateral(TokenState storage tokenState, AccountState storage accountState)
-        internal
-    {
+    function clearCollateral(TokenState storage tokenState, AccountState storage accountState) internal {
         tokenState.totalDeposited = tokenState.totalDeposited.sub(accountState.collateralAmount);
         accountState.collateralAmount = 0;
         accountState.collateralAmountNotInMarket = 0;
@@ -71,12 +69,12 @@ library BaseToken {
         uint256 _amount,
         bool _withEnteringMarket
     ) internal {
-        if(_withEnteringMarket) {
+        if (_withEnteringMarket) {
             uint256 burnAmount = PredyMath.mulDiv(_amount, 1e18, tokenState.collateralScaler);
 
             accountState.collateralAmount = accountState.collateralAmount.sub(burnAmount);
             tokenState.totalDeposited = tokenState.totalDeposited.sub(burnAmount);
-        }else {
+        } else {
             accountState.collateralAmountNotInMarket = accountState.collateralAmountNotInMarket.sub(_amount);
         }
     }
@@ -98,7 +96,9 @@ library BaseToken {
         pure
         returns (uint256)
     {
-        return PredyMath.mulDiv(accountState.collateralAmount, tokenState.collateralScaler, 1e18) + accountState.collateralAmountNotInMarket;
+        return
+            PredyMath.mulDiv(accountState.collateralAmount, tokenState.collateralScaler, 1e18) +
+            accountState.collateralAmountNotInMarket;
     }
 
     // get debt value

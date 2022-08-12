@@ -33,11 +33,7 @@ abstract contract TestDeployer is BaseTestHelper {
             token1 = tokenA;
         }
 
-        positionManager = new NonfungiblePositionManager(
-            factory,
-            address(tokenA),
-            address(0)
-        );
+        positionManager = new NonfungiblePositionManager(factory, address(tokenA), address(0));
         swapRouter = new SwapRouter(factory, address(tokenA));
 
         uint160 sqrtPrice = 1982611457661667117153625747031458;

@@ -24,23 +24,25 @@ library LPTMath {
         )
     {
         if (isMarginZero) {
-            return getLiquidityAndAmount(
-                0,
-                requestedAmount,
-                TickMath.getSqrtRatioAtTick(upper),
-                currentSqrtPrice,
-                lower,
-                upper
-            );
+            return
+                getLiquidityAndAmount(
+                    0,
+                    requestedAmount,
+                    TickMath.getSqrtRatioAtTick(upper),
+                    currentSqrtPrice,
+                    lower,
+                    upper
+                );
         } else {
-            return getLiquidityAndAmount(
-                requestedAmount,
-                0,
-                TickMath.getSqrtRatioAtTick(lower),
-                currentSqrtPrice,
-                lower,
-                upper
-            );
+            return
+                getLiquidityAndAmount(
+                    requestedAmount,
+                    0,
+                    TickMath.getSqrtRatioAtTick(lower),
+                    currentSqrtPrice,
+                    lower,
+                    upper
+                );
         }
     }
 
@@ -60,23 +62,25 @@ library LPTMath {
         )
     {
         if (isMarginZero) {
-            return getLiquidityAndAmount(
-                0,
-                requestedAmount,
-                TickMath.getSqrtRatioAtTick(upper),
-                TickMath.getSqrtRatioAtTick(tick),
-                lower,
-                upper
-            );
+            return
+                getLiquidityAndAmount(
+                    0,
+                    requestedAmount,
+                    TickMath.getSqrtRatioAtTick(upper),
+                    TickMath.getSqrtRatioAtTick(tick),
+                    lower,
+                    upper
+                );
         } else {
-            return getLiquidityAndAmount(
-                requestedAmount,
-                0,
-                TickMath.getSqrtRatioAtTick(lower),
-                TickMath.getSqrtRatioAtTick(tick),
-                lower,
-                upper
-            );
+            return
+                getLiquidityAndAmount(
+                    requestedAmount,
+                    0,
+                    TickMath.getSqrtRatioAtTick(lower),
+                    TickMath.getSqrtRatioAtTick(tick),
+                    lower,
+                    upper
+                );
         }
     }
 
@@ -112,21 +116,22 @@ library LPTMath {
         );
     }
 
-
-    function getAmountsForLiquidity(uint160 currentSqrtPrice, int24 _lower, int24 _upper, uint128 _liquidity)
-        internal
-        pure
-        returns (uint256, uint256)
-    {
-        return LiquidityAmounts.getAmountsForLiquidity(
-            currentSqrtPrice, 
-            TickMath.getSqrtRatioAtTick(_lower),
-            TickMath.getSqrtRatioAtTick(_upper),
-            _liquidity
-        );
+    function getAmountsForLiquidity(
+        uint160 currentSqrtPrice,
+        int24 _lower,
+        int24 _upper,
+        uint128 _liquidity
+    ) internal pure returns (uint256, uint256) {
+        return
+            LiquidityAmounts.getAmountsForLiquidity(
+                currentSqrtPrice,
+                TickMath.getSqrtRatioAtTick(_lower),
+                TickMath.getSqrtRatioAtTick(_upper),
+                _liquidity
+            );
     }
 
-    function getSqrtRatioAtTick(int24 _tick) internal pure returns(uint160) {
+    function getSqrtRatioAtTick(int24 _tick) internal pure returns (uint160) {
         return TickMath.getSqrtRatioAtTick(_tick);
     }
 
@@ -176,7 +181,7 @@ library LPTMath {
 
         revert("e/empty-error");
     }
-    
+
     function decodeSqrtPriceX96(bool isMarginZero, uint256 sqrtPriceX96) internal pure returns (uint256 price) {
         uint256 scaler = 1e18; //10**ERC20(token0).decimals();
 
@@ -191,5 +196,4 @@ library LPTMath {
         if (price > 1e36) price = 1e36;
         else if (price == 0) price = 1;
     }
-
 }

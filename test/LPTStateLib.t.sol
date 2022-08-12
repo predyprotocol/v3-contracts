@@ -11,7 +11,6 @@ contract LPTStateLibTest is Test {
     DataType.PerpStatus private perpStatus;
 
     function testRegisterNewLPTState() public {
-
         LPTStateLib.registerNewLPTState(perpStatus, 0, 0, 10);
 
         assertEq(perpStatus.tokenId, 0);

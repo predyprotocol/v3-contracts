@@ -18,19 +18,26 @@ contract ControllerHelper {
     constructor(Controller _controller) {
         controller = _controller;
     }
-    
-    function getPositionUpdatesToOpen(
-        DataType.Position memory _position,
-        uint256 _limitPrice
-    ) external view returns (DataType.PositionUpdate[] memory positionUpdates,  uint256 _buffer0, uint256 _buffer1) {
 
+    function getPositionUpdatesToOpen(DataType.Position memory _position, uint256 _limitPrice)
+        external
+        view
+        returns (
+            DataType.PositionUpdate[] memory positionUpdates,
+            uint256 _buffer0,
+            uint256 _buffer1
+        )
+    {
         uint256 swapIndex;
 
         (positionUpdates, swapIndex) = PositionMath.calculatePositionUpdatesToOpen(_position);
 
-        (int256 requiredAmount0, int256 requiredAmount1) = PositionCalculator.getRequiredTokenAmountsToOpen(_position, controller.getSqrtPrice());
-        
-        if(controller.getIsMarginZero()) {
+        (int256 requiredAmount0, int256 requiredAmount1) = PositionCalculator.getRequiredTokenAmountsToOpen(
+            _position,
+            controller.getSqrtPrice()
+        );
+
+        if (controller.getIsMarginZero()) {
             uint256 maxAmount0 = calculateAmount0(uint256(requiredAmount1), _limitPrice);
             positionUpdates[swapIndex] = DataType.PositionUpdate(
                 DataType.PositionUpdateType.SWAP_EXACT_OUT,
@@ -61,16 +68,23 @@ contract ControllerHelper {
         }
     }
 
-    function getPositionUpdatesToClose(
-        DataType.Position memory _position,
-        uint256 _limitPrice
-    ) external view returns (DataType.PositionUpdate[] memory positionUpdates,  uint256 _buffer0, uint256 _buffer1) {
-
+    function getPositionUpdatesToClose(DataType.Position memory _position, uint256 _limitPrice)
+        external
+        view
+        returns (
+            DataType.PositionUpdate[] memory positionUpdates,
+            uint256 _buffer0,
+            uint256 _buffer1
+        )
+    {
         positionUpdates = PositionMath.calculatePositionUpdatesToClose(_position);
 
-        (int256 requiredAmount0, int256 requiredAmount1) = PositionCalculator.getRequiredTokenAmountsToClose(_position, controller.getSqrtPrice());
+        (int256 requiredAmount0, int256 requiredAmount1) = PositionCalculator.getRequiredTokenAmountsToClose(
+            _position,
+            controller.getSqrtPrice()
+        );
 
-        if(requiredAmount0 < 0) {
+        if (requiredAmount0 < 0) {
             uint256 minAmount1 = calculateAmount1(uint256(-requiredAmount0), _limitPrice);
             positionUpdates[0] = DataType.PositionUpdate(
                 DataType.PositionUpdateType.SWAP_EXACT_IN,
@@ -84,7 +98,7 @@ contract ControllerHelper {
 
             _buffer0 = 0;
             _buffer1 = 0;
-        } else if(requiredAmount1 < 0) {
+        } else if (requiredAmount1 < 0) {
             uint256 maxAmount0 = calculateAmount0(uint256(-requiredAmount1), _limitPrice);
             positionUpdates[0] = DataType.PositionUpdate(
                 DataType.PositionUpdateType.SWAP_EXACT_IN,
@@ -102,18 +116,18 @@ contract ControllerHelper {
     }
 
     function calculateAmount0(uint256 _amount1, uint256 _limitPrice) internal view returns (uint256) {
-        if(controller.getIsMarginZero()) {
-            return _amount1 * _limitPrice / 1e12;
+        if (controller.getIsMarginZero()) {
+            return (_amount1 * _limitPrice) / 1e12;
         } else {
-            return _amount1 * 1e12 / _limitPrice;
+            return (_amount1 * 1e12) / _limitPrice;
         }
     }
 
     function calculateAmount1(uint256 _amount0, uint256 _limitPrice) internal view returns (uint256) {
-        if(controller.getIsMarginZero()) {
-            return _amount0 * 1e12 / _limitPrice;
+        if (controller.getIsMarginZero()) {
+            return (_amount0 * 1e12) / _limitPrice;
         } else {
-            return _amount0 * _limitPrice / 1e12;
+            return (_amount0 * _limitPrice) / 1e12;
         }
     }
 }

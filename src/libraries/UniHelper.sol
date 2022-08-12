@@ -25,20 +25,12 @@ library UniHelper {
         )
     {
         INonfungiblePositionManager.IncreaseLiquidityParams memory params = INonfungiblePositionManager
-            .IncreaseLiquidityParams(
-                _tokenId,
-                _amount0,
-                _amount1,
-                _amountMax0,
-                _amountMax1,
-                block.timestamp
-            );
+            .IncreaseLiquidityParams(_tokenId, _amount0, _amount1, _amountMax0, _amountMax1, block.timestamp);
 
         (liquidity, amount0, amount1) = INonfungiblePositionManager(_context.positionManager).increaseLiquidity(params);
 
         tokenId = _tokenId;
     }
-
 
     function mint(
         DataType.Context memory _context,
@@ -70,8 +62,7 @@ library UniHelper {
             address(this),
             block.timestamp
         );
-        
+
         return INonfungiblePositionManager(_context.positionManager).mint(params);
     }
-
 }

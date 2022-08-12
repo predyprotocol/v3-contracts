@@ -10,7 +10,6 @@ import "../src/libraries/InterestCalculator.sol";
 import "./utils/TestDeployer.sol";
 
 contract InterestCalculatorTest is TestDeployer, Test {
-
     address owner;
 
     DataType.Context private context;
@@ -50,18 +49,27 @@ contract InterestCalculatorTest is TestDeployer, Test {
             block.timestamp
         );
 
-        (perpStatus.tokenId, , ,) = positionManager.mint(params);
+        (perpStatus.tokenId, , , ) = positionManager.mint(params);
     }
 
     function testApplyInterest() public {
-        InterestCalculator.applyInterest(context, InterestCalculator.IRMParams(1e12, 30 * 1e16, 20 * 1e16, 50 * 1e16), 0);
+        InterestCalculator.applyInterest(
+            context,
+            InterestCalculator.IRMParams(1e12, 30 * 1e16, 20 * 1e16, 50 * 1e16),
+            0
+        );
 
         assertGt(context.tokenState0.collateralScaler, 1e18);
         assertGt(context.tokenState0.debtScaler, 1e18);
     }
 
     function testCalculateInterestRate() public {
-        InterestCalculator.IRMParams memory irpParams = InterestCalculator.IRMParams(1e12, 30 * 1e16, 20 * 1e16, 50 * 1e16);
+        InterestCalculator.IRMParams memory irpParams = InterestCalculator.IRMParams(
+            1e12,
+            30 * 1e16,
+            20 * 1e16,
+            50 * 1e16
+        );
 
         uint256 ir0 = InterestCalculator.calculateInterestRate(irpParams, 0);
         uint256 ir1 = InterestCalculator.calculateInterestRate(irpParams, 1e16);

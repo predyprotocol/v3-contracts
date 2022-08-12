@@ -27,12 +27,7 @@ contract ControllerHelperTest is TestDeployer, Test {
 
         controllerHelper = new ControllerHelper(controller);
 
-        depositLPT(
-            0,
-            202500,
-            202600,
-            2 * 1e18
-        );
+        depositLPT(0, 202500, 202600, 2 * 1e18);
     }
 
     function testDepositLPT() public {
@@ -48,7 +43,8 @@ contract ControllerHelperTest is TestDeployer, Test {
         lpts[0] = DataType.LPT(true, liquidity, 202560, 202570);
         DataType.Position memory position = DataType.Position(0, 0, 0, 0, lpts);
 
-        (DataType.PositionUpdate[] memory positionUpdates, uint256 buffer0, uint256 buffer1) = controllerHelper.getPositionUpdatesToOpen(position, 1800);
+        (DataType.PositionUpdate[] memory positionUpdates, uint256 buffer0, uint256 buffer1) = controllerHelper
+            .getPositionUpdatesToOpen(position, 1800);
 
         controller.updatePosition(0, positionUpdates, buffer0, buffer1);
     }
@@ -56,22 +52,16 @@ contract ControllerHelperTest is TestDeployer, Test {
     function testBorrowLPT() public {
         uint256 margin = 100 * 1e6;
 
-        (uint128 liquidity, , ) = LPTMath.getLiquidityAndAmountToBorrow(
-            true,
-            1e18,
-            202600,
-            202500,
-            202600
-        );
+        (uint128 liquidity, , ) = LPTMath.getLiquidityAndAmountToBorrow(true, 1e18, 202600, 202500, 202600);
 
         DataType.LPT[] memory lpts = new DataType.LPT[](1);
         lpts[0] = DataType.LPT(false, liquidity, 202500, 202600);
         DataType.Position memory position = DataType.Position(margin, 1e18, 0, 0, lpts);
 
-        (DataType.PositionUpdate[] memory positionUpdates, uint256 buffer0, uint256 buffer1) = controllerHelper.getPositionUpdatesToOpen(position, 1800);
+        (DataType.PositionUpdate[] memory positionUpdates, uint256 buffer0, uint256 buffer1) = controllerHelper
+            .getPositionUpdatesToOpen(position, 1800);
         console.log(1, buffer0, buffer1);
 
-        controller.updatePosition(0, positionUpdates, buffer0, buffer1*105/100);
+        controller.updatePosition(0, positionUpdates, buffer0, (buffer1 * 105) / 100);
     }
-
 }

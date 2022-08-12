@@ -25,7 +25,6 @@ import "./libraries/PositionCalculator.sol";
 import "./libraries/InterestCalculator.sol";
 import "./Constants.sol";
 
-
 contract Controller is IController, Ownable, Constants {
     using BaseToken for BaseToken.TokenState;
     using SafeMath for uint256;
@@ -69,7 +68,11 @@ contract Controller is IController, Ownable, Constants {
         context.positionManager = _positionManager;
         context.swapRouter = _swapRouter;
 
-        PoolAddress.PoolKey memory poolKey = PoolAddress.PoolKey({token0: context.token0, token1: context.token1, fee: FEE_TIER});
+        PoolAddress.PoolKey memory poolKey = PoolAddress.PoolKey({
+            token0: context.token0,
+            token1: context.token1,
+            fee: FEE_TIER
+        });
 
         context.uniswapPool = PoolAddress.computeAddress(_factory, poolKey);
 
@@ -126,7 +129,6 @@ contract Controller is IController, Ownable, Constants {
             false
         );
 
-
         require(!checkLiquidatable(vaultId), "P3");
 
         require(int256(_buffer0) >= amount0);
@@ -175,10 +177,7 @@ contract Controller is IController, Ownable, Constants {
     /**
      * Liquidates if 75% of collateral value is less than debt value.
      */
-    function liquidate(
-        uint256 _vaultId,
-        DataType.PositionUpdate[] memory _positionUpdates
-    ) external {
+    function liquidate(uint256 _vaultId, DataType.PositionUpdate[] memory _positionUpdates) external {
         applyPerpFee(_vaultId);
 
         // check liquidation
@@ -199,7 +198,11 @@ contract Controller is IController, Ownable, Constants {
         (uint160 sqrtPrice, ) = LPTMath.callUniswapObserve(IUniswapV3Pool(context.uniswapPool), 1 minutes);
 
         // calculate value using TWAP price
-        int256 requiredCollateral = PositionCalculator.calculateRequiredCollateral(getPosition(_vaultId), sqrtPrice, context.isMarginZero);
+        int256 requiredCollateral = PositionCalculator.calculateRequiredCollateral(
+            getPosition(_vaultId),
+            sqrtPrice,
+            context.isMarginZero
+        );
 
         return requiredCollateral > 0;
     }
@@ -208,7 +211,7 @@ contract Controller is IController, Ownable, Constants {
         for (uint256 i = 0; i < _data.length; i++) {
             (uint256 vaultId, DataType.PositionUpdate[] memory _positionUpdates) = abi.decode(
                 _data[i],
-                (uint256,  DataType.PositionUpdate[])
+                (uint256, DataType.PositionUpdate[])
             );
 
             applyPerpFee(vaultId);
@@ -227,13 +230,7 @@ contract Controller is IController, Ownable, Constants {
         return ranges[_rangeId];
     }
 
-    function getVaultStatus(uint256 _vaultId)
-        external
-        returns (
-            uint256,
-            uint256
-        )
-    {
+    function getVaultStatus(uint256 _vaultId) external returns (uint256, uint256) {
         uint160 sqrtPriceX96 = getSqrtPrice();
 
         applyPerpFee(_vaultId);
@@ -250,7 +247,7 @@ contract Controller is IController, Ownable, Constants {
             vaultId = vaultIdCount;
             vaultIdCount++;
             vaults[vaultId].owner = msg.sender;
-            
+
             emit VaultCreated(vaultId);
         } else {
             vaultId = _vaultId;
@@ -314,11 +311,12 @@ contract Controller is IController, Ownable, Constants {
         (uint256 sqrtPrice, ) = LPTMath.callUniswapObserve(IUniswapV3Pool(context.uniswapPool), 1 minutes);
 
         return LPTMath.decodeSqrtPriceX96(context.isMarginZero, sqrtPrice);
-
     }
 
     function getTotalLiquidityAmount(bytes32 _rangeId) internal view returns (uint256) {
-        (, , , , , , , uint128 liquidity, , , , ) = INonfungiblePositionManager(context.positionManager).positions(ranges[_rangeId].tokenId);
+        (, , , , , , , uint128 liquidity, , , , ) = INonfungiblePositionManager(context.positionManager).positions(
+            ranges[_rangeId].tokenId
+        );
 
         return liquidity;
     }
@@ -333,8 +331,8 @@ contract Controller is IController, Ownable, Constants {
     function getCollateralPositionValue(uint256 _vaultId, uint160 _sqrtPrice) internal view returns (uint256) {
         DataType.Vault memory vault = vaults[_vaultId];
 
-        (uint256 collateralAmount0, uint256 collateralAmount1) =  getCollateralPositionAmounts(_vaultId, _sqrtPrice);
-        uint256 earnedPremium = vault.getEarnedDailyPremium(ranges);        
+        (uint256 collateralAmount0, uint256 collateralAmount1) = getCollateralPositionAmounts(_vaultId, _sqrtPrice);
+        uint256 earnedPremium = vault.getEarnedDailyPremium(ranges);
 
         uint256 price = LPTMath.decodeSqrtPriceX96(context.isMarginZero, _sqrtPrice);
 
@@ -349,7 +347,7 @@ contract Controller is IController, Ownable, Constants {
         DataType.Vault memory vault = vaults[_vaultId];
 
         (uint256 debtAmount0, uint256 debtAmount1) = getDebtPositionAmounts(_vaultId, _sqrtPrice);
-        uint256 paidPremium = vault.getPaidDailyPremium(ranges);        
+        uint256 paidPremium = vault.getPaidDailyPremium(ranges);
 
         uint256 price = LPTMath.decodeSqrtPriceX96(context.isMarginZero, _sqrtPrice);
 
@@ -359,7 +357,6 @@ contract Controller is IController, Ownable, Constants {
             return (PredyMath.mulDiv(debtAmount0, price, ONE) + debtAmount1 - paidPremium);
         }
     }
-
 
     function getCollateralPositionAmounts(uint256 _vaultId, uint160 _sqrtPrice)
         internal
@@ -389,7 +386,12 @@ contract Controller is IController, Ownable, Constants {
         for (uint256 i = 0; i < vault.lpts.length; i++) {
             bytes32 rangeId = vault.lpts[i].rangeId;
             DataType.PerpStatus memory range = ranges[rangeId];
-            lpts[i] = DataType.LPT(vault.lpts[i].isCollateral, vault.lpts[i].liquidityAmount, range.lowerTick, range.upperTick);
+            lpts[i] = DataType.LPT(
+                vault.lpts[i].isCollateral,
+                vault.lpts[i].liquidityAmount,
+                range.lowerTick,
+                range.upperTick
+            );
         }
 
         position = DataType.Position(

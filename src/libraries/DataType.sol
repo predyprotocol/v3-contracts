@@ -5,7 +5,6 @@ import "./PredyMath.sol";
 import "./BaseToken.sol";
 
 library DataType {
-
     // Storage Data Type
     struct PerpStatus {
         uint256 tokenId;
@@ -76,7 +75,7 @@ library DataType {
         SWAP_EXACT_IN,
         SWAP_EXACT_OUT
     }
-    
+
     struct PositionUpdate {
         PositionUpdateType positionUpdateType;
         bool zeroForOne;

@@ -24,21 +24,13 @@ contract ControllerTest is TestDeployer, Test {
         deployContracts(owner, factory);
         vm.warp(block.timestamp + 1 minutes);
 
-        depositLPT(
-            0,
-            202500,
-            202600,
-            2 * 1e18
-        );
+        depositLPT(0, 202500, 202600, 2 * 1e18);
     }
-
 
     function testDepositLPT() public {
         DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](1);
 
-        (uint128 liquidity,
-        uint256 amount0,
-        uint256 amount1) = LPTMath.getLiquidityAndAmountToDeposit(
+        (uint128 liquidity, uint256 amount0, uint256 amount1) = LPTMath.getLiquidityAndAmountToDeposit(
             true,
             1e18,
             controller.getSqrtPrice(),
@@ -55,20 +47,14 @@ contract ControllerTest is TestDeployer, Test {
             0
         );
 
-        controller.updatePosition(0, positionUpdates, amount0*2, amount1*2);
+        controller.updatePosition(0, positionUpdates, amount0 * 2, amount1 * 2);
     }
 
     function testBorrowLPT() public {
         DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](3);
         uint256 margin = 100 * 1e6;
 
-        (uint128 liquidity, , ) = LPTMath.getLiquidityAndAmountToBorrow(
-            true,
-            1e18,
-            202600,
-            202500,
-            202600
-        );
+        (uint128 liquidity, , ) = LPTMath.getLiquidityAndAmountToBorrow(true, 1e18, 202600, 202500, 202600);
 
         positionUpdates[0] = DataType.PositionUpdate(
             DataType.PositionUpdateType.BORROW_LPT,
@@ -95,10 +81,9 @@ contract ControllerTest is TestDeployer, Test {
             0,
             0,
             1e18,
-            1e18 * 1800 / 1e12
+            (1e18 * 1800) / 1e12
         );
 
-        controller.updatePosition(0, positionUpdates, 1e18 * 1800 / 1e12, margin);
+        controller.updatePosition(0, positionUpdates, (1e18 * 1800) / 1e12, margin);
     }
-
 }

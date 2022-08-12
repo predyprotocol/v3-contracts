@@ -10,7 +10,6 @@ import "../src/libraries/PositionUpdator.sol";
 import "./utils/TestDeployer.sol";
 
 contract PositionUpdatorTest is TestDeployer, Test {
-
     address owner;
 
     DataType.Context private context;
@@ -37,20 +36,8 @@ contract PositionUpdatorTest is TestDeployer, Test {
         // vault1 is empty
         // vault2 has deposited token
         // vault3 has borrowed token
-        depositToken(
-            vault2,
-            context,
-            ranges,
-            2*1e6,
-            2*1e18
-        );
-        borrowToken(
-            vault3,
-            context,
-            ranges,
-            1e6,
-            1e18
-        );
+        depositToken(vault2, context, ranges, 2 * 1e6, 2 * 1e18);
+        borrowToken(vault3, context, ranges, 1e6, 1e18);
     }
 
     function testUpdatePosition() public {
@@ -86,8 +73,8 @@ contract PositionUpdatorTest is TestDeployer, Test {
             0,
             0,
             0,
-            2*1e6,
-            2*1e18
+            2 * 1e6,
+            2 * 1e18
         );
 
         PositionUpdator.updatePosition(vault2, context, ranges, positionUpdates, false);
@@ -99,15 +86,7 @@ contract PositionUpdatorTest is TestDeployer, Test {
     function testUpdatePositionBorrowToken() public {
         DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](1);
 
-        positionUpdates[0] = DataType.PositionUpdate(
-            DataType.PositionUpdateType.BORROW_TOKEN,
-            false,
-            0,
-            0,
-            0,
-            0,
-            1e18
-        );
+        positionUpdates[0] = DataType.PositionUpdate(DataType.PositionUpdateType.BORROW_TOKEN, false, 0, 0, 0, 0, 1e18);
 
         PositionUpdator.updatePosition(vault1, context, ranges, positionUpdates, false);
 
