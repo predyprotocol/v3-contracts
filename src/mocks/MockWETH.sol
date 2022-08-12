@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 /**
  * @notice Mock of ERC20 contract
  */
-contract MockERC20 is ERC20 {
+contract MockWETH is ERC20 {
     uint8 _decimals;
 
     constructor(

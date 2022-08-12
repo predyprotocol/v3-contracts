@@ -1,10 +1,12 @@
 //SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.7.6;
 
-import "v3-core/contracts/libraries/FullMath.sol";
-import "forge-std/console2.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "./PredyMath.sol";
 
 library BaseToken {
+    using SafeMath for uint256;
+
     struct TokenState {
         uint256 totalDeposited;
         uint256 totalBorrowed;
@@ -13,11 +15,12 @@ library BaseToken {
     }
 
     struct AccountState {
+        uint256 collateralAmountNotInMarket;
         uint256 collateralAmount;
         uint256 debtAmount;
     }
 
-    function initialize(TokenState storage tokenState) internal returns (uint256) {
+    function initialize(TokenState storage tokenState) internal {
         tokenState.collateralScaler = 1e18;
         tokenState.debtScaler = 1e18;
     }
@@ -25,58 +28,68 @@ library BaseToken {
     function addCollateral(
         TokenState storage tokenState,
         AccountState storage accountState,
-        uint256 _amount
-    ) internal returns (uint256) {
-        uint256 mintAmount = FullMath.mulDiv(_amount, 1e18, tokenState.collateralScaler);
+        uint256 _amount,
+        bool _withEnteringMarket
+    ) internal returns (uint256 mintAmount) {
+        if(_withEnteringMarket) {
+            mintAmount = PredyMath.mulDiv(_amount, 1e18, tokenState.collateralScaler);
 
-        accountState.collateralAmount += mintAmount;
-        tokenState.totalDeposited += mintAmount;
+            accountState.collateralAmount = accountState.collateralAmount.add(mintAmount);
+            tokenState.totalDeposited = tokenState.totalDeposited.add(mintAmount);
+        } else{
+            accountState.collateralAmountNotInMarket = accountState.collateralAmountNotInMarket.add(_amount);
+        }
     }
 
     function addDebt(
         TokenState storage tokenState,
         AccountState storage accountState,
         uint256 _amount
-    ) internal returns (uint256) {
-        uint256 mintAmount = FullMath.mulDiv(_amount, 1e18, tokenState.debtScaler);
+    ) internal returns (uint256 mintAmount) {
+        mintAmount = PredyMath.mulDiv(_amount, 1e18, tokenState.debtScaler);
 
-        accountState.debtAmount += mintAmount;
-        tokenState.totalBorrowed += mintAmount;
+        accountState.debtAmount = accountState.debtAmount.add(mintAmount);
+        tokenState.totalBorrowed = tokenState.totalBorrowed.add(mintAmount);
     }
 
     function clearCollateral(TokenState storage tokenState, AccountState storage accountState)
         internal
-        returns (uint256)
     {
-        tokenState.totalDeposited -= accountState.collateralAmount;
+        tokenState.totalDeposited = tokenState.totalDeposited.sub(accountState.collateralAmount);
         accountState.collateralAmount = 0;
+        accountState.collateralAmountNotInMarket = 0;
     }
 
-    function clearDebt(TokenState storage tokenState, AccountState storage accountState) internal returns (uint256) {
-        tokenState.totalBorrowed -= accountState.debtAmount;
+    function clearDebt(TokenState storage tokenState, AccountState storage accountState) internal {
+        tokenState.totalBorrowed = tokenState.totalBorrowed.sub(accountState.debtAmount);
         accountState.debtAmount = 0;
     }
 
     function removeCollateral(
         TokenState storage tokenState,
         AccountState storage accountState,
-        uint256 _amount
-    ) internal returns (uint256) {
-        uint256 burnAmount = FullMath.mulDiv(_amount, 1e18, tokenState.collateralScaler);
+        uint256 _amount,
+        bool _withEnteringMarket
+    ) internal {
+        if(_withEnteringMarket) {
+            uint256 burnAmount = PredyMath.mulDiv(_amount, 1e18, tokenState.collateralScaler);
 
-        accountState.collateralAmount -= burnAmount;
-        tokenState.totalDeposited -= burnAmount;
+            accountState.collateralAmount = accountState.collateralAmount.sub(burnAmount);
+            tokenState.totalDeposited = tokenState.totalDeposited.sub(burnAmount);
+        }else {
+            accountState.collateralAmountNotInMarket = accountState.collateralAmountNotInMarket.sub(_amount);
+        }
     }
 
-    function remomveDebt(
+    function removeDebt(
         TokenState storage tokenState,
         AccountState storage accountState,
         uint256 _amount
-    ) internal returns (uint256) {
-        uint256 burnAmount = FullMath.mulDiv(_amount, 1e18, tokenState.debtScaler);
+    ) internal {
+        uint256 burnAmount = PredyMath.mulDiv(_amount, 1e18, tokenState.debtScaler);
 
-        accountState.debtAmount -= burnAmount;
-        tokenState.totalBorrowed -= burnAmount;
+        accountState.debtAmount = accountState.debtAmount.sub(burnAmount);
+        tokenState.totalBorrowed = tokenState.totalBorrowed.sub(burnAmount);
     }
 
     // get collateral value
@@ -85,7 +98,7 @@ library BaseToken {
         pure
         returns (uint256)
     {
-        return FullMath.mulDiv(accountState.collateralAmount, tokenState.collateralScaler, 1e18);
+        return PredyMath.mulDiv(accountState.collateralAmount, tokenState.collateralScaler, 1e18) + accountState.collateralAmountNotInMarket;
     }
 
     // get debt value
@@ -94,7 +107,7 @@ library BaseToken {
         pure
         returns (uint256)
     {
-        return FullMath.mulDiv(accountState.debtAmount, tokenState.debtScaler, 1e18);
+        return PredyMath.mulDiv(accountState.debtAmount, tokenState.debtScaler, 1e18);
     }
 
     // update scaler;
@@ -102,11 +115,11 @@ library BaseToken {
         if (tokenState.totalDeposited == 0) {
             return;
         }
-        tokenState.debtScaler = FullMath.mulDiv(tokenState.debtScaler, (1e18 + _interestAmount), 1e18);
+        tokenState.debtScaler = PredyMath.mulDiv(tokenState.debtScaler, (1e18 + _interestAmount), 1e18);
 
         uint256 updateCollateralScaler = 1e18 +
-            FullMath.mulDiv(_interestAmount, tokenState.totalBorrowed, tokenState.totalDeposited);
+            PredyMath.mulDiv(_interestAmount, tokenState.totalBorrowed, tokenState.totalDeposited);
 
-        tokenState.collateralScaler = FullMath.mulDiv(tokenState.collateralScaler, updateCollateralScaler, 1e18);
+        tokenState.collateralScaler = PredyMath.mulDiv(tokenState.collateralScaler, updateCollateralScaler, 1e18);
     }
 }

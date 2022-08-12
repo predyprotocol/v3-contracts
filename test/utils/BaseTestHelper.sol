@@ -4,10 +4,13 @@ pragma abicoder v2;
 
 import {SwapRouter} from "v3-periphery/SwapRouter.sol";
 import "v3-core/contracts/libraries/TickMath.sol";
-import "../../src/PredyV3Pool.sol";
-import "../../src/ProductVerifier.sol";
-import "../../src/BorrowLPTProduct.sol";
+import {NonfungiblePositionManager} from "v3-periphery/NonfungiblePositionManager.sol";
+import "../../src/Controller.sol";
 import "../../src/mocks/MockERC20.sol";
+import "../../src/libraries/LPTMath.sol";
+import "../../src/libraries/VaultLib.sol";
+import "../../src/libraries/PositionCalculator.sol";
+import "../../src/libraries/DataType.sol";
 import "forge-std/console.sol";
 import "forge-std/Vm.sol";
 import "forge-std/Test.sol";
@@ -15,15 +18,161 @@ import "forge-std/Test.sol";
 abstract contract BaseTestHelper {
     IERC20 token0;
     IERC20 token1;
-    PredyV3Pool pool;
+    Controller controller;
+    NonfungiblePositionManager positionManager;
     SwapRouter swapRouter;
     IUniswapV3Pool uniPool;
-    ProductVerifier productVerifier;
-    BorrowLPTProduct borrowLPTProduct;
 
     bytes32[] rangeIds;
 
-    function createBoard() public {
+    function getContext() internal view returns (DataType.Context memory) {
+        BaseToken.TokenState memory tokenState = BaseToken.TokenState(0, 0, 1e18, 1e18);
+        
+        return DataType.Context(
+            address(token0),
+            address(token1),
+            500,
+            address(positionManager),
+            address(swapRouter),
+            address(uniPool),
+            true,
+            tokenState,
+            tokenState
+        );
+    }
+
+    function getPerpState() internal view returns (DataType.PerpStatus memory) {
+        return DataType.PerpStatus(
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        );
+    }
+    
+    function depositToken(
+        DataType.Vault storage _vault,
+        DataType.Context storage _context,
+        mapping(bytes32 => DataType.PerpStatus) storage _ranges,
+        uint256 _amount0,
+        uint256 _amount1
+    ) internal {
+        _updateTokenPosition(
+            _vault,
+            _context,
+            _ranges,
+            DataType.PositionUpdateType.DEPOSIT_TOKEN,
+            _amount0,
+            _amount1
+        );
+    }
+
+    function withdrawToken(
+        DataType.Vault storage _vault,
+        DataType.Context storage _context,
+        mapping(bytes32 => DataType.PerpStatus) storage _ranges,
+        uint256 _amount0,
+        uint256 _amount1
+    ) internal {
+        _updateTokenPosition(
+            _vault,
+            _context,
+            _ranges,
+            DataType.PositionUpdateType.WITHDRAW_TOKEN,
+            _amount0,
+            _amount1
+        );
+    }
+
+    function borrowToken(
+        DataType.Vault storage _vault,
+        DataType.Context storage _context,
+        mapping(bytes32 => DataType.PerpStatus) storage _ranges,
+        uint256 _amount0,
+        uint256 _amount1
+    ) internal {
+        _updateTokenPosition(
+            _vault,
+            _context,
+            _ranges,
+            DataType.PositionUpdateType.BORROW_TOKEN,
+            _amount0,
+            _amount1
+        );
+    }
+
+
+    function repayToken(
+        DataType.Vault storage _vault,
+        DataType.Context storage _context,
+        mapping(bytes32 => DataType.PerpStatus) storage _ranges,
+        uint256 _amount0,
+        uint256 _amount1
+    ) internal {
+        _updateTokenPosition(
+            _vault,
+            _context,
+            _ranges,
+            DataType.PositionUpdateType.REPAY_TOKEN,
+            _amount0,
+            _amount1
+        );
+    }
+
+    function _updateTokenPosition(
+        DataType.Vault storage _vault,
+        DataType.Context storage _context,
+        mapping(bytes32 => DataType.PerpStatus) storage _ranges,
+        DataType.PositionUpdateType _positionUpdateType,
+        uint256 _amount0,
+        uint256 _amount1
+    ) internal {
+        DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](1);
+
+        positionUpdates[0] = DataType.PositionUpdate(
+            _positionUpdateType,
+            false,
+            0,
+            0,
+            0,
+            _amount0,
+            _amount1
+        );
+
+        PositionUpdator.updatePosition(_vault, _context, _ranges, positionUpdates, false);
+    }
+
+    function depositLPT(uint256 _vaultId, int24 _lower, int24 _upper, uint256 _amount) public {
+        DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](1);
+
+        (uint128 liquidity, uint256 amount0, uint256 amount1) = LPTMath.getLiquidityAndAmountToDeposit(
+            controller.getIsMarginZero(),
+            _amount,
+            controller.getSqrtPrice(),
+            _lower,
+            _upper
+        );
+        positionUpdates[0] = DataType.PositionUpdate(
+            DataType.PositionUpdateType.DEPOSIT_LPT,
+            false,
+            liquidity,
+            _lower,
+            _upper,
+            0,
+            0
+        );
+
+        controller.openPosition(_vaultId, positionUpdates, amount0*105/100, amount1*105/100);
+    }
+
+    /*
+
+    function createBoard() public returns(uint256){
         int24[] memory lowers = new int24[](5);
         int24[] memory uppers = new int24[](5);
 
@@ -39,48 +188,88 @@ abstract contract BaseTestHelper {
         lowers[4] = 202880;
         uppers[4] = 202890;
 
-        rangeIds = pool.createRanges(lowers, uppers);
+
+        uint256 buffer0;
+        uint256 buffer1;
+        PositionVerifier.LPT[] memory lpts = new PositionVerifier.LPT[](lowers.length);
+        PositionVerifier.Proof[] memory proofs = new PositionVerifier.Proof[](lowers.length);
+
+        for(uint256 i = 0;i < lowers.length;i++) {
+            (uint128 liquidity, uint256 a0, uint256 a1) = getTokenAmountsToDepositLPT(lowers[i], uppers[i], 1e12);
+            console.log(liquidity);
+            buffer0 += a0;
+            buffer1 += a1;
+            lpts[i] = PositionVerifier.LPT(true, liquidity, lowers[i], uppers[i]);
+            proofs[i] = PositionVerifier.Proof(false, false, 0);
+
+            rangeIds.push(getRangeKey(lowers[i], uppers[i]));
+        }
+
+        PositionVerifier.Position memory position = PositionVerifier.Position(0, 0, 0, 0, lpts);
+
+        return pool.openPosition(0, 0, IProductVerifier.OpenPositionParams(position, 0), buffer0*2, buffer1*2);
+
+    }
+
+    function getRangeKey(int24 _lower, int24 _upper) internal pure returns (bytes32) {
+        return keccak256(abi.encode(_lower, _upper));
     }
 
     function preDepositTokens(uint256 _amount0, uint256 _amount1)
         public
         returns (
-            bytes memory data,
+            IProductVerifier.PositionUpdate[] memory params,
             uint256 buffer0,
             uint256 buffer1
         )
     {
-        PositionVerifier.LPT[] memory lpts = new PositionVerifier.LPT[](0);
-
-        PositionVerifier.Position memory position = PositionVerifier.Position(_amount0, _amount1, 0, 0, lpts);
-
-        PositionVerifier.Proof[] memory proofs = new PositionVerifier.Proof[](0);
-
-        data = abi.encode(position, proofs, 0);
+        params = new IProductVerifier.PositionUpdate[](1);
+        
+        params[0] = IProductVerifier.PositionUpdate(
+            IProductVerifierPositionUpdateType.DEPOSIT_TOKEN,
+            false,
+            0,
+            0,
+            0,
+            _amount0,
+            _amount1
+        );
+        buffer0 = _amount0;
+        buffer1 = _amount1;
     }
 
     function depositLPT(
         uint256 _vaultId,
-        uint256 _margin,
         bytes32 _rangeId,
         uint256 _amount
     ) public returns (uint256) {
-        uint128 liquidity = getLiquidityForOptionAmount(_rangeId, _amount);
-        (uint256 a0, uint256 a1) = pool.getTokenAmountsToDepositLPT(_rangeId, liquidity);
+        VaultLib.PerpStatus memory range = pool.getRange(_rangeId);
 
-        PositionVerifier.LPT[] memory lpts = new PositionVerifier.LPT[](1);
+        uint128 liquidity = getLiquidityForOptionAmount(range.lowerTick, range.upperTick, _amount);
+        uint256 a0;
+        uint256 a1;
+        (a0, a1) = LPTMath.getAmountsForLiquidity(
+            pool.getSqrtPrice(),
+            range.lowerTick,
+            range.upperTick,
+            liquidity
+        );
 
-        {
-            PredyV3Pool.PerpStatus memory range = pool.getRange(_rangeId);
-            lpts[0] = PositionVerifier.LPT(true, liquidity, range.lower, range.upper);
-        }
+        IProductVerifier.PositionUpdate memory params = new IProductVerifier.PositionUpdate[](1);
+        
+        params[0] = IProductVerifier.PositionUpdate(
+            IProductVerifierPositionUpdateType.DEPOSIT_LPT,
+            false,
+            range.lowerTick,
+            range.upperTick,
+            liquidity,
+            _amount0,
+            _amount1
+        );
+        buffer0 = _amount0;
+        buffer1 = _amount1;
 
-        PositionVerifier.Position memory position = PositionVerifier.Position(0, 0, 0, 0, lpts);
-
-        PositionVerifier.Proof[] memory proofs = new PositionVerifier.Proof[](1);
-        proofs[0] = PositionVerifier.Proof(false, false, 0);
-
-        return pool.openPosition(_vaultId, _margin, true, abi.encode(position, proofs, 0), a0, a1);
+        return pool.openPosition(_vaultId, params, a0, a1);
     }
 
     function preBorrowLPT(
@@ -91,22 +280,41 @@ abstract contract BaseTestHelper {
     )
         internal
         returns (
-            bytes memory data,
+            IProductVerifier.PositionUpdate[] memory params,
             uint256 buffer0,
             uint256 buffer1
         )
     {
+        params = new IProductVerifier.PositionUpdate[](_isCall?2:1);
+
         {
-            PredyV3Pool.PerpStatus memory range = pool.getRange(_rangeId);
-            (PositionVerifier.Position memory position, PositionVerifier.Proof[] memory proofs) = borrowLPTProduct
-                .createPositionAndProof(_ethAmount, range.lower, range.upper, _isCall ? range.upper : range.lower);
+            VaultLib.PerpStatus memory range = pool.getRange(_rangeId);
 
             // calculate USDC amount
             uint256 amountMaximum;
 
-            (amountMaximum, buffer0, buffer1) = getAmountInMaximum(position, pool.geSqrtPrice(), _limitPrice);
+            (amountMaximum, buffer0, buffer1) = getAmountInMaximum(position, pool.getSqrtPrice(), _limitPrice);
 
-            data = abi.encode(position, proofs, amountMaximum);
+            params[0] = IProductVerifier.PositionUpdate(
+                IProductVerifierPositionUpdateType.BORROW_LPT,
+                false,
+                range.lowerTick,
+                range.upperTick,
+                getLiquidityForOptionAmount(_rangeId, _ethAmount),
+                0,
+                0
+            );
+            if(_isCall) {
+                params[1] = IProductVerifier.PositionUpdate(
+                    IProductVerifierPositionUpdateType.SWAP_EXACT_OUT,
+                    false,
+                    0,
+                    0,
+                    0,
+                    _ethAmount,
+                    amountMaximum
+                );
+            }
         }
     }
 
@@ -118,14 +326,14 @@ abstract contract BaseTestHelper {
         bool _isCall,
         uint256 _limitPrice
     ) internal returns (uint256) {
-        (bytes memory data, uint256 buffer0, uint256 buffer1) = preBorrowLPT(
+        (IProductVerifier.OpenPositionParams memory params, uint256 buffer0, uint256 buffer1) = preBorrowLPT(
             _rangeId,
             _ethAmount,
             _isCall,
             _limitPrice
         );
 
-        return pool.openPosition(_vaultId, _margin, false, data, buffer0, buffer1);
+        return pool.openPosition(_vaultId, _margin, params, buffer0, buffer1);
     }
 
     function getAmountInMaximum(
@@ -154,6 +362,7 @@ abstract contract BaseTestHelper {
             buffer0 = amountMaximum - uint256(requiredAmount0);
         }
     }
+    */
 
     function swap(address recipient, bool _priceUp) internal {
         uint256 ethAmount;
@@ -265,16 +474,39 @@ abstract contract BaseTestHelper {
     /**
      * option size -> liquidity
      */
+     /*
     function getLiquidityForOptionAmount(bytes32 _rangeId, uint256 _amount) public view returns (uint128) {
-        PredyV3Pool.PerpStatus memory range = pool.getRange(_rangeId);
-        (uint128 liquidity, uint256 amount0, uint256 amount1) = PositionVerifier.getLiquidityAndAmount(
+        DataType.PerpStatus memory range = pool.getRange(_rangeId);
+
+        return getLiquidityForOptionAmount(range.lowerTick, range.upperTick, _amount);
+    }
+
+    function getLiquidityForOptionAmount(int24 lower, int24 upper, uint256 _amount) public view returns (uint128) {
+        (uint128 liquidity, , ) = LPTMath.getLiquidityAndAmountToBorrow(
             pool.isMarginZero(),
             _amount,
-            range.lower,
-            range.lower,
-            range.upper
+            lower,
+            lower,
+            upper
         );
 
         return liquidity;
     }
+
+    function getTokenAmountsToDepositLPT(int24 lower, int24 upper, uint256 _amount) public view
+        returns (
+            uint128 liquidity,
+            uint256 amount0,
+            uint256 amount1
+        )    
+    {
+        return LPTMath.getLiquidityAndAmountToDeposit(
+            pool.isMarginZero(),
+            _amount,
+            pool.getSqrtPrice(),
+            lower,
+            upper
+        );
+    }
+    */
 }
