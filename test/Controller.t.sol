@@ -23,10 +23,17 @@ contract ControllerTest is TestDeployer, Test {
 
         deployContracts(owner, factory);
         vm.warp(block.timestamp + 1 minutes);
+
+        depositLPT(
+            0,
+            202500,
+            202600,
+            2 * 1e18
+        );
     }
 
 
-    function testTrade() public {
+    function testDepositLPT() public {
         DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](1);
 
         (uint128 liquidity,
@@ -50,4 +57,48 @@ contract ControllerTest is TestDeployer, Test {
 
         controller.openPosition(0, positionUpdates, amount0*2, amount1*2);
     }
+
+    function testBorrowLPT() public {
+        DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](3);
+        uint256 margin = 100 * 1e6;
+
+        (uint128 liquidity, , ) = LPTMath.getLiquidityAndAmountToBorrow(
+            true,
+            1e18,
+            202600,
+            202500,
+            202600
+        );
+
+        positionUpdates[0] = DataType.PositionUpdate(
+            DataType.PositionUpdateType.BORROW_LPT,
+            false,
+            liquidity,
+            202500,
+            202600,
+            0,
+            0
+        );
+        positionUpdates[1] = DataType.PositionUpdate(
+            DataType.PositionUpdateType.DEPOSIT_TOKEN,
+            false,
+            0,
+            0,
+            0,
+            margin,
+            1e18
+        );
+        positionUpdates[2] = DataType.PositionUpdate(
+            DataType.PositionUpdateType.SWAP_EXACT_OUT,
+            true,
+            0,
+            0,
+            0,
+            1e18,
+            1e18 * 1800 / 1e12
+        );
+
+        controller.openPosition(0, positionUpdates, 1e18 * 1800 / 1e12, margin);
+    }
+
 }

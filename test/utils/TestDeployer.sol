@@ -4,9 +4,6 @@ pragma abicoder v2;
 
 import "./BaseTestHelper.sol";
 import "../../src/Controller.sol";
-import {PricingModule} from "../../src/PricingModule.sol";
-import "../../src/LPTMathModule.sol";
-import "../../src/ProductVerifier.sol";
 import "../../src/mocks/MockERC20.sol";
 import {NonfungiblePositionManager} from "v3-periphery/NonfungiblePositionManager.sol";
 import {UniswapV3Factory} from "v3-core/contracts/UniswapV3Factory.sol";
@@ -19,8 +16,6 @@ import "forge-std/Vm.sol";
 import "forge-std/Test.sol";
 
 abstract contract TestDeployer is BaseTestHelper {
-    PricingModule pricingModule;
-
     function deployContracts(address owner, address factory) public {
         MockERC20 tokenA = new MockERC20("WETH", "WETH", 18);
         MockERC20 tokenB = new MockERC20("USDC", "USDC", 6);

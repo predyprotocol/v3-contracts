@@ -2,7 +2,7 @@
 pragma solidity ^0.7.6;
 pragma abicoder v2;
 
-import "./IProductVerifier.sol";
+import "../libraries/DataType.sol";
 
 interface IController {
     function openPosition(

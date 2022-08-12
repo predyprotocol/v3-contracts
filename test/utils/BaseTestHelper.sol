@@ -6,7 +6,6 @@ import {SwapRouter} from "v3-periphery/SwapRouter.sol";
 import "v3-core/contracts/libraries/TickMath.sol";
 import {NonfungiblePositionManager} from "v3-periphery/NonfungiblePositionManager.sol";
 import "../../src/Controller.sol";
-import "../../src/ProductVerifier.sol";
 import "../../src/mocks/MockERC20.sol";
 import "../../src/libraries/LPTMath.sol";
 import "../../src/libraries/VaultLib.sol";
@@ -23,7 +22,6 @@ abstract contract BaseTestHelper {
     NonfungiblePositionManager positionManager;
     SwapRouter swapRouter;
     IUniswapV3Pool uniPool;
-    LPTMathModule lptMathModule;
 
     bytes32[] rangeIds;
 
@@ -147,6 +145,29 @@ abstract contract BaseTestHelper {
         );
 
         PositionUpdator.updatePosition(_vault, _context, _ranges, positionUpdates, false);
+    }
+
+    function depositLPT(uint256 _vaultId, int24 _lower, int24 _upper, uint256 _amount) public {
+        DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](1);
+
+        (uint128 liquidity, uint256 amount0, uint256 amount1) = LPTMath.getLiquidityAndAmountToDeposit(
+            controller.getIsMarginZero(),
+            _amount,
+            controller.getSqrtPrice(),
+            _lower,
+            _upper
+        );
+        positionUpdates[0] = DataType.PositionUpdate(
+            DataType.PositionUpdateType.DEPOSIT_LPT,
+            false,
+            liquidity,
+            _lower,
+            _upper,
+            0,
+            0
+        );
+
+        controller.openPosition(_vaultId, positionUpdates, amount0*105/100, amount1*105/100);
     }
 
     /*
