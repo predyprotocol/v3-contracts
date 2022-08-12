@@ -38,6 +38,11 @@ library VaultLib {
         for(uint256 i = 0;i < _vault.lpts.length;i++) {
             if(_vault.lpts[i].rangeId == _rangeId && _vault.lpts[i].isCollateral) {
                 _vault.lpts[i].liquidityAmount = _vault.lpts[i].liquidityAmount.sub(_liquidityAmount).toUint128();
+
+                if(_vault.lpts[i].liquidityAmount == 0) {
+                    _vault.lpts[i] = _vault.lpts[_vault.lpts.length - 1];
+                    _vault.lpts.pop();
+                }
                 return;
             }
         }
@@ -65,11 +70,16 @@ library VaultLib {
         for(uint256 i = 0;i < _vault.lpts.length;i++) {
             if(_vault.lpts[i].rangeId == _rangeId && !_vault.lpts[i].isCollateral) {
                 _vault.lpts[i].liquidityAmount = _vault.lpts[i].liquidityAmount.sub(_liquidityAmount).toUint128();
+
+                if(_vault.lpts[i].liquidityAmount == 0) {
+                    _vault.lpts[i] = _vault.lpts[_vault.lpts.length - 1];
+                    _vault.lpts.pop();
+                }
                 return;
             }
         }
     }
-    
+
     function getCollateralPositionValue(
         DataType.Vault memory _vault,
         DataType.Context memory _context,
@@ -145,7 +155,17 @@ library VaultLib {
             totalAmount1 = totalAmount1.add(amount1);
         }
     }
-    
+
+    function getEarnedTradeFee(DataType.Vault memory vault, bytes32 _rangeId, DataType.PerpStatus memory _perpState) internal pure returns (uint256 totalAmount0, uint256 totalAmount1) {
+        for (uint256 i = 0; i < vault.lpts.length; i++) {
+            if (vault.lpts[i].isCollateral && vault.lpts[i].rangeId == _rangeId) {
+                totalAmount0 = PredyMath.mulDiv((_perpState.fee0Growth.sub(vault.lpts[i].fee0Last)), vault.lpts[i].liquidityAmount, FixedPoint128.Q128);
+                totalAmount1 = PredyMath.mulDiv((_perpState.fee1Growth.sub(vault.lpts[i].fee1Last)), vault.lpts[i].liquidityAmount, FixedPoint128.Q128);
+            }
+        }
+    }
+
+
     function getEarnedTradeFee(DataType.Vault memory vault, mapping(bytes32 => DataType.PerpStatus) storage ranges) public view returns (uint256 totalAmount0, uint256 totalAmount1) {
         for (uint256 i = 0; i < vault.lpts.length; i++) {
             if (!vault.lpts[i].isCollateral) {
@@ -156,6 +176,36 @@ library VaultLib {
             totalAmount1 = PredyMath.mulDiv((ranges[rangeId].fee1Growth.sub(vault.lpts[i].fee1Last)), vault.lpts[i].liquidityAmount, FixedPoint128.Q128);
         }
     }
+
+    function getEarnedDailyPremium(DataType.Vault memory _vault, bytes32 _rangeId, DataType.PerpStatus memory _perpState) external pure returns(uint256 marginValue) {
+        for (uint256 i = 0; i < _vault.lpts.length; i++) {
+            bytes32 rangeId = _vault.lpts[i].rangeId;
+
+            if (_vault.lpts[i].isCollateral && rangeId == _rangeId) {
+                marginValue = marginValue.add(
+                    PredyMath.mulDiv((_perpState.premiumGrowthForLender.sub(_vault.lpts[i].premiumGrowthLast)), _vault.lpts[i].liquidityAmount, 1e18)
+                );
+
+                return marginValue;
+            }
+        }
+    }
+
+
+    function getPaidDailyPremium(DataType.Vault memory _vault, bytes32 _rangeId, DataType.PerpStatus memory _perpState) external pure returns(uint256 marginValue) {
+        for (uint256 i = 0; i < _vault.lpts.length; i++) {
+            bytes32 rangeId = _vault.lpts[i].rangeId;
+
+            if (!_vault.lpts[i].isCollateral && rangeId == _rangeId) {
+                marginValue = marginValue.add(
+                    PredyMath.mulDiv((_perpState.premiumGrowthForBorrower.sub(_vault.lpts[i].premiumGrowthLast)), _vault.lpts[i].liquidityAmount, 1e18)
+                );
+
+                return marginValue;
+            }
+        }
+    }
+
 
     function getEarnedDailyPremium(DataType.Vault memory _vault, mapping(bytes32 => DataType.PerpStatus) storage ranges) external view returns(uint256 marginValue) {
         for (uint256 i = 0; i < _vault.lpts.length; i++) {

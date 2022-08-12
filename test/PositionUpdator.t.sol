@@ -55,7 +55,7 @@ contract PositionUpdatorTest is TestDeployer, Test {
 
     function testUpdatePosition() public {
         DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](0);
-        PositionUpdator.updatePosition(vault1, context, ranges, positionUpdates);
+        PositionUpdator.updatePosition(vault1, context, ranges, positionUpdates, false);
     }
 
     function testUpdatePositionDepositToken() public {
@@ -71,7 +71,7 @@ contract PositionUpdatorTest is TestDeployer, Test {
             1e18
         );
 
-        PositionUpdator.updatePosition(vault1, context, ranges, positionUpdates);
+        PositionUpdator.updatePosition(vault1, context, ranges, positionUpdates, false);
 
         assertEq(BaseToken.getCollateralValue(context.tokenState0, vault1.balance0), 1e6);
         assertEq(BaseToken.getCollateralValue(context.tokenState1, vault1.balance1), 1e18);
@@ -90,7 +90,7 @@ contract PositionUpdatorTest is TestDeployer, Test {
             2*1e18
         );
 
-        PositionUpdator.updatePosition(vault2, context, ranges, positionUpdates);
+        PositionUpdator.updatePosition(vault2, context, ranges, positionUpdates, false);
 
         assertEq(BaseToken.getCollateralValue(context.tokenState0, vault2.balance0), 0);
         assertEq(BaseToken.getCollateralValue(context.tokenState1, vault2.balance1), 0);
@@ -109,7 +109,7 @@ contract PositionUpdatorTest is TestDeployer, Test {
             1e18
         );
 
-        PositionUpdator.updatePosition(vault1, context, ranges, positionUpdates);
+        PositionUpdator.updatePosition(vault1, context, ranges, positionUpdates, false);
 
         assertEq(BaseToken.getDebtValue(context.tokenState0, vault1.balance0), 0);
         assertEq(BaseToken.getDebtValue(context.tokenState1, vault1.balance1), 1e18);
@@ -128,7 +128,7 @@ contract PositionUpdatorTest is TestDeployer, Test {
             1e18
         );
 
-        PositionUpdator.updatePosition(vault3, context, ranges, positionUpdates);
+        PositionUpdator.updatePosition(vault3, context, ranges, positionUpdates, false);
 
         assertEq(BaseToken.getDebtValue(context.tokenState0, vault3.balance0), 0);
         assertEq(BaseToken.getDebtValue(context.tokenState1, vault3.balance1), 0);
@@ -147,7 +147,7 @@ contract PositionUpdatorTest is TestDeployer, Test {
             0
         );
 
-        PositionUpdator.updatePosition(vault1, context, ranges, positionUpdates);
+        PositionUpdator.updatePosition(vault1, context, ranges, positionUpdates, false);
 
         assertEq(vault1.lpts.length, 1);
     }

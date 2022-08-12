@@ -29,12 +29,14 @@ library PositionUpdator {
         DataType.Vault storage _vault,
         DataType.Context storage _context,
         mapping(bytes32 => DataType.PerpStatus) storage _ranges,
-        DataType.PositionUpdate[] memory _positionUpdates
+        DataType.PositionUpdate[] memory _positionUpdates,
+        bool _reduceOnly
     ) external returns (int256 requiredAmount0, int256 requiredAmount1) {
         for (uint256 i = 0; i < _positionUpdates.length; i++) {
             DataType.PositionUpdate memory positionUpdate = _positionUpdates[i];
 
             if(positionUpdate.positionUpdateType == DataType.PositionUpdateType.DEPOSIT_TOKEN) {
+                require(!_reduceOnly, "PU1");
                 depositTokens(_vault, _context, positionUpdate.param0, positionUpdate.param1);
 
                 requiredAmount0 = requiredAmount0.add(int256(positionUpdate.param0));
@@ -45,6 +47,7 @@ library PositionUpdator {
                 requiredAmount0 = requiredAmount0.sub(int256(positionUpdate.param0));
                 requiredAmount1 = requiredAmount1.sub(int256(positionUpdate.param1));
             }else if(positionUpdate.positionUpdateType == DataType.PositionUpdateType.BORROW_TOKEN) {
+                require(!_reduceOnly, "PU1");
                 borrowTokens(_vault, _context, positionUpdate.param0, positionUpdate.param1);
 
                 requiredAmount0 = requiredAmount0.sub(int256(positionUpdate.param0));
@@ -55,6 +58,7 @@ library PositionUpdator {
                 requiredAmount0 = requiredAmount0.sub(int256(positionUpdate.param0));
                 requiredAmount1 = requiredAmount1.sub(int256(positionUpdate.param1));
             }else if(positionUpdate.positionUpdateType == DataType.PositionUpdateType.DEPOSIT_LPT) {
+                require(!_reduceOnly, "PU1");
                 (uint256 amount0, uint256 amount1) = depositLPT(_vault, _context, _ranges, positionUpdate);
 
                 requiredAmount0 = requiredAmount0.add(int256(amount0));
@@ -66,7 +70,7 @@ library PositionUpdator {
                 requiredAmount1 = requiredAmount1.sub(int256(amount1));
 
             }else if(positionUpdate.positionUpdateType == DataType.PositionUpdateType.BORROW_LPT) {
-
+                require(!_reduceOnly, "PU1");
                 (uint256 amount0, uint256 amount1) = borrowLPT(_vault, _context, _ranges, positionUpdate);
 
                 requiredAmount0 = requiredAmount0.sub(int256(amount0));
@@ -92,7 +96,7 @@ library PositionUpdator {
             }
         }
     }
-
+    
     function depositTokens(
         DataType.Vault storage _vault,
         DataType.Context storage _context,
@@ -195,15 +199,15 @@ library PositionUpdator {
         );
 
         {
-            (uint256 fee0, uint256 fee1) = _vault.getEarnedTradeFee(_ranges);
+            (uint256 fee0, uint256 fee1) = _vault.getEarnedTradeFee(rangeId, _ranges[rangeId]);
             withdrawAmount0 = fee0;
             withdrawAmount1 = fee1;
         }
 
         if(_context.isMarginZero) {
-            withdrawAmount0 = withdrawAmount0.add(_vault.getEarnedDailyPremium(_ranges));
+            withdrawAmount0 = withdrawAmount0.add(_vault.getEarnedDailyPremium(rangeId, _ranges[rangeId]));
         }else {
-            withdrawAmount1 = withdrawAmount1.add(_vault.getEarnedDailyPremium(_ranges));
+            withdrawAmount1 = withdrawAmount1.add(_vault.getEarnedDailyPremium(rangeId, _ranges[rangeId]));
         }
 
         _vault.withdrawLPT(rangeId, _positionUpdate.liquidity);
@@ -259,9 +263,9 @@ library PositionUpdator {
         _ranges[rangeId].borrowedLiquidity -= _positionUpdate.liquidity;
 
         if(_context.isMarginZero) {
-            requiredAmount0 = requiredAmount0.add(_vault.getPaidDailyPremium(_ranges));
+            requiredAmount0 = requiredAmount0.add(_vault.getPaidDailyPremium(rangeId, _ranges[rangeId]));
         }else {
-            requiredAmount1 = requiredAmount1.add(_vault.getPaidDailyPremium(_ranges));
+            requiredAmount1 = requiredAmount1.add(_vault.getPaidDailyPremium(rangeId, _ranges[rangeId]));
         }
 
         _vault.repayLPT(rangeId, _positionUpdate.liquidity);

@@ -146,7 +146,7 @@ abstract contract BaseTestHelper {
             _amount1
         );
 
-        PositionUpdator.updatePosition(_vault, _context, _ranges, positionUpdates);
+        PositionUpdator.updatePosition(_vault, _context, _ranges, positionUpdates, false);
     }
 
     /*

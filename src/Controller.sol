@@ -140,7 +140,8 @@ contract Controller is IController, Ownable, Constants {
             vault,
             context,
             ranges,
-            _positionUpdates
+            _positionUpdates,
+            false
         );
 
 
@@ -172,7 +173,8 @@ contract Controller is IController, Ownable, Constants {
             vault,
             context,
             ranges,
-            _positionUpdates
+            _positionUpdates,
+            true
         );
 
         require(!checkLiquidatable(_vaultId), "P3");
