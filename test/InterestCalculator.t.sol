@@ -54,10 +54,24 @@ contract InterestCalculatorTest is TestDeployer, Test {
     }
 
     function testApplyInterest() public {
-        InterestCalculator.applyInterest(context, 0);
+        InterestCalculator.applyInterest(context, InterestCalculator.IRMParams(1e12, 30 * 1e16, 20 * 1e16, 50 * 1e16), 0);
 
         assertGt(context.tokenState0.collateralScaler, 1e18);
         assertGt(context.tokenState0.debtScaler, 1e18);
+    }
+
+    function testCalculateInterestRate() public {
+        InterestCalculator.IRMParams memory irpParams = InterestCalculator.IRMParams(1e12, 30 * 1e16, 20 * 1e16, 50 * 1e16);
+
+        uint256 ir0 = InterestCalculator.calculateInterestRate(irpParams, 0);
+        uint256 ir1 = InterestCalculator.calculateInterestRate(irpParams, 1e16);
+        uint256 ir30 = InterestCalculator.calculateInterestRate(irpParams, 30 * 1e16);
+        uint256 ir60 = InterestCalculator.calculateInterestRate(irpParams, 60 * 1e16);
+
+        assertEq(ir0, 1000000000000);
+        assertEq(ir1, 2001000000000000);
+        assertEq(ir30, 60001000000000000);
+        assertEq(ir60, 210001000000000000);
     }
 
     function testApplyDailyPremium() public {

@@ -1,9 +1,12 @@
 //SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.7.6;
 
+import "@openzeppelin/contracts/math/SafeMath.sol";
 import "./PredyMath.sol";
 
 library BaseToken {
+    using SafeMath for uint256;
+
     struct TokenState {
         uint256 totalDeposited;
         uint256 totalBorrowed;
@@ -31,10 +34,10 @@ library BaseToken {
         if(_withEnteringMarket) {
             mintAmount = PredyMath.mulDiv(_amount, 1e18, tokenState.collateralScaler);
 
-            accountState.collateralAmount += mintAmount;
-            tokenState.totalDeposited += mintAmount;
+            accountState.collateralAmount = accountState.collateralAmount.add(mintAmount);
+            tokenState.totalDeposited = tokenState.totalDeposited.add(mintAmount);
         } else{
-            accountState.collateralAmountNotInMarket += _amount;
+            accountState.collateralAmountNotInMarket = accountState.collateralAmountNotInMarket.add(_amount);
         }
     }
 
@@ -45,42 +48,48 @@ library BaseToken {
     ) internal returns (uint256 mintAmount) {
         mintAmount = PredyMath.mulDiv(_amount, 1e18, tokenState.debtScaler);
 
-        accountState.debtAmount += mintAmount;
-        tokenState.totalBorrowed += mintAmount;
+        accountState.debtAmount = accountState.debtAmount.add(mintAmount);
+        tokenState.totalBorrowed = tokenState.totalBorrowed.add(mintAmount);
     }
 
     function clearCollateral(TokenState storage tokenState, AccountState storage accountState)
         internal
     {
-        tokenState.totalDeposited -= accountState.collateralAmount;
+        tokenState.totalDeposited = tokenState.totalDeposited.sub(accountState.collateralAmount);
         accountState.collateralAmount = 0;
+        accountState.collateralAmountNotInMarket = 0;
     }
 
     function clearDebt(TokenState storage tokenState, AccountState storage accountState) internal {
-        tokenState.totalBorrowed -= accountState.debtAmount;
+        tokenState.totalBorrowed = tokenState.totalBorrowed.sub(accountState.debtAmount);
         accountState.debtAmount = 0;
     }
 
     function removeCollateral(
         TokenState storage tokenState,
         AccountState storage accountState,
-        uint256 _amount
+        uint256 _amount,
+        bool _withEnteringMarket
     ) internal {
-        uint256 burnAmount = PredyMath.mulDiv(_amount, 1e18, tokenState.collateralScaler);
+        if(_withEnteringMarket) {
+            uint256 burnAmount = PredyMath.mulDiv(_amount, 1e18, tokenState.collateralScaler);
 
-        accountState.collateralAmount -= burnAmount;
-        tokenState.totalDeposited -= burnAmount;
+            accountState.collateralAmount = accountState.collateralAmount.sub(burnAmount);
+            tokenState.totalDeposited = tokenState.totalDeposited.sub(burnAmount);
+        }else {
+            accountState.collateralAmountNotInMarket = accountState.collateralAmountNotInMarket.sub(_amount);
+        }
     }
 
-    function remomveDebt(
+    function removeDebt(
         TokenState storage tokenState,
         AccountState storage accountState,
         uint256 _amount
     ) internal {
         uint256 burnAmount = PredyMath.mulDiv(_amount, 1e18, tokenState.debtScaler);
 
-        accountState.debtAmount -= burnAmount;
-        tokenState.totalBorrowed -= burnAmount;
+        accountState.debtAmount = accountState.debtAmount.sub(burnAmount);
+        tokenState.totalBorrowed = tokenState.totalBorrowed.sub(burnAmount);
     }
 
     // get collateral value

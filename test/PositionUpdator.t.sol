@@ -14,7 +14,11 @@ contract PositionUpdatorTest is TestDeployer, Test {
     address owner;
 
     DataType.Context private context;
-    DataType.Vault private vault;
+
+    DataType.Vault private vault1;
+    DataType.Vault private vault2;
+    DataType.Vault private vault3;
+
     mapping(bytes32 => DataType.PerpStatus) private ranges;
 
     function setUp() public {
@@ -29,11 +33,29 @@ contract PositionUpdatorTest is TestDeployer, Test {
         vm.warp(block.timestamp + 1 minutes);
 
         context = getContext();
+
+        // vault1 is empty
+        // vault2 has deposited token
+        // vault3 has borrowed token
+        depositToken(
+            vault2,
+            context,
+            ranges,
+            2*1e6,
+            2*1e18
+        );
+        borrowToken(
+            vault3,
+            context,
+            ranges,
+            1e6,
+            1e18
+        );
     }
 
     function testUpdatePosition() public {
         DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](0);
-        PositionUpdator.updatePosition(vault, context, ranges, positionUpdates);
+        PositionUpdator.updatePosition(vault1, context, ranges, positionUpdates);
     }
 
     function testUpdatePositionDepositToken() public {
@@ -45,14 +67,71 @@ contract PositionUpdatorTest is TestDeployer, Test {
             0,
             0,
             0,
-            1e18,
-            1e6
+            1e6,
+            1e18
         );
 
-        PositionUpdator.updatePosition(vault, context, ranges, positionUpdates);
+        PositionUpdator.updatePosition(vault1, context, ranges, positionUpdates);
 
-        assertEq(BaseToken.getCollateralValue(context.tokenState0, vault.balance0), 1e18);
-        assertEq(BaseToken.getCollateralValue(context.tokenState1, vault.balance1), 1e6);
+        assertEq(BaseToken.getCollateralValue(context.tokenState0, vault1.balance0), 1e6);
+        assertEq(BaseToken.getCollateralValue(context.tokenState1, vault1.balance1), 1e18);
+    }
+
+    function testUpdatePositionWithdrawToken() public {
+        DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](1);
+
+        positionUpdates[0] = DataType.PositionUpdate(
+            DataType.PositionUpdateType.WITHDRAW_TOKEN,
+            false,
+            0,
+            0,
+            0,
+            2*1e6,
+            2*1e18
+        );
+
+        PositionUpdator.updatePosition(vault2, context, ranges, positionUpdates);
+
+        assertEq(BaseToken.getCollateralValue(context.tokenState0, vault2.balance0), 0);
+        assertEq(BaseToken.getCollateralValue(context.tokenState1, vault2.balance1), 0);
+    }
+
+    function testUpdatePositionBorrowToken() public {
+        DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](1);
+
+        positionUpdates[0] = DataType.PositionUpdate(
+            DataType.PositionUpdateType.BORROW_TOKEN,
+            false,
+            0,
+            0,
+            0,
+            0,
+            1e18
+        );
+
+        PositionUpdator.updatePosition(vault1, context, ranges, positionUpdates);
+
+        assertEq(BaseToken.getDebtValue(context.tokenState0, vault1.balance0), 0);
+        assertEq(BaseToken.getDebtValue(context.tokenState1, vault1.balance1), 1e18);
+    }
+
+    function testUpdatePositionRepayToken() public {
+        DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](1);
+
+        positionUpdates[0] = DataType.PositionUpdate(
+            DataType.PositionUpdateType.REPAY_TOKEN,
+            false,
+            0,
+            0,
+            0,
+            1e6,
+            1e18
+        );
+
+        PositionUpdator.updatePosition(vault3, context, ranges, positionUpdates);
+
+        assertEq(BaseToken.getDebtValue(context.tokenState0, vault3.balance0), 0);
+        assertEq(BaseToken.getDebtValue(context.tokenState1, vault3.balance1), 0);
     }
 
     function testUpdatePositionDepositLPT() public {
@@ -68,8 +147,8 @@ contract PositionUpdatorTest is TestDeployer, Test {
             0
         );
 
-        PositionUpdator.updatePosition(vault, context, ranges, positionUpdates);
+        PositionUpdator.updatePosition(vault1, context, ranges, positionUpdates);
 
-        assertEq(vault.lpts.length, 1);
+        assertEq(vault1.lpts.length, 1);
     }
 }

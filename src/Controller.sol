@@ -55,6 +55,7 @@ contract Controller is IController, Ownable, Constants {
     mapping(uint256 => DataType.Vault) public vaults;
 
     DataType.Context public context;
+    InterestCalculator.IRMParams private irmParams;
     InterestCalculator.DPMParams private dpmParams;
 
     event VaultCreated(uint256 vaultId);
@@ -103,6 +104,18 @@ contract Controller is IController, Ownable, Constants {
         lastTouchedTimestamp = block.timestamp;
     }
 
+    function updateIRMParams(
+        uint256 _base,
+        uint256 _kink,
+        uint256 _slope1,
+        uint256 _slope2
+    ) external onlyOwner {
+        irmParams.baseRate = _base;
+        irmParams.kinkRate = _kink;
+        irmParams.slope1 = _slope1;
+        irmParams.slope2 = _slope2;
+    }
+
     // User API
 
     /**
@@ -144,35 +157,35 @@ contract Controller is IController, Ownable, Constants {
         }
     }
 
-    /**
-     * @notice Closes position in the vault.
-     */
-    function closePositionsInVault(
+    function _reducePosition(
         uint256 _vaultId,
-        bool _zeroToOne,
-        uint256 _amount,
-        uint256 _amountOutMinimum
-    ) public override onlyVaultOwner(_vaultId) {
+        DataType.PositionUpdate[] memory _positionUpdates,
+        uint256 _penaltyAmount0,
+        uint256 _penaltyAmount1
+    ) internal {
         applyPerpFee(_vaultId);
-        _closePositionsInVault(_vaultId, CloseParams(_zeroToOne, _amount, _amountOutMinimum, 0, 0));
-    }
 
-    /**
-     * @notice Withdraws asset from the vault.
-     */
-    function withdrawFromVault(uint256 _vaultId) external onlyVaultOwner(_vaultId) {
         DataType.Vault storage vault = vaults[_vaultId];
 
-        require(vaults[_vaultId].isClosed);
+        // update position
+        (int256 amount0, int256 amount1) = PositionUpdator.updatePosition(
+            vault,
+            context,
+            ranges,
+            _positionUpdates
+        );
 
-        uint256 withdrawAmount0 = context.tokenState0.getCollateralValue(vault.balance0);
-        uint256 withdrawAmount1 = context.tokenState1.getCollateralValue(vault.balance1);
+        require(!checkLiquidatable(_vaultId), "P3");
 
-        context.tokenState0.clearCollateral(vault.balance0);
-        context.tokenState1.clearCollateral(vault.balance1);
+        require(0 >= amount0);
+        require(0 >= amount1);
 
-        TransferHelper.safeTransfer(context.token0, msg.sender, withdrawAmount0);
-        TransferHelper.safeTransfer(context.token1, msg.sender, withdrawAmount1);
+        if (0 > amount0) {
+            context.tokenState0.addCollateral(vault.balance0, uint256(-amount0) - _penaltyAmount0, false);
+        }
+        if (0 > amount1) {
+            context.tokenState1.addCollateral(vault.balance1, uint256(-amount1) - _penaltyAmount1, false);
+        }
     }
 
     /**
@@ -180,9 +193,7 @@ contract Controller is IController, Ownable, Constants {
      */
     function liquidate(
         uint256 _vaultId,
-        bool _zeroToOne,
-        uint256 _amount,
-        uint256 _amountOutMinimum
+        DataType.PositionUpdate[] memory _positionUpdates
     ) external {
         applyPerpFee(_vaultId);
 
@@ -193,12 +204,11 @@ contract Controller is IController, Ownable, Constants {
 
         // calculate reward
         (uint256 amount0, uint256 amount1) = getDebtPositionAmounts(_vaultId, sqrtPrice);
-        CloseParams memory params = CloseParams(_zeroToOne, _amount, _amountOutMinimum, amount0 / 100, amount1 / 100);
 
         // close position
-        _closePositionsInVault(_vaultId, params);
+        _reducePosition(_vaultId, _positionUpdates, amount0 / 100, amount1 / 100);
 
-        sendReward(msg.sender, params.penaltyAmount0, params.penaltyAmount1);
+        sendReward(msg.sender, amount0 / 100, amount1 / 100);
     }
 
     function checkLiquidatable(uint256 _vaultId) internal view returns (bool) {
@@ -212,14 +222,14 @@ contract Controller is IController, Ownable, Constants {
 
     function forceClose(bytes[] memory _data) external onlyOwner {
         for (uint256 i = 0; i < _data.length; i++) {
-            (uint256 vaultId, bool _zeroToOne, uint256 _amount, uint256 _amountOutMinimum) = abi.decode(
+            (uint256 vaultId, DataType.PositionUpdate[] memory _positionUpdates) = abi.decode(
                 _data[i],
-                (uint256, bool, uint256, uint256)
+                (uint256,  DataType.PositionUpdate[])
             );
 
             applyPerpFee(vaultId);
 
-            _closePositionsInVault(vaultId, CloseParams(_zeroToOne, _amount, _amountOutMinimum, 0, 0));
+            _reducePosition(vaultId, _positionUpdates, 0, 0);
         }
     }
 
@@ -585,7 +595,7 @@ contract Controller is IController, Ownable, Constants {
         }
 
         // updateInterest();
-        lastTouchedTimestamp = InterestCalculator.applyInterest(context, lastTouchedTimestamp);
+        lastTouchedTimestamp = InterestCalculator.applyInterest(context, irmParams, lastTouchedTimestamp);
     }
 
     function getPerpUR(bytes32 _rangeId) internal view returns (uint256) {

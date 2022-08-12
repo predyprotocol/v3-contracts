@@ -3,6 +3,7 @@ pragma solidity =0.7.6;
 pragma abicoder v2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@uniswap/v3-core/contracts/libraries/FixedPoint128.sol";
 import "./PredyMath.sol";
 import "../Constants.sol";
@@ -12,9 +13,17 @@ import "./DataType.sol";
 
 library VaultLib {
     using SafeMath for uint256;
+    using SafeMath for uint128;
+    using SafeCast for uint256;
 
     function depositLPT(DataType.Vault storage _vault, mapping(bytes32 => DataType.PerpStatus) storage ranges, bytes32 _rangeId, uint128 _liquidityAmount) external {
-        // TODO: 同じrangeIdは同じところに代入する
+        for(uint256 i = 0;i < _vault.lpts.length;i++) {
+            if(_vault.lpts[i].rangeId == _rangeId && _vault.lpts[i].isCollateral) {
+                _vault.lpts[i].liquidityAmount = _vault.lpts[i].liquidityAmount.add(_liquidityAmount).toUint128();
+                return;
+            }
+        }
+
         _vault.lpts.push(DataType.LPTState(
             true,
             _rangeId,
@@ -25,12 +34,23 @@ library VaultLib {
         ));
     }
 
-    function withdrawLPT(DataType.Vault storage _vault, mapping(bytes32 => DataType.PerpStatus) storage ranges, bytes32 _rangeId, uint128 _liquidityAmount) external {
-        // TODO
+    function withdrawLPT(DataType.Vault storage _vault, bytes32 _rangeId, uint128 _liquidityAmount) external {
+        for(uint256 i = 0;i < _vault.lpts.length;i++) {
+            if(_vault.lpts[i].rangeId == _rangeId && _vault.lpts[i].isCollateral) {
+                _vault.lpts[i].liquidityAmount = _vault.lpts[i].liquidityAmount.sub(_liquidityAmount).toUint128();
+                return;
+            }
+        }
     }
 
     function borrowLPT(DataType.Vault storage _vault, mapping(bytes32 => DataType.PerpStatus) storage ranges, bytes32 _rangeId, uint128 _liquidityAmount) external {
-        // TODO: 同じrangeIdは同じところに代入する
+        for(uint256 i = 0;i < _vault.lpts.length;i++) {
+            if(_vault.lpts[i].rangeId == _rangeId && !_vault.lpts[i].isCollateral) {
+                _vault.lpts[i].liquidityAmount = _vault.lpts[i].liquidityAmount.add(_liquidityAmount).toUint128();
+                return;
+            }
+        }
+
         _vault.lpts.push(DataType.LPTState(
             false,
             _rangeId,
@@ -41,11 +61,15 @@ library VaultLib {
         ));
     }
 
-    function repayLPT(DataType.Vault storage _vault, mapping(bytes32 => DataType.PerpStatus) storage ranges, bytes32 _rangeId, uint128 _liquidityAmount) external {
-        // TODO
+    function repayLPT(DataType.Vault storage _vault, bytes32 _rangeId, uint128 _liquidityAmount) external {
+        for(uint256 i = 0;i < _vault.lpts.length;i++) {
+            if(_vault.lpts[i].rangeId == _rangeId && !_vault.lpts[i].isCollateral) {
+                _vault.lpts[i].liquidityAmount = _vault.lpts[i].liquidityAmount.sub(_liquidityAmount).toUint128();
+                return;
+            }
+        }
     }
-
-
+    
     function getCollateralPositionValue(
         DataType.Vault memory _vault,
         DataType.Context memory _context,

@@ -24,7 +24,7 @@ contract BaseTokenTest is Test {
         assertEq(value, 1000 * 1e6);
     }
 
-    function testCollateralBecomesLarger() public {
+    function testCollateralBecomesLarger(uint256 ) public {
         uint256 valueBefore = BaseToken.getCollateralValue(tokenState, accountState);
         BaseToken.updateScaler(tokenState, 1e10);
         uint256 valueAfter = BaseToken.getCollateralValue(tokenState, accountState);
@@ -49,4 +49,29 @@ contract BaseTokenTest is Test {
 
         assertEq(collateralValue - debtValue, 800000000);
     }
+
+    function testCannotRemoveCollateral() public {
+        vm.expectRevert(bytes("SafeMath: subtraction overflow"));
+        BaseToken.removeCollateral(tokenState, accountState, 1000 * 1e6 + 1, true);
+    }
+
+    function testCannotRemoveDebt() public {
+        vm.expectRevert(bytes("SafeMath: subtraction overflow"));
+        BaseToken.removeDebt(tokenState, accountState, 200 * 1e6 + 1);
+    }
+
+    function testRemoveCollateral() public {
+        BaseToken.removeCollateral(tokenState, accountState, 500 * 1e6, true);
+
+        uint256 value = BaseToken.getCollateralValue(tokenState, accountState);
+        assertEq(value, 500 * 1e6);
+    }
+
+    function testRemoveDebt() public {
+        BaseToken.removeDebt(tokenState, accountState, 100 * 1e6);
+
+        uint256 debtValue = BaseToken.getDebtValue(tokenState, accountState);
+        assertEq(debtValue, 100 * 1e6);
+    }
+
 }

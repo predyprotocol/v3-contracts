@@ -12,8 +12,10 @@ contract LPTStateLibTest is Test {
 
     function testRegisterNewLPTState() public {
 
-        LPTStateLib.registerNewLPTState(perpStatus, 0);
+        LPTStateLib.registerNewLPTState(perpStatus, 0, 0, 10);
 
         assertEq(perpStatus.tokenId, 0);
+        assertEq(perpStatus.lowerTick, 0);
+        assertEq(perpStatus.upperTick, 10);
     }
 }

@@ -33,7 +33,6 @@ library InterestCalculator {
         uint256 dailyFeeAmount;
     }
 
-
     struct IRMParams {
         uint256 baseRate;
         uint256 kinkRate;
@@ -70,9 +69,9 @@ library InterestCalculator {
         return liquidity;
     }
 
-
     function applyInterest(
         DataType.Context storage _context,
+        IRMParams memory _irmParams,
         uint256 lastTouchedTimestamp
     ) internal returns (uint256) {
         if (block.timestamp <= lastTouchedTimestamp) {
@@ -81,14 +80,13 @@ library InterestCalculator {
 
         // calculate interest for tokens
         // TODO: Utilization Ratio
-        uint256 interest = ((block.timestamp - lastTouchedTimestamp) * calculateInterestRate(0)) /
+        uint256 interest = ((block.timestamp - lastTouchedTimestamp) * calculateInterestRate(_irmParams, getUR(_context))) /
             365 days;
 
         _context.tokenState0.updateScaler(interest);
         _context.tokenState1.updateScaler(interest);
 
         return block.timestamp;
-
     }
 
 
@@ -152,8 +150,26 @@ library InterestCalculator {
         return (_dailyFeeAmount * (a + b)) / (2 * ONE);
     }
 
-    function calculateInterestRate(uint256 _utilizationRatio) internal view returns (uint256) {
-        return 0;
+    function getUR(
+        DataType.Context memory _context
+    ) internal pure returns (uint256) {
+        if (_context.tokenState0.totalDeposited == 0) {
+            return ONE;
+        }
+        return PredyMath.mulDiv(_context.tokenState0.totalBorrowed, ONE, _context.tokenState0.totalDeposited);
+    }
+
+    function calculateInterestRate(IRMParams memory _irmParams, uint256 _utilizationRatio) internal pure returns (uint256) {
+        uint256 ir = _irmParams.baseRate;
+
+        if (_utilizationRatio <= _irmParams.kinkRate) {
+            ir += (_utilizationRatio * _irmParams.slope1) / ONE;
+        } else {
+            ir += (_irmParams.kinkRate * _irmParams.slope1) / ONE;
+            ir += (_irmParams.slope2 * (_utilizationRatio - _irmParams.kinkRate)) / ONE;
+        }
+
+        return ir;
     }
 
     function takeSnapshotForRange(

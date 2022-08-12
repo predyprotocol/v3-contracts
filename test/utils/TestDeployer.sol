@@ -96,6 +96,6 @@ abstract contract TestDeployer is BaseTestHelper {
 
         // pricingModule.updateDaylyFeeAmount(120 * 1e12);
         // pricingModule.updateMinCollateralPerLiquidity(1e10);
-        // pricingModule.updateIRMParams(1e12, 30 * 1e16, 20 * 1e16, 50 * 1e16);
+        controller.updateIRMParams(1e12, 30 * 1e16, 20 * 1e16, 50 * 1e16);
     }
 }

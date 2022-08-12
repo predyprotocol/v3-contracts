@@ -50,5 +50,4 @@ contract ControllerTest is TestDeployer, Test {
 
         controller.openPosition(0, positionUpdates, amount0*2, amount1*2);
     }
-
 }

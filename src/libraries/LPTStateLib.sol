@@ -10,8 +10,11 @@ library LPTStateLib {
     /**
      * @notice register new LPT
      */
-    function registerNewLPTState(DataType.PerpStatus storage _range, uint256 _tokenId) external {
+    function registerNewLPTState(DataType.PerpStatus storage _range, uint256 _tokenId, int24 _lowerTick, int24 _upperTick) external {
         _range.tokenId = _tokenId;
+        _range.lowerTick = _lowerTick;
+        _range.upperTick = _upperTick;
+        _range.lastTouchedTimestamp = block.timestamp;
     }
 
 

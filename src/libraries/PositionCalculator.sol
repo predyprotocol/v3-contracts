@@ -4,11 +4,12 @@ pragma abicoder v2;
 
 import "@uniswap/v3-periphery/libraries/LiquidityAmounts.sol";
 import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
-import "@uniswap/v3-core/contracts/libraries/FixedPoint96.sol";
 import "./DataType.sol";
 import "forge-std/console2.sol";
 
 library PositionCalculator {
+    uint256 internal constant Q96 = 0x1000000000000000000000000;
+
     struct LPT {
         bool isCollateral;
         uint128 liquidity;
@@ -119,7 +120,7 @@ library PositionCalculator {
             uint160 sqrtUpperPrice = TickMath.getSqrtRatioAtTick(lpt.upperTick);
 
             if(!lpt.isCollateral && sqrtLowerPrice <= _sqrtPrice && _sqrtPrice <= sqrtUpperPrice) {
-                debtValue = lpt.liquidity * (TickMath.getSqrtRatioAtTick(lpt.upperTick) - TickMath.getSqrtRatioAtTick(lpt.lowerTick)) / FixedPoint96.Q96;
+                debtValue = lpt.liquidity * (TickMath.getSqrtRatioAtTick(lpt.upperTick) - TickMath.getSqrtRatioAtTick(lpt.lowerTick)) / Q96;
                 continue;
             }
 
