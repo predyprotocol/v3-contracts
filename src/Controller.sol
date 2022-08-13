@@ -296,13 +296,6 @@ contract Controller is IController, Ownable, Constants {
         return PredyMath.mulDiv(ranges[_rangeId].borrowedLiquidity, ONE, getTotalLiquidityAmount(_rangeId));
     }
 
-    function getUR() internal view returns (uint256) {
-        if (context.tokenState0.totalDeposited == 0) {
-            return ONE;
-        }
-        return PredyMath.mulDiv(context.tokenState0.totalBorrowed, ONE, context.tokenState0.totalDeposited);
-    }
-
     /**
      * Gets current price of underlying token by margin token.
      */
@@ -411,9 +404,5 @@ contract Controller is IController, Ownable, Constants {
             context.tokenState1.getDebtValue(vault.balance1),
             lpts
         );
-    }
-
-    function getRangeKey(int24 _lower, int24 _upper) internal pure returns (bytes32) {
-        return keccak256(abi.encode(_lower, _upper));
     }
 }

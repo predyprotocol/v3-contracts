@@ -85,12 +85,4 @@ library DataType {
         uint256 param0;
         uint256 param1;
     }
-
-    struct CloseParams {
-        bool zeroToOne;
-        uint256 amount;
-        uint256 amountOutMinimum;
-        uint256 penaltyAmount0;
-        uint256 penaltyAmount1;
-    }
 }
