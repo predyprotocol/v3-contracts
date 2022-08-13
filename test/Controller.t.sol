@@ -50,9 +50,12 @@ contract ControllerTest is TestDeployer, Test {
         controller.updatePosition(0, positionUpdates, amount0 * 2, amount1 * 2);
     }
 
-    function testBorrowLPT() public {
-        DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](3);
-        uint256 margin = 100 * 1e6;
+    function createPositionUpdatesForBorrowLPT(uint256 _margin)
+        internal
+        pure
+        returns (DataType.PositionUpdate[] memory positionUpdates)
+    {
+        positionUpdates = new DataType.PositionUpdate[](3);
 
         (uint128 liquidity, , ) = LPTMath.getLiquidityAndAmountToBorrow(true, 1e18, 202600, 202500, 202600);
 
@@ -71,7 +74,7 @@ contract ControllerTest is TestDeployer, Test {
             0,
             0,
             0,
-            margin,
+            _margin,
             1e18
         );
         positionUpdates[2] = DataType.PositionUpdate(
@@ -83,7 +86,23 @@ contract ControllerTest is TestDeployer, Test {
             1e18,
             (1e18 * 1800) / 1e12
         );
+    }
 
+    function testBorrowLPT() public {
+        uint256 margin = 100 * 1e6;
+
+        DataType.PositionUpdate[] memory positionUpdates = createPositionUpdatesForBorrowLPT(margin);
+
+        controller.updatePosition(0, positionUpdates, (1e18 * 1800) / 1e12, margin);
+    }
+
+    function testCannotBorrowLPT() public {
+        uint256 margin = 0;
+
+        DataType.PositionUpdate[] memory positionUpdates = createPositionUpdatesForBorrowLPT(margin);
+
+        // no enough collateral
+        vm.expectRevert(bytes("P3"));
         controller.updatePosition(0, positionUpdates, (1e18 * 1800) / 1e12, margin);
     }
 }

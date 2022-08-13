@@ -113,6 +113,7 @@ contract PositionUpdatorTest is TestDeployer, Test {
         assertEq(BaseToken.getDebtValue(context.tokenState1, vault3.balance1), 0);
     }
 
+    /*
     function testUpdatePositionDepositLPT() public {
         DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](1);
 
@@ -130,4 +131,5 @@ contract PositionUpdatorTest is TestDeployer, Test {
 
         assertEq(vault1.lpts.length, 1);
     }
+    */
 }

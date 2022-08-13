@@ -60,7 +60,6 @@ contract ControllerHelperTest is TestDeployer, Test {
 
         (DataType.PositionUpdate[] memory positionUpdates, uint256 buffer0, uint256 buffer1) = controllerHelper
             .getPositionUpdatesToOpen(position, 1800);
-        console.log(1, buffer0, buffer1);
 
         controller.updatePosition(0, positionUpdates, buffer0, (buffer1 * 105) / 100);
     }

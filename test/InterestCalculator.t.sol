@@ -15,6 +15,7 @@ contract InterestCalculatorTest is TestDeployer, Test {
     DataType.Context private context;
     DataType.PerpStatus private perpStatus;
     InterestCalculator.DPMParams private dpmParams;
+    DataType.Vault private vault;
 
     function setUp() public {
         owner = 0x503828976D22510aad0201ac7EC88293211D23Da;
@@ -53,6 +54,15 @@ contract InterestCalculatorTest is TestDeployer, Test {
     }
 
     function testApplyInterest() public {
+        // deposit token
+        BaseToken.addCollateral(context.tokenState0, vault.balance0, 1e18, true);
+        // borrow token
+        BaseToken.addDebt(context.tokenState0, vault.balance0, 1e17);
+
+        // 1 day passed
+        vm.warp(block.timestamp + 1 days);
+
+        // update state
         InterestCalculator.applyInterest(
             context,
             InterestCalculator.IRMParams(1e12, 30 * 1e16, 20 * 1e16, 50 * 1e16),

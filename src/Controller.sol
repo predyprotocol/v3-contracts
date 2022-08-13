@@ -104,7 +104,11 @@ contract Controller is IController, Ownable, Constants {
     // User API
 
     /**
-     * @notice Opens new position.
+     * @notice Update position in a vault.
+     * @param _vaultId vault id
+     * @param _positionUpdates parameters to update position
+     * @param _buffer0 max amount of token0 to send
+     * @param _buffer1 max amount of token1 to send
      */
     function updatePosition(
         uint256 _vaultId,
@@ -175,7 +179,9 @@ contract Controller is IController, Ownable, Constants {
     }
 
     /**
-     * Liquidates if 75% of collateral value is less than debt value.
+     * @notice Anyone can liquidates the vault if its required collateral value is positive.
+     * @param _vaultId vault id
+     * @param _positionUpdates parameters to update position
      */
     function liquidate(uint256 _vaultId, DataType.PositionUpdate[] memory _positionUpdates) external {
         applyPerpFee(_vaultId);
@@ -207,6 +213,10 @@ contract Controller is IController, Ownable, Constants {
         return requiredCollateral > 0;
     }
 
+    /**
+     * @notice Contract owner can close positions
+     * @param _data vaults data to close position
+     */
     function forceClose(bytes[] memory _data) external onlyOwner {
         for (uint256 i = 0; i < _data.length; i++) {
             (uint256 vaultId, DataType.PositionUpdate[] memory _positionUpdates) = abi.decode(

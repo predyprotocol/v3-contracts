@@ -91,7 +91,6 @@ library InterestCalculator {
         }
 
         // calculate interest for tokens
-        // TODO: Utilization Ratio
         uint256 interest = ((block.timestamp - lastTouchedTimestamp) *
             calculateInterestRate(_irmParams, getUR(_context))) / 365 days;
 
