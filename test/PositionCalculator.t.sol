@@ -6,39 +6,20 @@ import "forge-std/Test.sol";
 import "forge-std/Vm.sol";
 import "forge-std/console.sol";
 import "../src/libraries/PositionCalculator.sol";
+import "../src/libraries/LPTMath.sol";
 
 contract PositionCalculatorTest is Test {
-    function testGetRequiredTokenAmounts() public {
-        DataType.LPT[] memory lpts = new DataType.LPT[](0);
-
-        DataType.Position memory srcPosition = DataType.Position(1e18, 0, 0, 1e6, lpts);
-        DataType.Position memory destPosition = DataType.Position(1e18, 0, 0, 1e6, lpts);
-
-        (int256 amount0, int256 amount1) = PositionCalculator.getRequiredTokenAmounts(
-            srcPosition,
-            destPosition,
-            TickMath.getSqrtRatioAtTick(int24(0))
-        );
-
-        assertEq(amount0, amount1);
-    }
-
-    function testCalculateRequiredCollateral(int256 tick) public {
-        vm.assume(tick >= -887220 && tick <= 887220);
+    function testCalculateRequiredCollateralOfLongToken0(uint160 _sqrtPrice) public {
+        vm.assume(2802745766959374473415602 < _sqrtPrice);
 
         DataType.LPT[] memory lpts = new DataType.LPT[](0);
 
-        DataType.Position memory position = DataType.Position(1e18, 0, 0, 1e6, lpts);
+        DataType.Position memory position = DataType.Position(1e18, 0, 0, 1000 * 1e6, lpts);
 
-        assertLt(
-            PositionCalculator.calculateRequiredCollateral(position, TickMath.getSqrtRatioAtTick(int24(tick)), false),
-            0
-        );
+        assertLt(PositionCalculator.calculateRequiredCollateral(position, _sqrtPrice, false), 0);
     }
 
-    function testCalculateRequiredCollateral2(int256 tick) public {
-        vm.assume(tick >= -887220 && tick <= 887220);
-
+    function testCalculateRequiredCollateralOfBorrowLPT0(uint160 _sqrtPrice) public {
         DataType.LPT[] memory lpts = new DataType.LPT[](1);
         uint128 liquidity = LiquidityAmounts.getLiquidityForAmounts(
             TickMath.getSqrtRatioAtTick(-202560),
@@ -50,17 +31,12 @@ contract PositionCalculatorTest is Test {
 
         lpts[0] = DataType.LPT(false, liquidity, -202560, -202550);
 
-        DataType.Position memory position = DataType.Position(1e18, 0, 0, 0, lpts);
+        DataType.Position memory position = DataType.Position(1e18, 50 * 1e6, 0, 0, lpts);
 
-        assertLt(
-            PositionCalculator.calculateRequiredCollateral(position, TickMath.getSqrtRatioAtTick(int24(tick)), false),
-            0
-        );
+        assertLt(PositionCalculator.calculateRequiredCollateral(position, _sqrtPrice, false), 0);
     }
 
-    function testCalculateRequiredCollateral3() public {
-        int24 tick = -202560;
-
+    function testCalculateRequiredCollateralOfBorrowLPT1(uint160 _sqrtPrice) public {
         DataType.LPT[] memory lpts = new DataType.LPT[](1);
         uint128 liquidity = LiquidityAmounts.getLiquidityForAmounts(
             TickMath.getSqrtRatioAtTick(-202560),
@@ -72,8 +48,8 @@ contract PositionCalculatorTest is Test {
 
         lpts[0] = DataType.LPT(false, liquidity, -202560, -202550);
 
-        DataType.Position memory position = DataType.Position(1e18, 1e6, 0, 0, lpts);
+        DataType.Position memory position = DataType.Position(0, 1700 * 1e6, 0, 0, lpts);
 
-        assertLt(PositionCalculator.calculateRequiredCollateral(position, TickMath.getSqrtRatioAtTick(tick), false), 0);
+        assertLt(PositionCalculator.calculateRequiredCollateral(position, _sqrtPrice, false), 0);
     }
 }

@@ -119,7 +119,7 @@ contract InterestCalculatorTest is TestDeployer, Test {
             })
         );
 
-        InterestCalculator.applyDailyPremium(dpmParams, getContext(), perpStatus);
+        InterestCalculator.applyDailyPremium(dpmParams, getContext(), perpStatus, getSqrtPrice());
 
         // assertGt(perpStatus.premiumGrowthForLender, 0);
         assertGt(perpStatus.premiumGrowthForBorrower, 0);

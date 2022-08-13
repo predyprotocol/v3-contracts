@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/math/SignedSafeMath.sol";
 import "./libraries/DataType.sol";
 import "./libraries/PositionCalculator.sol";
-import "./libraries/PositionMath.sol";
+import "./libraries/PositionLib.sol";
 import "./Controller.sol";
 
 contract ControllerHelper {
@@ -30,9 +30,9 @@ contract ControllerHelper {
     {
         uint256 swapIndex;
 
-        (positionUpdates, swapIndex) = PositionMath.calculatePositionUpdatesToOpen(_position);
+        (positionUpdates, swapIndex) = PositionLib.calculatePositionUpdatesToOpen(_position);
 
-        (int256 requiredAmount0, int256 requiredAmount1) = PositionCalculator.getRequiredTokenAmountsToOpen(
+        (int256 requiredAmount0, int256 requiredAmount1) = PositionLib.getRequiredTokenAmountsToOpen(
             _position,
             controller.getSqrtPrice()
         );
@@ -77,9 +77,9 @@ contract ControllerHelper {
             uint256 _buffer1
         )
     {
-        positionUpdates = PositionMath.calculatePositionUpdatesToClose(_position);
+        positionUpdates = PositionLib.calculatePositionUpdatesToClose(_position);
 
-        (int256 requiredAmount0, int256 requiredAmount1) = PositionCalculator.getRequiredTokenAmountsToClose(
+        (int256 requiredAmount0, int256 requiredAmount1) = PositionLib.getRequiredTokenAmountsToClose(
             _position,
             controller.getSqrtPrice()
         );

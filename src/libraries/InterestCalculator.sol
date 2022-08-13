@@ -4,6 +4,7 @@ pragma abicoder v2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import "@uniswap/v3-periphery/interfaces/INonfungiblePositionManager.sol";
 
 import "./DataType.sol";
@@ -14,6 +15,8 @@ library InterestCalculator {
     using BaseToken for BaseToken.TokenState;
 
     uint256 internal constant ONE = 1e18;
+
+    uint256 internal constant Q96 = 0x1000000000000000000000000;
 
     struct TickSnapshot {
         uint256 lastFeeGrowthInside0X128;
@@ -28,8 +31,9 @@ library InterestCalculator {
     }
 
     struct DPMParams {
-        mapping(bytes32 => TickSnapshot) snapshots;
         uint256 dailyFeeAmount;
+        IRMParams irmParams;
+        mapping(bytes32 => TickSnapshot) snapshots;
     }
 
     struct IRMParams {
@@ -42,20 +46,30 @@ library InterestCalculator {
     function applyDailyPremium(
         DPMParams storage _params,
         DataType.Context memory _context,
-        DataType.PerpStatus storage _perpState
+        DataType.PerpStatus storage _perpState,
+        uint160 _sqrtPrice
     ) internal {
         if (block.timestamp <= _perpState.lastTouchedTimestamp) {
             return;
         }
 
         if (_perpState.borrowedLiquidity > 0) {
-            uint256 premium = ((block.timestamp - _perpState.lastTouchedTimestamp) *
-                calculateDailyPremium(
-                    _params,
-                    IUniswapV3Pool(_context.uniswapPool),
-                    _perpState.lowerTick,
-                    _perpState.upperTick
-                )) / 1 days;
+            uint256 dailyInterest = calculateInterestRate(
+                _params.irmParams,
+                getPerpUR(_perpState, INonfungiblePositionManager(_context.positionManager))
+            );
+            uint256 dailyPremium = calculateDailyPremium(
+                _params,
+                IUniswapV3Pool(_context.uniswapPool),
+                _perpState.lowerTick,
+                _perpState.upperTick
+            );
+
+            uint256 premium = ((block.timestamp - _perpState.lastTouchedTimestamp) * (dailyPremium + dailyInterest)) /
+                1 days;
+
+            premium = convertLiquidityToStableValue(premium, _sqrtPrice, _perpState.lowerTick, _perpState.upperTick);
+
             _perpState.premiumGrowthForBorrower = _perpState.premiumGrowthForBorrower.add(premium);
             _perpState.premiumGrowthForLender = _perpState.premiumGrowthForLender.add(
                 PredyMath.mulDiv(
@@ -69,6 +83,21 @@ library InterestCalculator {
         takeSnapshotForRange(_params, IUniswapV3Pool(_context.uniswapPool), _perpState.lowerTick, _perpState.upperTick);
 
         _perpState.lastTouchedTimestamp = block.timestamp;
+    }
+
+    function convertLiquidityToStableValue(
+        uint256 _liquidityAmount,
+        uint160 _sqrtPrice,
+        int24 _lowerTick,
+        int24 _upperTick
+    ) internal pure returns (uint256) {
+        return
+            (_liquidityAmount *
+                (2 *
+                    _sqrtPrice -
+                    TickMath.getSqrtRatioAtTick(_lowerTick) -
+                    (_sqrtPrice * _sqrtPrice) /
+                    TickMath.getSqrtRatioAtTick(_upperTick))) / Q96;
     }
 
     function getTotalLiquidityAmount(INonfungiblePositionManager _positionManager, uint256 _tokenId)
@@ -158,6 +187,19 @@ library InterestCalculator {
         }
 
         return (_dailyFeeAmount * (a + b)) / (2 * ONE);
+    }
+
+    function getPerpUR(DataType.PerpStatus storage _perpState, INonfungiblePositionManager _positionManager)
+        internal
+        view
+        returns (uint256)
+    {
+        return
+            PredyMath.mulDiv(
+                _perpState.borrowedLiquidity,
+                ONE,
+                getTotalLiquidityAmount(_positionManager, _perpState.tokenId)
+            );
     }
 
     function getUR(DataType.Context memory _context) internal pure returns (uint256) {

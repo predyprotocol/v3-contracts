@@ -101,6 +101,14 @@ contract Controller is IController, Ownable, Constants {
         irmParams.slope2 = _slope2;
     }
 
+    function updateDRMParams(InterestCalculator.IRMParams memory _irmParams, uint256 _dailyFeeAmount)
+        external
+        onlyOwner
+    {
+        dpmParams.irmParams = _irmParams;
+        dpmParams.dailyFeeAmount = _dailyFeeAmount;
+    }
+
     // User API
 
     /**
@@ -285,15 +293,10 @@ contract Controller is IController, Ownable, Constants {
 
         // calculate fee for perps
         for (uint256 i = 0; i < vault.lpts.length; i++) {
-            InterestCalculator.applyDailyPremium(dpmParams, context, ranges[vault.lpts[i].rangeId]);
+            InterestCalculator.applyDailyPremium(dpmParams, context, ranges[vault.lpts[i].rangeId], getSqrtPrice());
         }
 
-        // updateInterest();
         lastTouchedTimestamp = InterestCalculator.applyInterest(context, irmParams, lastTouchedTimestamp);
-    }
-
-    function getPerpUR(bytes32 _rangeId) internal view returns (uint256) {
-        return PredyMath.mulDiv(ranges[_rangeId].borrowedLiquidity, ONE, getTotalLiquidityAmount(_rangeId));
     }
 
     /**

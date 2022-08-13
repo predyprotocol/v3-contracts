@@ -426,8 +426,12 @@ abstract contract BaseTestHelper {
     }
 
     function showCurrentTick() internal {
-        (, int24 tick, , , , , ) = IUniswapV3Pool(address(uniPool)).slot0();
+        (, int24 tick, , , , , ) = uniPool.slot0();
         console.log(6, uint256(tick));
+    }
+
+    function getSqrtPrice() public view returns (uint160 sqrtPriceX96) {
+        (sqrtPriceX96, , , , , , ) = uniPool.slot0();
     }
 
     /**

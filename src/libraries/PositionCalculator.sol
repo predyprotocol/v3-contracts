@@ -14,82 +14,18 @@ library PositionCalculator {
     using SignedSafeMath for int256;
 
     uint256 internal constant Q96 = 0x1000000000000000000000000;
+    // sqrt{1.25} = 1.11803398875
+    uint160 internal constant UPPER_E8 = 111803399;
+    // sqrt{1/1.25} = 0.894427191
+    uint160 internal constant LOWER_E8 = 89442719;
 
-    function emptyPosition() internal pure returns (DataType.Position memory) {
-        DataType.LPT[] memory lpts = new DataType.LPT[](0);
-        return DataType.Position(0, 0, 0, 0, lpts);
-    }
-
-    function getRequiredTokenAmountsToOpen(DataType.Position memory _destPosition, uint160 _sqrtPrice)
-        internal
-        pure
-        returns (int256, int256)
-    {
-        return getRequiredTokenAmounts(emptyPosition(), _destPosition, _sqrtPrice);
-    }
-
-    function getRequiredTokenAmountsToClose(DataType.Position memory _srcPosition, uint160 _sqrtPrice)
-        internal
-        pure
-        returns (int256, int256)
-    {
-        return getRequiredTokenAmounts(_srcPosition, emptyPosition(), _sqrtPrice);
-    }
-
-    function getRequiredTokenAmounts(
-        DataType.Position memory _srcPosition,
-        DataType.Position memory _destPosition,
-        uint160 _sqrtPrice
-    ) internal pure returns (int256 requiredAmount0, int256 requiredAmount1) {
-        requiredAmount0 = requiredAmount0.sub(int256(_srcPosition.collateral0));
-        requiredAmount1 = requiredAmount1.sub(int256(_srcPosition.collateral1));
-        requiredAmount0 = requiredAmount0.add(int256(_srcPosition.debt0));
-        requiredAmount1 = requiredAmount1.add(int256(_srcPosition.debt1));
-
-        requiredAmount0 = requiredAmount0.add(int256(_destPosition.collateral0));
-        requiredAmount1 = requiredAmount1.add(int256(_destPosition.collateral1));
-        requiredAmount0 = requiredAmount0.sub(int256(_destPosition.debt0));
-        requiredAmount1 = requiredAmount1.sub(int256(_destPosition.debt1));
-
-        for (uint256 i = 0; i < _srcPosition.lpts.length; i++) {
-            DataType.LPT memory lpt = _srcPosition.lpts[i];
-
-            (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
-                _sqrtPrice,
-                TickMath.getSqrtRatioAtTick(lpt.lowerTick),
-                TickMath.getSqrtRatioAtTick(lpt.upperTick),
-                lpt.liquidity
-            );
-
-            if (lpt.isCollateral) {
-                requiredAmount0 = requiredAmount0.sub(int256(amount0));
-                requiredAmount1 = requiredAmount1.sub(int256(amount1));
-            } else {
-                requiredAmount0 = requiredAmount0.add(int256(amount0));
-                requiredAmount1 = requiredAmount1.add(int256(amount1));
-            }
-        }
-
-        for (uint256 i = 0; i < _destPosition.lpts.length; i++) {
-            DataType.LPT memory lpt = _destPosition.lpts[i];
-
-            (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
-                _sqrtPrice,
-                TickMath.getSqrtRatioAtTick(lpt.lowerTick),
-                TickMath.getSqrtRatioAtTick(lpt.upperTick),
-                lpt.liquidity
-            );
-
-            if (lpt.isCollateral) {
-                requiredAmount0 = requiredAmount0.add(int256(amount0));
-                requiredAmount1 = requiredAmount1.add(int256(amount1));
-            } else {
-                requiredAmount0 = requiredAmount0.sub(int256(amount0));
-                requiredAmount1 = requiredAmount1.sub(int256(amount1));
-            }
-        }
-    }
-
+    /**
+     * @notice Calculates required collateral for a position.
+     * RequiredCollateral = 0.01*CollateralValue - minValue
+     * @param _position position object
+     * @param _sqrtPrice square root price to calculate
+     * @param _isMarginZero whether the stable token is token0 or token1
+     */
     function calculateRequiredCollateral(
         DataType.Position memory _position,
         uint160 _sqrtPrice,
@@ -99,7 +35,7 @@ library PositionCalculator {
 
         (uint256 collateralValue, ) = calculateCollateralAndDebtValue(_position, _sqrtPrice, _isMarginZero);
 
-        return int256(collateralValue) / 10000 - minValue;
+        return int256(collateralValue) / 100 - minValue;
     }
 
     function calculateMinValue(
@@ -108,8 +44,8 @@ library PositionCalculator {
         bool _isMarginZero
     ) internal pure returns (int256 minValue) {
         minValue = type(int256).max;
-        uint160 sqrtPriceLower = (86 * _sqrtPrice) / 100;
-        uint160 sqrtPriceUpper = (112 * _sqrtPrice) / 100;
+        uint160 sqrtPriceLower = (LOWER_E8 * _sqrtPrice) / 1e8;
+        uint160 sqrtPriceUpper = (UPPER_E8 * _sqrtPrice) / 1e8;
 
         for (uint256 i = 0; i < _position.lpts.length; i++) {
             DataType.LPT memory lpt = _position.lpts[i];
