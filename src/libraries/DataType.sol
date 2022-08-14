@@ -28,6 +28,7 @@ library DataType {
     }
 
     struct Vault {
+        uint256 vaultId;
         address owner;
         bool isClosed;
         BaseToken.AccountState balance0;
@@ -48,6 +49,14 @@ library DataType {
     }
 
     // Parameters
+
+    struct InitializationParams {
+        uint24 feeTier;
+        address token0;
+        address token1;
+        bool isMarginZero;
+    }
+
     struct LPT {
         bool isCollateral;
         uint128 liquidity;

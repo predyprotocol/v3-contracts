@@ -21,14 +21,11 @@ contract PositionUpdatorTest is TestDeployer, Test {
     mapping(bytes32 => DataType.PerpStatus) private ranges;
 
     function setUp() public {
-        owner = 0x503828976D22510aad0201ac7EC88293211D23Da;
-        vm.startPrank(owner);
-
         address factory = deployCode(
             "../node_modules/@uniswap/v3-core/artifacts/contracts/UniswapV3Factory.sol:UniswapV3Factory"
         );
 
-        deployContracts(owner, factory);
+        deployContracts(address(this), factory);
         vm.warp(block.timestamp + 1 minutes);
 
         context = getContext();
@@ -113,7 +110,6 @@ contract PositionUpdatorTest is TestDeployer, Test {
         assertEq(BaseToken.getDebtValue(context.tokenState1, vault3.balance1), 0);
     }
 
-    /*
     function testUpdatePositionDepositLPT() public {
         DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](1);
 
@@ -131,5 +127,4 @@ contract PositionUpdatorTest is TestDeployer, Test {
 
         assertEq(vault1.lpts.length, 1);
     }
-    */
 }

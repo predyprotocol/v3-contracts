@@ -40,10 +40,14 @@ abstract contract ForkTestDeployer is BaseTestHelper {
         swapRouter = SwapRouter(swapRouterAddress);
         uniPool = IUniswapV3Pool(factory.getPool(address(token0), address(token1), 500));
 
-        controller = new Controller(
+        DataType.InitializationParams memory initializationParam = DataType.InitializationParams(
+            500,
             address(token0),
             address(token1),
-            !isTokenAToken0,
+            !isTokenAToken0
+        );
+        controller = new Controller(
+            initializationParam,
             address(positionManager),
             address(factory),
             address(swapRouter)

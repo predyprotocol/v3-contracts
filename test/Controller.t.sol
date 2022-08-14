@@ -93,7 +93,12 @@ contract ControllerTest is TestDeployer, Test {
 
         DataType.PositionUpdate[] memory positionUpdates = createPositionUpdatesForBorrowLPT(margin);
 
-        controller.updatePosition(0, positionUpdates, (1e18 * 1800) / 1e12, margin);
+        uint256 vaultId = controller.updatePosition(0, positionUpdates, (1e18 * 1800) / 1e12, margin);
+
+        (uint256 collateralValue, uint256 debtValue) = controller.getVaultStatus(vaultId);
+
+        assertGt(collateralValue, 0);
+        assertGt(debtValue, 0);
     }
 
     function testCannotBorrowLPT() public {

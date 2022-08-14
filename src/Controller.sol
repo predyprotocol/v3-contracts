@@ -54,24 +54,22 @@ contract Controller is IController, Ownable, Constants {
     }
 
     constructor(
-        address _token0,
-        address _token1,
-        bool _isMarginZero,
+        DataType.InitializationParams memory _initializationParams,
         address _positionManager,
         address _factory,
         address _swapRouter
     ) {
-        context.feeTier = FEE_TIER;
-        context.token0 = _token0;
-        context.token1 = _token1;
-        context.isMarginZero = _isMarginZero;
+        context.feeTier = _initializationParams.feeTier;
+        context.token0 = _initializationParams.token0;
+        context.token1 = _initializationParams.token1;
+        context.isMarginZero = _initializationParams.isMarginZero;
         context.positionManager = _positionManager;
         context.swapRouter = _swapRouter;
 
         PoolAddress.PoolKey memory poolKey = PoolAddress.PoolKey({
             token0: context.token0,
             token1: context.token1,
-            fee: FEE_TIER
+            fee: context.feeTier
         });
 
         context.uniswapPool = PoolAddress.computeAddress(_factory, poolKey);
@@ -89,16 +87,8 @@ contract Controller is IController, Ownable, Constants {
         lastTouchedTimestamp = block.timestamp;
     }
 
-    function updateIRMParams(
-        uint256 _base,
-        uint256 _kink,
-        uint256 _slope1,
-        uint256 _slope2
-    ) external onlyOwner {
-        irmParams.baseRate = _base;
-        irmParams.kinkRate = _kink;
-        irmParams.slope1 = _slope1;
-        irmParams.slope2 = _slope2;
+    function updateIRMParams(InterestCalculator.IRMParams memory _irmParams) external onlyOwner {
+        irmParams = _irmParams;
     }
 
     function updateDRMParams(InterestCalculator.IRMParams memory _irmParams, uint256 _dailyFeeAmount)
@@ -129,8 +119,12 @@ contract Controller is IController, Ownable, Constants {
         DataType.Vault storage vault;
         (vaultId, vault) = createOrGetVault(_vaultId);
 
-        TransferHelper.safeTransferFrom(context.token0, msg.sender, address(this), _buffer0);
-        TransferHelper.safeTransferFrom(context.token1, msg.sender, address(this), _buffer1);
+        if (_buffer0 > 0) {
+            TransferHelper.safeTransferFrom(context.token0, msg.sender, address(this), _buffer0);
+        }
+        if (_buffer1 > 0) {
+            TransferHelper.safeTransferFrom(context.token1, msg.sender, address(this), _buffer1);
+        }
 
         // update position
         (int256 amount0, int256 amount1) = PositionUpdator.updatePosition(
@@ -264,6 +258,8 @@ contract Controller is IController, Ownable, Constants {
         if (_vaultId == 0) {
             vaultId = vaultIdCount;
             vaultIdCount++;
+
+            vaults[vaultId].vaultId = vaultId;
             vaults[vaultId].owner = msg.sender;
 
             emit VaultCreated(vaultId);

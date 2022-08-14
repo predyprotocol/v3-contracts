@@ -20,7 +20,15 @@ library PositionUpdator {
     using VaultLib for DataType.Vault;
     using LPTStateLib for DataType.PerpStatus;
 
-    uint24 internal constant FEE_TIER = 500;
+    event TokenDeposited(uint256 vaultId, uint256 amount0, uint256 amount1);
+    event TokenWithdrawn(uint256 vaultId, uint256 amount0, uint256 amount1);
+    event TokenBorrowed(uint256 vaultId, uint256 amount0, uint256 amount1);
+    event TokenRepaid(uint256 vaultId, uint256 amount0, uint256 amount1);
+    event LPTDeposited(uint256 vaultId, int24 lowerTick, int24 upperTick, uint128 liquidity);
+    event LPTWithdrawn(uint256 vaultId, int24 lowerTick, int24 upperTick, uint128 liquidity);
+    event LPTBorrowed(uint256 vaultId, int24 lowerTick, int24 upperTick, uint128 liquidity);
+    event LPTRepaid(uint256 vaultId, int24 lowerTick, int24 upperTick, uint128 liquidity);
+    event TokenSwap(uint256 vaultId, bool zeroForOne, uint256 srcAmount, uint256 destAmount);
 
     /**
      * @notice update position and return required token amounts.
@@ -80,12 +88,12 @@ library PositionUpdator {
                 requiredAmount0 = requiredAmount0.add(int256(amount0));
                 requiredAmount1 = requiredAmount1.add(int256(amount1));
             } else if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.SWAP_EXACT_IN) {
-                (int256 amount0, int256 amount1) = swapExactIn(_context, positionUpdate);
+                (int256 amount0, int256 amount1) = swapExactIn(_vault, _context, positionUpdate);
 
                 requiredAmount0 = requiredAmount0.add(amount0);
                 requiredAmount1 = requiredAmount1.add(amount1);
             } else if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.SWAP_EXACT_OUT) {
-                (int256 amount0, int256 amount1) = swapExactOut(_context, positionUpdate);
+                (int256 amount0, int256 amount1) = swapExactOut(_vault, _context, positionUpdate);
 
                 requiredAmount0 = requiredAmount0.add(amount0);
                 requiredAmount1 = requiredAmount1.add(amount1);
@@ -101,6 +109,8 @@ library PositionUpdator {
     ) internal {
         _context.tokenState0.addCollateral(_vault.balance0, amount0, true);
         _context.tokenState1.addCollateral(_vault.balance1, amount1, true);
+
+        emit TokenDeposited(_vault.vaultId, amount0, amount1);
     }
 
     function withdrawTokens(
@@ -111,6 +121,8 @@ library PositionUpdator {
     ) internal {
         _context.tokenState0.removeCollateral(_vault.balance0, amount0, true);
         _context.tokenState1.removeCollateral(_vault.balance1, amount1, true);
+
+        emit TokenWithdrawn(_vault.vaultId, amount0, amount1);
     }
 
     function borrowTokens(
@@ -121,6 +133,8 @@ library PositionUpdator {
     ) internal {
         _context.tokenState0.addDebt(_vault.balance0, amount0);
         _context.tokenState1.addDebt(_vault.balance1, amount1);
+
+        emit TokenBorrowed(_vault.vaultId, amount0, amount1);
     }
 
     function repayTokens(
@@ -131,6 +145,8 @@ library PositionUpdator {
     ) internal {
         _context.tokenState0.removeDebt(_vault.balance0, amount0);
         _context.tokenState1.removeDebt(_vault.balance1, amount1);
+
+        emit TokenRepaid(_vault.vaultId, amount0, amount1);
     }
 
     function depositLPT(
@@ -175,6 +191,13 @@ library PositionUpdator {
         }
 
         _vault.depositLPT(_ranges, rangeId, _positionUpdate.liquidity);
+
+        emit LPTDeposited(
+            _vault.vaultId,
+            _positionUpdate.lowerTick,
+            _positionUpdate.upperTick,
+            _positionUpdate.liquidity
+        );
     }
 
     function withdrawLPT(
@@ -206,6 +229,13 @@ library PositionUpdator {
         }
 
         _vault.withdrawLPT(rangeId, _positionUpdate.liquidity);
+
+        emit LPTWithdrawn(
+            _vault.vaultId,
+            _positionUpdate.lowerTick,
+            _positionUpdate.upperTick,
+            _positionUpdate.liquidity
+        );
     }
 
     function borrowLPT(
@@ -227,6 +257,13 @@ library PositionUpdator {
         _ranges[rangeId].borrowedLiquidity += _positionUpdate.liquidity;
 
         _vault.borrowLPT(_ranges, rangeId, _positionUpdate.liquidity);
+
+        emit LPTBorrowed(
+            _vault.vaultId,
+            _positionUpdate.lowerTick,
+            _positionUpdate.upperTick,
+            _positionUpdate.liquidity
+        );
     }
 
     function repayLPT(
@@ -264,12 +301,15 @@ library PositionUpdator {
         }
 
         _vault.repayLPT(rangeId, _positionUpdate.liquidity);
+
+        emit LPTRepaid(_vault.vaultId, _positionUpdate.lowerTick, _positionUpdate.upperTick, _positionUpdate.liquidity);
     }
 
-    function swapExactIn(DataType.Context memory _context, DataType.PositionUpdate memory _positionUpdate)
-        internal
-        returns (int256 requiredAmount0, int256 requiredAmount1)
-    {
+    function swapExactIn(
+        DataType.Vault memory _vault,
+        DataType.Context memory _context,
+        DataType.PositionUpdate memory _positionUpdate
+    ) internal returns (int256 requiredAmount0, int256 requiredAmount1) {
         ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
             tokenIn: _positionUpdate.zeroForOne ? _context.token0 : _context.token1,
             tokenOut: _positionUpdate.zeroForOne ? _context.token1 : _context.token0,
@@ -288,12 +328,15 @@ library PositionUpdator {
         } else {
             return (-int256(amountOut), int256(_positionUpdate.param0));
         }
+
+        emit TokenSwap(_vault.vaultId, _positionUpdate.zeroForOne, _positionUpdate.param0, amountOut);
     }
 
-    function swapExactOut(DataType.Context memory _context, DataType.PositionUpdate memory _positionUpdate)
-        internal
-        returns (int256 requiredAmount0, int256 requiredAmount1)
-    {
+    function swapExactOut(
+        DataType.Vault memory _vault,
+        DataType.Context memory _context,
+        DataType.PositionUpdate memory _positionUpdate
+    ) internal returns (int256 requiredAmount0, int256 requiredAmount1) {
         ISwapRouter.ExactOutputSingleParams memory params = ISwapRouter.ExactOutputSingleParams({
             tokenIn: _positionUpdate.zeroForOne ? _context.token0 : _context.token1,
             tokenOut: _positionUpdate.zeroForOne ? _context.token1 : _context.token0,
@@ -312,6 +355,8 @@ library PositionUpdator {
         } else {
             return (-int256(_positionUpdate.param0), int256(amountIn));
         }
+
+        emit TokenSwap(_vault.vaultId, _positionUpdate.zeroForOne, amountIn, _positionUpdate.param0);
     }
 
     function getSqrtPrice(IUniswapV3Pool _uniswapPool) public view returns (uint160 sqrtPriceX96) {

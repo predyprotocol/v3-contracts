@@ -5,6 +5,7 @@ pragma abicoder v2;
 import "./BaseTestHelper.sol";
 import "../../src/Controller.sol";
 import "../../src/mocks/MockERC20.sol";
+import "../../src/libraries/DataType.sol";
 import {NonfungiblePositionManager} from "v3-periphery/NonfungiblePositionManager.sol";
 import {UniswapV3Factory} from "v3-core/contracts/UniswapV3Factory.sol";
 import {SwapRouter} from "v3-periphery/SwapRouter.sol";
@@ -22,6 +23,8 @@ abstract contract TestDeployer is BaseTestHelper {
 
         tokenA.mint(owner, 1e25);
         tokenB.mint(owner, 1e25);
+        tokenA.mint(address(this), 1e25);
+        tokenB.mint(address(this), 1e25);
 
         bool isTokenAToken0 = uint160(address(tokenA)) < uint160(address(tokenB));
 
@@ -43,19 +46,19 @@ abstract contract TestDeployer is BaseTestHelper {
         uniPool = IUniswapV3Pool(IUniswapV3Factory(factory).getPool(address(token0), address(token1), 500));
         IUniswapV3PoolActions(uniPool).increaseObservationCardinalityNext(180);
 
-        controller = new Controller(
+        DataType.InitializationParams memory initializationParam = DataType.InitializationParams(
+            500,
             address(token0),
             address(token1),
-            true,
-            address(positionManager),
-            factory,
-            address(swapRouter)
+            true
         );
 
+        controller = new Controller(initializationParam, address(positionManager), factory, address(swapRouter));
+
         INonfungiblePositionManager.MintParams memory params = INonfungiblePositionManager.MintParams(
-            address(token0),
-            address(token1),
-            500,
+            initializationParam.token0,
+            initializationParam.token1,
+            initializationParam.feeTier,
             -887220,
             887220,
             ((1e20 * 1005) / 1e12),
@@ -75,19 +78,7 @@ abstract contract TestDeployer is BaseTestHelper {
 
         positionManager.mint(params);
 
-        //productVerifier = new ProductVerifier(pool);
-
-        //pool.setProductVerifier(address(productVerifier));
-
-        // pricingModule = new PricingModule();
-        // pool.setPricingModule(address(pricingModule));
-
-        // lptMathModule = new LPTMathModule();
-        // pool.setLPTMathModule(address(lptMathModule));
-
-        // pricingModule.updateDaylyFeeAmount(120 * 1e12);
-        // pricingModule.updateMinCollateralPerLiquidity(1e10);
-        controller.updateIRMParams(1e12, 30 * 1e16, 20 * 1e16, 50 * 1e16);
+        controller.updateIRMParams(InterestCalculator.IRMParams(1e12, 30 * 1e16, 20 * 1e16, 50 * 1e16));
         controller.updateDRMParams(InterestCalculator.IRMParams(1e12, 30 * 1e16, 20 * 1e16, 50 * 1e16), 1e16);
     }
 }
