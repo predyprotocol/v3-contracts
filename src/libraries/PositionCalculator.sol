@@ -7,7 +7,6 @@ import "@openzeppelin/contracts/math/SignedSafeMath.sol";
 import "@uniswap/v3-periphery/libraries/LiquidityAmounts.sol";
 import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import "./DataType.sol";
-import "forge-std/console.sol";
 
 library PositionCalculator {
     using SafeMath for uint256;

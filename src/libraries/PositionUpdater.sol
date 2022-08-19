@@ -14,8 +14,12 @@ import "./VaultLib.sol";
 import "./LPTStateLib.sol";
 import "./UniHelper.sol";
 
-import "forge-std/console.sol";
-
+/*
+ * Error Codes
+ * PU1: reduce only
+ * PU2: L must be lower
+ * PU3: L must be greater
+ */
 library PositionUpdater {
     using SafeMath for uint256;
     using SignedSafeMath for int256;
@@ -45,7 +49,7 @@ library PositionUpdater {
         DataType.Context storage _context,
         mapping(bytes32 => DataType.PerpStatus) storage _ranges,
         DataType.PositionUpdate[] memory _positionUpdates,
-        bool _reduceOnly
+        DataType.TradeOption memory _tradeOption
     ) external returns (int256 requiredAmount0, int256 requiredAmount1) {
         collectFeeAndPremium(_context, _vault, _ranges);
 
@@ -53,7 +57,7 @@ library PositionUpdater {
             DataType.PositionUpdate memory positionUpdate = _positionUpdates[i];
 
             if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.DEPOSIT_TOKEN) {
-                require(!_reduceOnly, "PU1");
+                require(!_tradeOption.reduceOnly, "PU1");
                 depositTokens(_vault, _context, positionUpdate.param0, positionUpdate.param1);
 
                 requiredAmount0 = requiredAmount0.add(int256(positionUpdate.param0));
@@ -69,7 +73,7 @@ library PositionUpdater {
                 requiredAmount0 = requiredAmount0.sub(int256(amount0));
                 requiredAmount1 = requiredAmount1.sub(int256(amount1));
             } else if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.BORROW_TOKEN) {
-                require(!_reduceOnly, "PU1");
+                require(!_tradeOption.reduceOnly, "PU1");
                 borrowTokens(_vault, _context, positionUpdate.param0, positionUpdate.param1);
 
                 requiredAmount0 = requiredAmount0.sub(int256(positionUpdate.param0));
@@ -85,7 +89,7 @@ library PositionUpdater {
                 requiredAmount0 = requiredAmount0.add(int256(amount0));
                 requiredAmount1 = requiredAmount1.add(int256(amount1));
             } else if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.DEPOSIT_LPT) {
-                require(!_reduceOnly, "PU1");
+                require(!_tradeOption.reduceOnly, "PU1");
                 (uint256 amount0, uint256 amount1) = depositLPT(_vault, _context, _ranges, positionUpdate);
 
                 requiredAmount0 = requiredAmount0.add(int256(amount0));
@@ -96,7 +100,7 @@ library PositionUpdater {
                 requiredAmount0 = requiredAmount0.sub(int256(amount0));
                 requiredAmount1 = requiredAmount1.sub(int256(amount1));
             } else if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.BORROW_LPT) {
-                require(!_reduceOnly, "PU1");
+                require(!_tradeOption.reduceOnly, "PU1");
                 (uint256 amount0, uint256 amount1) = borrowLPT(_vault, _context, _ranges, positionUpdate);
 
                 requiredAmount0 = requiredAmount0.sub(int256(amount0));
@@ -118,6 +122,161 @@ library PositionUpdater {
                 requiredAmount1 = requiredAmount1.add(amount1);
             }
         }
+
+        if (_tradeOption.swapAnyway) {
+            DataType.PositionUpdate memory positionUpdate = swapAnyway(_context, requiredAmount0, requiredAmount1);
+            int256 amount0;
+            int256 amount1;
+
+            if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.SWAP_EXACT_IN) {
+                (amount0, amount1) = swapExactIn(_vault, _context, positionUpdate);
+            } else if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.SWAP_EXACT_OUT) {
+                (amount0, amount1) = swapExactOut(_vault, _context, positionUpdate);
+            }
+
+            requiredAmount0 = requiredAmount0.add(amount0);
+            requiredAmount1 = requiredAmount1.add(amount1);
+        }
+    }
+
+    function swapAnyway(
+        DataType.Context storage _context,
+        int256 requiredAmount0,
+        int256 requiredAmount1
+    ) internal view returns (DataType.PositionUpdate memory) {
+        address tokenIn;
+        address tokenOut;
+        bool zeroForOne;
+        bool isExactIn;
+        uint256 amountIn;
+        uint256 amountOut;
+
+        if (requiredAmount0 > 0 && requiredAmount1 > 0) {
+            return DataType.PositionUpdate(DataType.PositionUpdateType.NOOP, false, 0, 0, 0, 0, 0);
+        }
+
+        if (requiredAmount0 < 0 && requiredAmount1 < 0) {
+            // exact in
+            isExactIn = true;
+
+            if (_context.isMarginZero) {
+                zeroForOne = false;
+                tokenIn = _context.token1;
+                tokenOut = _context.token0;
+                amountIn = uint256(-requiredAmount1);
+                amountOut = 0;
+            } else {
+                zeroForOne = true;
+                tokenIn = _context.token0;
+                tokenOut = _context.token1;
+                amountIn = uint256(-requiredAmount0);
+                amountOut = 0;
+            }
+        }
+
+        if (requiredAmount0 > 0 && requiredAmount1 < 0) {
+            zeroForOne = false;
+
+            if (_context.isMarginZero) {
+                // exact in
+                isExactIn = true;
+                tokenIn = _context.token1;
+                tokenOut = _context.token0;
+                amountIn = uint256(-requiredAmount1);
+                amountOut = uint256(requiredAmount0);
+            } else {
+                // exact out
+                isExactIn = false;
+                tokenIn = _context.token1;
+                tokenOut = _context.token0;
+                amountOut = uint256(requiredAmount0);
+                amountIn = uint256(-requiredAmount1);
+            }
+        }
+
+        if (requiredAmount0 < 0 && requiredAmount1 > 0) {
+            zeroForOne = true;
+
+            if (_context.isMarginZero) {
+                // exact out
+                isExactIn = false;
+                tokenIn = _context.token0;
+                tokenOut = _context.token1;
+                amountOut = uint256(requiredAmount1);
+                amountIn = uint256(-requiredAmount0);
+            } else {
+                // exact in
+                isExactIn = true;
+                tokenIn = _context.token0;
+                tokenOut = _context.token1;
+                amountIn = uint256(-requiredAmount0);
+                amountOut = uint256(requiredAmount1);
+            }
+        }
+
+        if (isExactIn) {
+            return
+                DataType.PositionUpdate(
+                    DataType.PositionUpdateType.SWAP_EXACT_IN,
+                    zeroForOne,
+                    0,
+                    0,
+                    0,
+                    amountIn,
+                    amountOut
+                );
+
+            /*
+            ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
+                tokenIn: tokenIn,
+                tokenOut: tokenOut,
+                fee: _context.feeTier,
+                recipient: address(this),
+                deadline: block.timestamp,
+                amountIn: amountIn,
+                amountOutMinimum: amountOut,
+                sqrtPriceLimitX96: 0
+            });
+
+            amountOut = ISwapRouter(_context.swapRouter).exactInputSingle(params);
+            */
+        } else {
+            return
+                DataType.PositionUpdate(
+                    DataType.PositionUpdateType.SWAP_EXACT_OUT,
+                    zeroForOne,
+                    0,
+                    0,
+                    0,
+                    amountOut,
+                    amountIn
+                );
+
+            /*
+            ISwapRouter.ExactOutputSingleParams memory params = ISwapRouter.ExactOutputSingleParams({
+                tokenIn: tokenIn,
+                tokenOut: tokenOut,
+                fee: _context.feeTier,
+                recipient: address(this),
+                deadline: block.timestamp,
+                amountOut: amountOut,
+                amountInMaximum: amountIn,
+                sqrtPriceLimitX96: 0
+            });
+
+            amountIn = ISwapRouter(_context.swapRouter).exactOutputSingle(params);
+            */
+        }
+
+        /*
+        emit TokenSwap(_vault.vaultId, tokenIn == _context.token0, amountIn, amountOut);
+
+        if(tokenIn == _context.token0) {
+            return (requiredAmount0 + int256(amountIn), requiredAmount1 - int256(amountOut));
+        } else {
+            return (requiredAmount0 - int256(amountOut), requiredAmount1 + int256(amountIn));
+        }
+        */
     }
 
     function depositTokens(
@@ -141,7 +300,7 @@ library PositionUpdater {
         withdrawAmount0 = _context.tokenState0.removeCollateral(_vault.balance0, amount0, true);
         withdrawAmount1 = _context.tokenState1.removeCollateral(_vault.balance1, amount1, true);
 
-        emit TokenWithdrawn(_vault.vaultId, amount0, amount1);
+        emit TokenWithdrawn(_vault.vaultId, withdrawAmount0, withdrawAmount1);
     }
 
     function borrowTokens(
@@ -165,7 +324,7 @@ library PositionUpdater {
         requiredAmount0 = _context.tokenState0.removeDebt(_vault.balance0, amount0);
         requiredAmount1 = _context.tokenState1.removeDebt(_vault.balance1, amount1);
 
-        emit TokenRepaid(_vault.vaultId, amount0, amount1);
+        emit TokenRepaid(_vault.vaultId, requiredAmount0, requiredAmount1);
     }
 
     function depositLPT(
@@ -183,9 +342,11 @@ library PositionUpdater {
             _positionUpdate.liquidity
         );
 
-        uint128 liquidity;
+        // liquidity amount actually deposited
+        uint128 finalLiquidityAmount;
+
         if (_ranges[rangeId].tokenId > 0) {
-            (, liquidity, requiredAmount0, requiredAmount1) = UniHelper.increaseLiquidity(
+            (, finalLiquidityAmount, requiredAmount0, requiredAmount1) = UniHelper.increaseLiquidity(
                 _context,
                 _ranges[rangeId].tokenId,
                 amount0,
@@ -196,7 +357,7 @@ library PositionUpdater {
         } else {
             uint256 tokenId = 0;
 
-            (tokenId, liquidity, requiredAmount0, requiredAmount1) = UniHelper.mint(
+            (tokenId, finalLiquidityAmount, requiredAmount0, requiredAmount1) = UniHelper.mint(
                 _context,
                 _positionUpdate.lowerTick,
                 _positionUpdate.upperTick,
@@ -209,14 +370,11 @@ library PositionUpdater {
             _ranges[rangeId].registerNewLPTState(tokenId, _positionUpdate.lowerTick, _positionUpdate.upperTick);
         }
 
-        _vault.depositLPT(_ranges, rangeId, liquidity);
+        require(finalLiquidityAmount <= _positionUpdate.liquidity, "PU3");
 
-        emit LPTDeposited(
-            _vault.vaultId,
-            _positionUpdate.lowerTick,
-            _positionUpdate.upperTick,
-            _positionUpdate.liquidity
-        );
+        _vault.depositLPT(_ranges, rangeId, finalLiquidityAmount);
+
+        emit LPTDeposited(_vault.vaultId, _positionUpdate.lowerTick, _positionUpdate.upperTick, finalLiquidityAmount);
     }
 
     function withdrawLPT(
@@ -283,14 +441,15 @@ library PositionUpdater {
 
         (uint256 amount0, uint256 amount1) = LPTMath.getAmountsForLiquidityRoundUp(
             getSqrtPrice(IUniswapV3Pool(_context.uniswapPool)),
-            TickMath.getSqrtRatioAtTick(_positionUpdate.lowerTick),
-            TickMath.getSqrtRatioAtTick(_positionUpdate.upperTick),
+            _positionUpdate.lowerTick,
+            _positionUpdate.upperTick,
             _positionUpdate.liquidity
         );
 
-        uint128 liquidity;
+        // liquidity amount actually deposited
+        uint128 finalLiquidityAmount;
 
-        (, liquidity, requiredAmount0, requiredAmount1) = UniHelper.increaseLiquidity(
+        (, finalLiquidityAmount, requiredAmount0, requiredAmount1) = UniHelper.increaseLiquidity(
             _context,
             _ranges[rangeId].tokenId,
             amount0,
@@ -299,7 +458,7 @@ library PositionUpdater {
             _positionUpdate.param1
         );
 
-        require(liquidity >= _positionUpdate.liquidity, "PU0");
+        require(finalLiquidityAmount >= _positionUpdate.liquidity, "PU2");
 
         _ranges[rangeId].borrowedLiquidity = _ranges[rangeId]
             .borrowedLiquidity
@@ -371,7 +530,7 @@ library PositionUpdater {
     }
 
     /**
-     * @notice collect trade fee and premium and deposit, or withdraw token and pay premium.
+     * @notice Collects trade fee and premium.
      */
     function collectFeeAndPremium(
         DataType.Context storage _context,

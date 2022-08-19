@@ -20,6 +20,8 @@ contract PositionCalculatorTest is Test {
     }
 
     function testCalculateRequiredCollateralOfBorrowLPT0(uint160 _sqrtPrice) public {
+        vm.assume(TickMath.MIN_SQRT_RATIO < _sqrtPrice && _sqrtPrice < TickMath.MAX_SQRT_RATIO);
+
         DataType.LPT[] memory lpts = new DataType.LPT[](1);
         uint128 liquidity = LiquidityAmounts.getLiquidityForAmounts(
             TickMath.getSqrtRatioAtTick(-202560),
@@ -37,6 +39,8 @@ contract PositionCalculatorTest is Test {
     }
 
     function testCalculateRequiredCollateralOfBorrowLPT1(uint160 _sqrtPrice) public {
+        vm.assume(TickMath.MIN_SQRT_RATIO < _sqrtPrice && _sqrtPrice < TickMath.MAX_SQRT_RATIO);
+
         DataType.LPT[] memory lpts = new DataType.LPT[](1);
         uint128 liquidity = LiquidityAmounts.getLiquidityForAmounts(
             TickMath.getSqrtRatioAtTick(-202560),
@@ -49,6 +53,36 @@ contract PositionCalculatorTest is Test {
         lpts[0] = DataType.LPT(false, liquidity, -202560, -202550);
 
         DataType.Position memory position = DataType.Position(0, 1700 * 1e6, 0, 0, lpts);
+
+        assertLt(PositionCalculator.calculateRequiredCollateral(position, _sqrtPrice, false), 0);
+    }
+
+    function getLiquidity(
+        uint256 _amount,
+        int24 _lower,
+        int24 _upper
+    ) internal pure returns (uint128) {
+        return
+            LiquidityAmounts.getLiquidityForAmounts(
+                TickMath.getSqrtRatioAtTick(_lower),
+                TickMath.getSqrtRatioAtTick(_lower),
+                TickMath.getSqrtRatioAtTick(_upper),
+                _amount,
+                0
+            );
+    }
+
+    function testCalculateRequiredCollateralOfCallSpread(uint160 _sqrtPrice) public {
+        vm.assume(TickMath.MIN_SQRT_RATIO < _sqrtPrice && _sqrtPrice < TickMath.MAX_SQRT_RATIO);
+
+        DataType.LPT[] memory lpts = new DataType.LPT[](2);
+        uint128 liquidity0 = getLiquidity(1e18, -202560, -202550);
+        uint128 liquidity1 = getLiquidity(1e18, -202520, -202500);
+
+        lpts[0] = DataType.LPT(false, liquidity0, -202560, -202550);
+        lpts[1] = DataType.LPT(true, liquidity1, -202520, -202500);
+
+        DataType.Position memory position = DataType.Position(0, 50 * 1e6, 0, 0, lpts);
 
         assertLt(PositionCalculator.calculateRequiredCollateral(position, _sqrtPrice, false), 0);
     }

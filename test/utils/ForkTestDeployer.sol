@@ -46,7 +46,7 @@ abstract contract ForkTestDeployer is BaseTestHelper {
             address(token1),
             !isTokenAToken0
         );
-        controller = new Controller(
+        controller = new ControllerHelper(
             initializationParam,
             address(positionManager),
             address(factory),

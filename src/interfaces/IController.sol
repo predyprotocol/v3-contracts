@@ -9,7 +9,8 @@ interface IController {
         uint256 _vaultId,
         DataType.PositionUpdate[] memory _positionUpdates,
         uint256 _buffer0,
-        uint256 _buffer1
+        uint256 _buffer1,
+        DataType.TradeOption memory _tradeOption
     ) external returns (uint256 vaultId);
 
     function liquidate(uint256 _vaultId, DataType.PositionUpdate[] memory _positionUpdates) external;

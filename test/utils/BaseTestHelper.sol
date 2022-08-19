@@ -19,8 +19,8 @@ import "forge-std/Test.sol";
 abstract contract BaseTestHelper {
     IERC20 internal token0;
     IERC20 internal token1;
-    Controller internal controller;
-    ControllerHelper internal controllerHelper;
+    ControllerHelper internal controller;
+    // ControllerHelper internal controllerHelper;
     NonfungiblePositionManager internal positionManager;
     SwapRouter internal swapRouter;
     IUniswapV3Pool internal uniPool;
@@ -100,7 +100,13 @@ abstract contract BaseTestHelper {
 
         positionUpdates[0] = DataType.PositionUpdate(_positionUpdateType, false, 0, 0, 0, _amount0, _amount1);
 
-        PositionUpdater.updatePosition(_vault, _context, _ranges, positionUpdates, false);
+        PositionUpdater.updatePosition(
+            _vault,
+            _context,
+            _ranges,
+            positionUpdates,
+            DataType.TradeOption(false, false, false)
+        );
     }
 
     function depositToken(
@@ -120,7 +126,13 @@ abstract contract BaseTestHelper {
             _amount1
         );
 
-        controller.updatePosition(_vaultId, positionUpdates, _amount0, _amount1);
+        controller.updatePosition(
+            _vaultId,
+            positionUpdates,
+            _amount0,
+            _amount1,
+            DataType.TradeOption(false, false, false)
+        );
     }
 
     function depositLPT(
@@ -148,7 +160,14 @@ abstract contract BaseTestHelper {
             0
         );
 
-        return controller.updatePosition(_vaultId, positionUpdates, (amount0 * 105) / 100, (amount1 * 105) / 100);
+        return
+            controller.updatePosition(
+                _vaultId,
+                positionUpdates,
+                (amount0 * 105) / 100,
+                (amount1 * 105) / 100,
+                DataType.TradeOption(false, false, false)
+            );
     }
 
     function borrowLPT(
@@ -165,10 +184,7 @@ abstract contract BaseTestHelper {
         lpts[0] = DataType.LPT(false, liquidity, _lower, _upper);
         DataType.Position memory position = DataType.Position(_margin, _amount, 0, 0, lpts);
 
-        (DataType.PositionUpdate[] memory positionUpdates, uint256 buffer0, uint256 buffer1) = controllerHelper
-            .getPositionUpdatesToOpen(position, 1800);
-
-        return controller.updatePosition(_vaultId, positionUpdates, (buffer0 * 105) / 100, (buffer1 * 105) / 100);
+        return controller.openPosition(_vaultId, position, 1800, 110, DataType.TradeOption(false, false, false));
     }
 
     /*

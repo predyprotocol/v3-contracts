@@ -13,8 +13,6 @@ import "./DataType.sol";
 import "./BaseToken.sol";
 import "./LPTMath.sol";
 
-import "forge-std/console.sol";
-
 library InterestCalculator {
     using SafeMath for uint256;
     using SafeCast for uint256;
@@ -60,9 +58,7 @@ library InterestCalculator {
         }
 
         if (_perpState.borrowedLiquidity > 0) {
-            console.log(1);
             uint256 perpUr = getPerpUR(_context, _perpState);
-            console.log(2);
 
             uint256 dailyPremium = calculateStableValueFromTotalPremiumValue(
                 calculateDailyPremium(
@@ -74,7 +70,6 @@ library InterestCalculator {
                 ),
                 getAvailableLiquidityAmount(_context, _perpState)
             );
-            console.log(3);
 
             uint256 dailyInterest = calculateStableValueFromRatio(
                 _context.isMarginZero,
@@ -84,15 +79,11 @@ library InterestCalculator {
                 _perpState.upperTick
             );
 
-            console.log(4);
-
             dailyPremium =
                 ((block.timestamp - _perpState.lastTouchedTimestamp) * (dailyPremium + dailyInterest)) /
                 1 days;
 
-            console.log(5, _perpState.premiumGrowthForBorrower, dailyPremium);
             _perpState.premiumGrowthForBorrower = _perpState.premiumGrowthForBorrower.add(dailyPremium);
-            console.log(6);
             _perpState.premiumGrowthForLender = _perpState.premiumGrowthForLender.add(
                 PredyMath.mulDiv(
                     dailyPremium,
@@ -100,12 +91,9 @@ library InterestCalculator {
                     getTotalLiquidityAmount(_context, _perpState)
                 )
             );
-            console.log(7);
         }
 
         takeSnapshotForRange(_params, IUniswapV3Pool(_context.uniswapPool), _perpState.lowerTick, _perpState.upperTick);
-
-        console.log(7);
 
         _perpState.lastTouchedTimestamp = block.timestamp;
     }
@@ -168,11 +156,9 @@ library InterestCalculator {
         view
         returns (uint256)
     {
-        console.log(10);
         (, , , , , , , uint128 liquidity, , , , ) = INonfungiblePositionManager(_context.positionManager).positions(
             _perpState.tokenId
         );
-        console.log(11);
 
         return liquidity;
     }

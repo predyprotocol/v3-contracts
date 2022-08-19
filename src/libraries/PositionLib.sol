@@ -241,8 +241,8 @@ library PositionLib {
                 0,
                 0,
                 0,
-                _position.collateral0 * 12/10,
-                _position.collateral1 * 12/10
+                (_position.collateral0 * 12) / 10,
+                (_position.collateral1 * 12) / 10
             );
             index++;
         }
@@ -254,8 +254,8 @@ library PositionLib {
                 0,
                 0,
                 0,
-                _position.debt0 * 12/10,
-                _position.debt1 * 12/10
+                (_position.debt0 * 12) / 10,
+                (_position.debt1 * 12) / 10
             );
         }
     }
