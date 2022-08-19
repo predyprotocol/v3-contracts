@@ -14,8 +14,12 @@ import "./VaultLib.sol";
 import "./LPTStateLib.sol";
 import "./UniHelper.sol";
 
-import "forge-std/console.sol";
-
+/*
+ * Error Codes
+ * PU1: reduce only
+ * PU2: L must be lower
+ * PU3: L must be greater
+ */
 library PositionUpdater {
     using SafeMath for uint256;
     using SignedSafeMath for int256;
@@ -183,9 +187,11 @@ library PositionUpdater {
             _positionUpdate.liquidity
         );
 
-        uint128 liquidity;
+        // liquidity amount actually deposited
+        uint128 finalLiquidityAmount;
+
         if (_ranges[rangeId].tokenId > 0) {
-            (, liquidity, requiredAmount0, requiredAmount1) = UniHelper.increaseLiquidity(
+            (, finalLiquidityAmount, requiredAmount0, requiredAmount1) = UniHelper.increaseLiquidity(
                 _context,
                 _ranges[rangeId].tokenId,
                 amount0,
@@ -196,7 +202,7 @@ library PositionUpdater {
         } else {
             uint256 tokenId = 0;
 
-            (tokenId, liquidity, requiredAmount0, requiredAmount1) = UniHelper.mint(
+            (tokenId, finalLiquidityAmount, requiredAmount0, requiredAmount1) = UniHelper.mint(
                 _context,
                 _positionUpdate.lowerTick,
                 _positionUpdate.upperTick,
@@ -209,14 +215,11 @@ library PositionUpdater {
             _ranges[rangeId].registerNewLPTState(tokenId, _positionUpdate.lowerTick, _positionUpdate.upperTick);
         }
 
-        _vault.depositLPT(_ranges, rangeId, liquidity);
+        require(finalLiquidityAmount <= _positionUpdate.liquidity, "PU3");
 
-        emit LPTDeposited(
-            _vault.vaultId,
-            _positionUpdate.lowerTick,
-            _positionUpdate.upperTick,
-            _positionUpdate.liquidity
-        );
+        _vault.depositLPT(_ranges, rangeId, finalLiquidityAmount);
+
+        emit LPTDeposited(_vault.vaultId, _positionUpdate.lowerTick, _positionUpdate.upperTick, finalLiquidityAmount);
     }
 
     function withdrawLPT(
@@ -283,14 +286,15 @@ library PositionUpdater {
 
         (uint256 amount0, uint256 amount1) = LPTMath.getAmountsForLiquidityRoundUp(
             getSqrtPrice(IUniswapV3Pool(_context.uniswapPool)),
-            TickMath.getSqrtRatioAtTick(_positionUpdate.lowerTick),
-            TickMath.getSqrtRatioAtTick(_positionUpdate.upperTick),
+            _positionUpdate.lowerTick,
+            _positionUpdate.upperTick,
             _positionUpdate.liquidity
         );
 
-        uint128 liquidity;
+        // liquidity amount actually deposited
+        uint128 finalLiquidityAmount;
 
-        (, liquidity, requiredAmount0, requiredAmount1) = UniHelper.increaseLiquidity(
+        (, finalLiquidityAmount, requiredAmount0, requiredAmount1) = UniHelper.increaseLiquidity(
             _context,
             _ranges[rangeId].tokenId,
             amount0,
@@ -299,7 +303,7 @@ library PositionUpdater {
             _positionUpdate.param1
         );
 
-        require(liquidity >= _positionUpdate.liquidity, "PU0");
+        require(finalLiquidityAmount >= _positionUpdate.liquidity, "PU2");
 
         _ranges[rangeId].borrowedLiquidity = _ranges[rangeId]
             .borrowedLiquidity
@@ -371,7 +375,7 @@ library PositionUpdater {
     }
 
     /**
-     * @notice collect trade fee and premium and deposit, or withdraw token and pay premium.
+     * @notice Collects trade fee and premium.
      */
     function collectFeeAndPremium(
         DataType.Context storage _context,
