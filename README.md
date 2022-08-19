@@ -6,7 +6,7 @@ Predy V3
 ## Overview
 
 Predy V3 is an oracle-free derivative protocol.
-This Protocol enables perpetual option by UniV3's Liquidity Provider Token(LPT) lending and borrowing.
+This Protocol enables perpetual options by lending and borrowing Uniswap V3's Liquidity Provider Token(LPT).
 
 ### Contracts
 
@@ -29,3 +29,5 @@ This Protocol enables perpetual option by UniV3's Liquidity Provider Token(LPT) 
 `VaultLib.sol` has functions to manage vault state.
 
 `LPTStateLib.sol` has functions to manage LPT state.
+
+`LPTMath.sol` has wrapper functions of LiquidityAmounts library from uniswap core.
