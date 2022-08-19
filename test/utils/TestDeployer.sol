@@ -53,7 +53,7 @@ abstract contract TestDeployer is BaseTestHelper {
             true
         );
 
-        controller = new Controller(initializationParam, address(positionManager), factory, address(swapRouter));
+        controller = new ControllerHelper(initializationParam, address(positionManager), factory, address(swapRouter));
 
         INonfungiblePositionManager.MintParams memory params = INonfungiblePositionManager.MintParams(
             initializationParam.token0,
@@ -83,7 +83,5 @@ abstract contract TestDeployer is BaseTestHelper {
             InterestCalculator.IRMParams(1e12, 30 * 1e16, 20 * 1e16, 50 * 1e16),
             InterestCalculator.IRMParams(7000 * 1e6, 30 * 1e16, 5000 * 1e6, 10000 * 1e6)
         );
-
-        controllerHelper = new ControllerHelper(controller);
     }
 }

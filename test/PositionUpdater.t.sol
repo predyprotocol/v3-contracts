@@ -20,6 +20,8 @@ contract PositionUpdaterTest is TestDeployer, Test {
 
     mapping(bytes32 => DataType.PerpStatus) private ranges;
 
+    DataType.TradeOption tradeOption;
+
     function setUp() public {
         address factory = deployCode(
             "../node_modules/@uniswap/v3-core/artifacts/contracts/UniswapV3Factory.sol:UniswapV3Factory"
@@ -29,6 +31,7 @@ contract PositionUpdaterTest is TestDeployer, Test {
         vm.warp(block.timestamp + 1 minutes);
 
         context = getContext();
+        tradeOption = DataType.TradeOption(false, false, false);
 
         // vault1 is empty
         // vault2 has deposited token
@@ -39,7 +42,7 @@ contract PositionUpdaterTest is TestDeployer, Test {
 
     function testUpdatePosition() public {
         DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](0);
-        PositionUpdater.updatePosition(vault1, context, ranges, positionUpdates, false);
+        PositionUpdater.updatePosition(vault1, context, ranges, positionUpdates, tradeOption);
     }
 
     function testUpdatePositionDepositToken() public {
@@ -55,7 +58,7 @@ contract PositionUpdaterTest is TestDeployer, Test {
             1e18
         );
 
-        PositionUpdater.updatePosition(vault1, context, ranges, positionUpdates, false);
+        PositionUpdater.updatePosition(vault1, context, ranges, positionUpdates, tradeOption);
 
         assertEq(BaseToken.getCollateralValue(context.tokenState0, vault1.balance0), 1e6);
         assertEq(BaseToken.getCollateralValue(context.tokenState1, vault1.balance1), 1e18);
@@ -74,7 +77,7 @@ contract PositionUpdaterTest is TestDeployer, Test {
             2 * 1e18
         );
 
-        PositionUpdater.updatePosition(vault2, context, ranges, positionUpdates, false);
+        PositionUpdater.updatePosition(vault2, context, ranges, positionUpdates, tradeOption);
 
         assertEq(BaseToken.getCollateralValue(context.tokenState0, vault2.balance0), 0);
         assertEq(BaseToken.getCollateralValue(context.tokenState1, vault2.balance1), 0);
@@ -85,7 +88,7 @@ contract PositionUpdaterTest is TestDeployer, Test {
 
         positionUpdates[0] = DataType.PositionUpdate(DataType.PositionUpdateType.BORROW_TOKEN, false, 0, 0, 0, 0, 1e18);
 
-        PositionUpdater.updatePosition(vault1, context, ranges, positionUpdates, false);
+        PositionUpdater.updatePosition(vault1, context, ranges, positionUpdates, tradeOption);
 
         assertEq(BaseToken.getDebtValue(context.tokenState0, vault1.balance0), 0);
         assertEq(BaseToken.getDebtValue(context.tokenState1, vault1.balance1), 1e18);
@@ -104,7 +107,7 @@ contract PositionUpdaterTest is TestDeployer, Test {
             1e18
         );
 
-        PositionUpdater.updatePosition(vault3, context, ranges, positionUpdates, false);
+        PositionUpdater.updatePosition(vault3, context, ranges, positionUpdates, tradeOption);
 
         assertEq(BaseToken.getDebtValue(context.tokenState0, vault3.balance0), 0);
         assertEq(BaseToken.getDebtValue(context.tokenState1, vault3.balance1), 0);
@@ -123,8 +126,56 @@ contract PositionUpdaterTest is TestDeployer, Test {
             0
         );
 
-        PositionUpdater.updatePosition(vault1, context, ranges, positionUpdates, false);
+        PositionUpdater.updatePosition(vault1, context, ranges, positionUpdates, tradeOption);
 
         assertEq(vault1.lpts.length, 1);
+    }
+
+    function testSwapAnywayETHRequired(int256 requiredAmount0, int256 requiredAmount1) public {
+        vm.assume(requiredAmount0 < 0);
+        vm.assume(requiredAmount1 > 0);
+
+        DataType.PositionUpdate memory positionUpdate = PositionUpdater.swapAnyway(
+            context,
+            requiredAmount0,
+            requiredAmount1
+        );
+
+        assertEq(uint256(positionUpdate.positionUpdateType), uint256(DataType.PositionUpdateType.SWAP_EXACT_OUT));
+        assertEq(positionUpdate.zeroForOne, true);
+        assertEq(positionUpdate.param0, uint256(requiredAmount1));
+        assertEq(positionUpdate.param1, uint256(-requiredAmount0));
+    }
+
+    function testSwapAnywayUSDCRequired(int256 requiredAmount0, int256 requiredAmount1) public {
+        vm.assume(requiredAmount0 > 0);
+        vm.assume(requiredAmount1 < 0);
+
+        DataType.PositionUpdate memory positionUpdate = PositionUpdater.swapAnyway(
+            context,
+            requiredAmount0,
+            requiredAmount1
+        );
+
+        assertEq(uint256(positionUpdate.positionUpdateType), uint256(DataType.PositionUpdateType.SWAP_EXACT_IN));
+        assertEq(positionUpdate.zeroForOne, false);
+        assertEq(positionUpdate.param0, uint256(-requiredAmount1));
+        assertEq(positionUpdate.param1, uint256(requiredAmount0));
+    }
+
+    function testSwapAnywayNoRequired(int256 requiredAmount0, int256 requiredAmount1) public {
+        vm.assume(requiredAmount0 < 0);
+        vm.assume(requiredAmount1 < 0);
+
+        DataType.PositionUpdate memory positionUpdate = PositionUpdater.swapAnyway(
+            context,
+            requiredAmount0,
+            requiredAmount1
+        );
+
+        assertEq(uint256(positionUpdate.positionUpdateType), uint256(DataType.PositionUpdateType.SWAP_EXACT_IN));
+        assertEq(positionUpdate.zeroForOne, false);
+        assertEq(positionUpdate.param0, uint256(-requiredAmount1));
+        assertEq(positionUpdate.param1, 0);
     }
 }

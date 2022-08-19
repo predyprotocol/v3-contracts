@@ -24,6 +24,7 @@ contract ControllerHelperTest is TestDeployer, Test {
         deployContracts(owner, factory);
         vm.warp(block.timestamp + 1 minutes);
 
+        depositToken(0, 1e10, 5 * 1e18);
         depositLPT(0, 202500, 202600, 2 * 1e18);
     }
 
@@ -40,10 +41,7 @@ contract ControllerHelperTest is TestDeployer, Test {
         lpts[0] = DataType.LPT(true, liquidity, 202560, 202570);
         DataType.Position memory position = DataType.Position(0, 0, 0, 0, lpts);
 
-        (DataType.PositionUpdate[] memory positionUpdates, uint256 buffer0, uint256 buffer1) = controllerHelper
-            .getPositionUpdatesToOpen(position, 1800);
-
-        controller.updatePosition(0, positionUpdates, (buffer0 * 150) / 100, (buffer1 * 150) / 100);
+        controller.openPosition(0, position, 1800, 150, DataType.TradeOption(false, false, false));
     }
 
     function testBorrowLPT(uint256 _swapAmount) public {
@@ -59,10 +57,7 @@ contract ControllerHelperTest is TestDeployer, Test {
         lpts[0] = DataType.LPT(false, liquidity, 202500, 202600);
         DataType.Position memory position = DataType.Position(margin, 1e18, 0, 0, lpts);
 
-        (DataType.PositionUpdate[] memory positionUpdates, uint256 buffer0, uint256 buffer1) = controllerHelper
-            .getPositionUpdatesToOpen(position, 1800);
-
-        uint256 vaultId = controller.updatePosition(0, positionUpdates, buffer0, (buffer1 * 105) / 100);
+        uint256 vaultId = controller.openPosition(0, position, 1800, 110, DataType.TradeOption(false, false, false));
 
         (uint256 collateralValue, uint256 debtValue) = controller.getVaultStatus(vaultId);
 
@@ -80,12 +75,7 @@ contract ControllerHelperTest is TestDeployer, Test {
 
         vm.warp(block.timestamp + 5 minutes);
 
-        DataType.Position memory position = controller.getPosition(vaultId);
-
-        (DataType.PositionUpdate[] memory positionUpdates, uint256 buffer0, uint256 buffer1) = controllerHelper
-            .getPositionUpdatesToClose(position, 1800, 100);
-
-        controller.updatePosition(vaultId, positionUpdates, buffer0, buffer1);
+        controller.closePosition(vaultId, 1800, 100, DataType.TradeOption(false, false, false));
 
         (uint256 collateralValue, uint256 debtValue) = controller.getVaultStatus(vaultId);
 
@@ -100,16 +90,49 @@ contract ControllerHelperTest is TestDeployer, Test {
 
         vm.warp(block.timestamp + 5 minutes);
 
-        DataType.Position memory position = controller.getPosition(vaultId);
+        uint256 before0 = token0.balanceOf(owner);
+        uint256 before1 = token1.balanceOf(owner);
+        controller.closePosition(vaultId, 1200, 54, DataType.TradeOption(false, true, false));
+        uint256 afterBalance0 = token0.balanceOf(owner);
+        uint256 afterBalance1 = token1.balanceOf(owner);
 
-        (DataType.PositionUpdate[] memory positionUpdates, uint256 buffer0, uint256 buffer1) = controllerHelper
-            .getPositionUpdatesToClose(position, 1200, 55);
-
-        controller.updatePosition(vaultId, positionUpdates, buffer0, buffer1);
+        console.log(0, afterBalance0 - before0);
+        console.log(1, afterBalance1 - before1);
 
         (uint256 collateralValue, uint256 debtValue) = controller.getVaultStatus(vaultId);
 
         assertEq(collateralValue, 0);
         assertEq(debtValue, 0);
+    }
+
+    function testComplecatedPosition() public {
+        uint256 vaultId = depositLPT(0, 202600, 202700, 1 * 1e18);
+        borrowLPT(vaultId, 202600, 202500, 202600, 1e18, 100 * 1e6);
+
+        swapToSamePrice(owner);
+
+        vm.warp(block.timestamp + 5 minutes);
+
+        uint256 before0 = token0.balanceOf(owner);
+        uint256 before1 = token1.balanceOf(owner);
+        controller.closePosition(vaultId, 1800, 100, DataType.TradeOption(false, true, false));
+        uint256 afterBalance0 = token0.balanceOf(owner);
+        uint256 afterBalance1 = token1.balanceOf(owner);
+
+        console.log(0, afterBalance0 - before0);
+        console.log(1, afterBalance1 - before1);
+
+        (uint256 collateralValue, uint256 debtValue) = controller.getVaultStatus(vaultId);
+
+        assertEq(collateralValue, 0);
+        assertEq(debtValue, 0);
+    }
+
+    function testCannotQuoterMode() public {
+        DataType.LPT[] memory lpts = new DataType.LPT[](0);
+        DataType.Position memory position = DataType.Position(1e8, 0, 0, 0, lpts);
+
+        vm.expectRevert(abi.encode(1e8, 0));
+        controller.openPosition(0, position, 1800, 0, DataType.TradeOption(false, false, true));
     }
 }

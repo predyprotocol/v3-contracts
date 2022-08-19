@@ -121,7 +121,6 @@ contract Controller is IController, Constants, Initializable {
     }
 
     // User API
-
     /**
      * @notice Update position in a vault.
      * @param _vaultId vault id
@@ -133,8 +132,9 @@ contract Controller is IController, Constants, Initializable {
         uint256 _vaultId,
         DataType.PositionUpdate[] memory _positionUpdates,
         uint256 _buffer0,
-        uint256 _buffer1
-    ) external override returns (uint256 vaultId) {
+        uint256 _buffer1,
+        DataType.TradeOption memory _tradeOption
+    ) public override returns (uint256 vaultId) {
         applyPerpFee(_vaultId);
 
         DataType.Vault storage vault;
@@ -153,8 +153,12 @@ contract Controller is IController, Constants, Initializable {
             context,
             ranges,
             _positionUpdates,
-            false
+            _tradeOption
         );
+
+        if (_tradeOption.quoterMode) {
+            revertRequiredAmounts(requiredAmount0, requiredAmount1);
+        }
 
         require(!_checkLiquidatable(vaultId), "P3");
 
@@ -184,7 +188,7 @@ contract Controller is IController, Constants, Initializable {
             context,
             ranges,
             _positionUpdates,
-            true
+            DataType.TradeOption(true, false, false)
         );
 
         require(!_checkLiquidatable(_vaultId), "P3");
@@ -211,7 +215,7 @@ contract Controller is IController, Constants, Initializable {
      * @param _vaultId vault id
      * @param _positionUpdates parameters to update position
      */
-    function liquidate(uint256 _vaultId, DataType.PositionUpdate[] memory _positionUpdates) external override {
+    function liquidate(uint256 _vaultId, DataType.PositionUpdate[] memory _positionUpdates) public override {
         applyPerpFee(_vaultId);
 
         // check liquidation
@@ -220,7 +224,7 @@ contract Controller is IController, Constants, Initializable {
         (uint160 sqrtPrice, ) = LPTMath.callUniswapObserve(IUniswapV3Pool(context.uniswapPool), 1 minutes);
 
         // calculate penalty
-        uint256 debtValue = getDebtPositionValue(_vaultId, sqrtPrice);
+        uint256 debtValue = vaults[_vaultId].getDebtPositionValue(ranges, context, sqrtPrice);
 
         // close position
         _reducePosition(_vaultId, _positionUpdates, debtValue / 200);
@@ -369,19 +373,12 @@ contract Controller is IController, Constants, Initializable {
      * returns collateral and debt value scaled by margin token's decimal
      */
     function getPositionValue(uint256 _vaultId, uint160 _sqrtPrice) internal view returns (uint256, uint256) {
-        return (getCollateralPositionValue(_vaultId, _sqrtPrice), getDebtPositionValue(_vaultId, _sqrtPrice));
-    }
-
-    function getCollateralPositionValue(uint256 _vaultId, uint160 _sqrtPrice) internal view returns (uint256) {
         DataType.Vault memory vault = vaults[_vaultId];
 
-        return vault.getCollateralPositionValue(ranges, context, _sqrtPrice);
-    }
-
-    function getDebtPositionValue(uint256 _vaultId, uint160 _sqrtPrice) internal view returns (uint256) {
-        DataType.Vault memory vault = vaults[_vaultId];
-
-        return vault.getDebtPositionValue(ranges, context, _sqrtPrice);
+        return (
+            vault.getCollateralPositionValue(ranges, context, _sqrtPrice),
+            vault.getDebtPositionValue(ranges, context, _sqrtPrice)
+        );
     }
 
     function getPosition(uint256 _vaultId) public returns (DataType.Position memory position) {
@@ -394,5 +391,14 @@ contract Controller is IController, Constants, Initializable {
         DataType.Vault memory vault = vaults[_vaultId];
 
         return vault.getPosition(ranges, context);
+    }
+
+    function revertRequiredAmounts(int256 _requiredAmount0, int256 _requiredAmount1) internal pure {
+        assembly {
+            let ptr := mload(0x20)
+            mstore(ptr, _requiredAmount0)
+            mstore(add(ptr, 0x20), _requiredAmount1)
+            revert(ptr, 64)
+        }
     }
 }

@@ -73,6 +73,7 @@ library DataType {
     }
 
     enum PositionUpdateType {
+        NOOP,
         DEPOSIT_TOKEN,
         WITHDRAW_TOKEN,
         BORROW_TOKEN,
@@ -93,5 +94,11 @@ library DataType {
         int24 upperTick;
         uint256 param0;
         uint256 param1;
+    }
+
+    struct TradeOption {
+        bool reduceOnly;
+        bool swapAnyway;
+        bool quoterMode;
     }
 }
