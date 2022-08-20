@@ -188,7 +188,7 @@ contract Controller is IController, Constants, Initializable {
             context,
             ranges,
             _positionUpdates,
-            DataType.TradeOption(true, false, false)
+            DataType.TradeOption(true, false, false, context.isMarginZero)
         );
 
         require(!_checkLiquidatable(_vaultId), "P3");

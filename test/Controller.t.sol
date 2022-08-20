@@ -14,6 +14,7 @@ contract ControllerTest is TestDeployer, Test {
     address owner;
 
     uint256 private lpVaultId;
+    bool isQuoteZero;
 
     // expected events
     event FeeCollected(uint256 vaultId, int256 feeAmount0, int256 feeAmount1);
@@ -31,6 +32,8 @@ contract ControllerTest is TestDeployer, Test {
 
         depositToken(0, 2000 * 1e6, 1e18);
         lpVaultId = depositLPT(0, 202500, 202600, 2 * 1e18);
+
+        isQuoteZero = controller.getIsMarginZero();
     }
 
     // Helper Functions
@@ -166,14 +169,14 @@ contract ControllerTest is TestDeployer, Test {
         (DataType.PositionUpdate[] memory positionUpdates, , uint256 amount1) = createPositionUpdatesForDepositLPT();
 
         vm.expectRevert(bytes("P5"));
-        controller.updatePosition(0, positionUpdates, 0, amount1 * 2, DataType.TradeOption(false, false, false));
+        controller.updatePosition(0, positionUpdates, 0, amount1 * 2, DataType.TradeOption(false, false, false, isQuoteZero));
     }
 
     function testCannotDepositLPTByNoEnoughAmount1() public {
         (DataType.PositionUpdate[] memory positionUpdates, uint256 amount0, ) = createPositionUpdatesForDepositLPT();
 
         vm.expectRevert(bytes("P6"));
-        controller.updatePosition(0, positionUpdates, amount0 * 2, 0, DataType.TradeOption(false, false, false));
+        controller.updatePosition(0, positionUpdates, amount0 * 2, 0, DataType.TradeOption(false, false, false, isQuoteZero));
     }
 
     function testDepositLPT() public {
@@ -188,7 +191,7 @@ contract ControllerTest is TestDeployer, Test {
             positionUpdates,
             amount0 * 2,
             amount1 * 2,
-            DataType.TradeOption(false, false, false)
+            DataType.TradeOption(false, false, false, controller.getIsMarginZero())
         );
     }
 
@@ -206,7 +209,7 @@ contract ControllerTest is TestDeployer, Test {
         // emit FeeCollected(lpVaultId, 0, 0);
 
         // execute transaction
-        controller.updatePosition(lpVaultId, positionUpdates, 0, 0, DataType.TradeOption(false, false, false));
+        controller.updatePosition(lpVaultId, positionUpdates, 0, 0, DataType.TradeOption(false, false, false, controller.getIsMarginZero()));
 
         (uint256 collateralValue, uint256 debtValue) = controller.getVaultStatus(lpVaultId);
 
@@ -224,7 +227,7 @@ contract ControllerTest is TestDeployer, Test {
             positionUpdates,
             (1e18 * 1800) / 1e12,
             margin,
-            DataType.TradeOption(false, false, false)
+            DataType.TradeOption(false, false, false, controller.getIsMarginZero())
         );
 
         vm.warp(block.timestamp + 1 minutes);
@@ -247,7 +250,7 @@ contract ControllerTest is TestDeployer, Test {
             positionUpdates,
             (1e18 * 1800) / 1e12,
             margin,
-            DataType.TradeOption(false, false, false)
+            DataType.TradeOption(false, false, false, isQuoteZero)
         );
     }
 
@@ -261,7 +264,7 @@ contract ControllerTest is TestDeployer, Test {
             positionUpdates,
             (1e18 * 1800) / 1e12,
             margin,
-            DataType.TradeOption(false, false, false)
+            DataType.TradeOption(false, false, false, controller.getIsMarginZero())
         );
 
         DataType.Vault memory vault = controller.getVault(vaultId);
@@ -272,7 +275,7 @@ contract ControllerTest is TestDeployer, Test {
             62 * 1e16
         );
 
-        controller.updatePosition(vaultId, positionUpdates2, 0, 0, DataType.TradeOption(false, false, false));
+        controller.updatePosition(vaultId, positionUpdates2, 0, 0, DataType.TradeOption(false, false, false, controller.getIsMarginZero()));
 
         (uint256 collateralValue, uint256 debtValue) = controller.getVaultStatus(vaultId);
 

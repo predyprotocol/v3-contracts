@@ -124,7 +124,7 @@ library PositionUpdater {
         }
 
         if (_tradeOption.swapAnyway) {
-            DataType.PositionUpdate memory positionUpdate = swapAnyway(_context, requiredAmount0, requiredAmount1);
+            DataType.PositionUpdate memory positionUpdate = swapAnyway(requiredAmount0, requiredAmount1, _tradeOption.isQuoteZero);
             int256 amount0;
             int256 amount1;
 
@@ -140,18 +140,16 @@ library PositionUpdater {
     }
 
     function swapAnyway(
-        DataType.Context storage _context,
         int256 requiredAmount0,
-        int256 requiredAmount1
+        int256 requiredAmount1,
+        bool _isQuoteZero
     ) internal view returns (DataType.PositionUpdate memory) {
-        address tokenIn;
-        address tokenOut;
         bool zeroForOne;
         bool isExactIn;
         uint256 amountIn;
         uint256 amountOut;
 
-        if (requiredAmount0 > 0 && requiredAmount1 > 0) {
+        if (requiredAmount0 >= 0 && requiredAmount1 >= 0) {
             return DataType.PositionUpdate(DataType.PositionUpdateType.NOOP, false, 0, 0, 0, 0, 0);
         }
 
@@ -159,16 +157,12 @@ library PositionUpdater {
             // exact in
             isExactIn = true;
 
-            if (_context.isMarginZero) {
+            if (_isQuoteZero) {
                 zeroForOne = false;
-                tokenIn = _context.token1;
-                tokenOut = _context.token0;
                 amountIn = uint256(-requiredAmount1);
                 amountOut = 0;
             } else {
                 zeroForOne = true;
-                tokenIn = _context.token0;
-                tokenOut = _context.token1;
                 amountIn = uint256(-requiredAmount0);
                 amountOut = 0;
             }
@@ -177,18 +171,14 @@ library PositionUpdater {
         if (requiredAmount0 > 0 && requiredAmount1 < 0) {
             zeroForOne = false;
 
-            if (_context.isMarginZero) {
+            if (_isQuoteZero) {
                 // exact in
                 isExactIn = true;
-                tokenIn = _context.token1;
-                tokenOut = _context.token0;
                 amountIn = uint256(-requiredAmount1);
                 amountOut = uint256(requiredAmount0);
             } else {
                 // exact out
                 isExactIn = false;
-                tokenIn = _context.token1;
-                tokenOut = _context.token0;
                 amountOut = uint256(requiredAmount0);
                 amountIn = uint256(-requiredAmount1);
             }
@@ -197,18 +187,14 @@ library PositionUpdater {
         if (requiredAmount0 < 0 && requiredAmount1 > 0) {
             zeroForOne = true;
 
-            if (_context.isMarginZero) {
+            if (_isQuoteZero) {
                 // exact out
                 isExactIn = false;
-                tokenIn = _context.token0;
-                tokenOut = _context.token1;
                 amountOut = uint256(requiredAmount1);
                 amountIn = uint256(-requiredAmount0);
             } else {
                 // exact in
                 isExactIn = true;
-                tokenIn = _context.token0;
-                tokenOut = _context.token1;
                 amountIn = uint256(-requiredAmount0);
                 amountOut = uint256(requiredAmount1);
             }
@@ -225,21 +211,6 @@ library PositionUpdater {
                     amountIn,
                     amountOut
                 );
-
-            /*
-            ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
-                tokenIn: tokenIn,
-                tokenOut: tokenOut,
-                fee: _context.feeTier,
-                recipient: address(this),
-                deadline: block.timestamp,
-                amountIn: amountIn,
-                amountOutMinimum: amountOut,
-                sqrtPriceLimitX96: 0
-            });
-
-            amountOut = ISwapRouter(_context.swapRouter).exactInputSingle(params);
-            */
         } else {
             return
                 DataType.PositionUpdate(
@@ -251,32 +222,7 @@ library PositionUpdater {
                     amountOut,
                     amountIn
                 );
-
-            /*
-            ISwapRouter.ExactOutputSingleParams memory params = ISwapRouter.ExactOutputSingleParams({
-                tokenIn: tokenIn,
-                tokenOut: tokenOut,
-                fee: _context.feeTier,
-                recipient: address(this),
-                deadline: block.timestamp,
-                amountOut: amountOut,
-                amountInMaximum: amountIn,
-                sqrtPriceLimitX96: 0
-            });
-
-            amountIn = ISwapRouter(_context.swapRouter).exactOutputSingle(params);
-            */
         }
-
-        /*
-        emit TokenSwap(_vault.vaultId, tokenIn == _context.token0, amountIn, amountOut);
-
-        if(tokenIn == _context.token0) {
-            return (requiredAmount0 + int256(amountIn), requiredAmount1 - int256(amountOut));
-        } else {
-            return (requiredAmount0 - int256(amountOut), requiredAmount1 + int256(amountIn));
-        }
-        */
     }
 
     function depositTokens(

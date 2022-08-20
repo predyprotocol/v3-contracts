@@ -105,7 +105,7 @@ abstract contract BaseTestHelper {
             _context,
             _ranges,
             positionUpdates,
-            DataType.TradeOption(false, false, false)
+            DataType.TradeOption(false, false, false, _context.isMarginZero)
         );
     }
 
@@ -131,7 +131,7 @@ abstract contract BaseTestHelper {
             positionUpdates,
             _amount0,
             _amount1,
-            DataType.TradeOption(false, false, false)
+            DataType.TradeOption(false, false, false, controller.getIsMarginZero())
         );
     }
 
@@ -166,7 +166,7 @@ abstract contract BaseTestHelper {
                 positionUpdates,
                 (amount0 * 105) / 100,
                 (amount1 * 105) / 100,
-                DataType.TradeOption(false, false, false)
+                DataType.TradeOption(false, false, false, controller.getIsMarginZero())
             );
     }
 
@@ -184,7 +184,13 @@ abstract contract BaseTestHelper {
         lpts[0] = DataType.LPT(false, liquidity, _lower, _upper);
         DataType.Position memory position = DataType.Position(_margin, _amount, 0, 0, lpts);
 
-        return controller.openPosition(_vaultId, position, 1800, 110, DataType.TradeOption(false, false, false));
+        return
+            controller.openPosition(
+                _vaultId,
+                position,
+                DataType.TradeOption(false, false, false, controller.getIsMarginZero()),
+                DataType.OpenPositionOption(1500, 1000, 110, 0, 0)
+            );
     }
 
     /*
