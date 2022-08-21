@@ -124,7 +124,11 @@ library PositionUpdater {
         }
 
         if (_tradeOption.swapAnyway) {
-            DataType.PositionUpdate memory positionUpdate = swapAnyway(requiredAmount0, requiredAmount1, _tradeOption.isQuoteZero);
+            DataType.PositionUpdate memory positionUpdate = swapAnyway(
+                requiredAmount0,
+                requiredAmount1,
+                _tradeOption.isQuoteZero
+            );
             int256 amount0;
             int256 amount1;
 
@@ -143,7 +147,7 @@ library PositionUpdater {
         int256 requiredAmount0,
         int256 requiredAmount1,
         bool _isQuoteZero
-    ) internal view returns (DataType.PositionUpdate memory) {
+    ) internal pure returns (DataType.PositionUpdate memory) {
         bool zeroForOne;
         bool isExactIn;
         uint256 amountIn;

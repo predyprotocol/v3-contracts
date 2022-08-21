@@ -169,14 +169,26 @@ contract ControllerTest is TestDeployer, Test {
         (DataType.PositionUpdate[] memory positionUpdates, , uint256 amount1) = createPositionUpdatesForDepositLPT();
 
         vm.expectRevert(bytes("P5"));
-        controller.updatePosition(0, positionUpdates, 0, amount1 * 2, DataType.TradeOption(false, false, false, isQuoteZero));
+        controller.updatePosition(
+            0,
+            positionUpdates,
+            0,
+            amount1 * 2,
+            DataType.TradeOption(false, false, false, isQuoteZero)
+        );
     }
 
     function testCannotDepositLPTByNoEnoughAmount1() public {
         (DataType.PositionUpdate[] memory positionUpdates, uint256 amount0, ) = createPositionUpdatesForDepositLPT();
 
         vm.expectRevert(bytes("P6"));
-        controller.updatePosition(0, positionUpdates, amount0 * 2, 0, DataType.TradeOption(false, false, false, isQuoteZero));
+        controller.updatePosition(
+            0,
+            positionUpdates,
+            amount0 * 2,
+            0,
+            DataType.TradeOption(false, false, false, isQuoteZero)
+        );
     }
 
     function testDepositLPT() public {
@@ -209,7 +221,13 @@ contract ControllerTest is TestDeployer, Test {
         // emit FeeCollected(lpVaultId, 0, 0);
 
         // execute transaction
-        controller.updatePosition(lpVaultId, positionUpdates, 0, 0, DataType.TradeOption(false, false, false, controller.getIsMarginZero()));
+        controller.updatePosition(
+            lpVaultId,
+            positionUpdates,
+            0,
+            0,
+            DataType.TradeOption(false, false, false, controller.getIsMarginZero())
+        );
 
         (uint256 collateralValue, uint256 debtValue) = controller.getVaultStatus(lpVaultId);
 
@@ -275,7 +293,13 @@ contract ControllerTest is TestDeployer, Test {
             62 * 1e16
         );
 
-        controller.updatePosition(vaultId, positionUpdates2, 0, 0, DataType.TradeOption(false, false, false, controller.getIsMarginZero()));
+        controller.updatePosition(
+            vaultId,
+            positionUpdates2,
+            0,
+            0,
+            DataType.TradeOption(false, false, false, controller.getIsMarginZero())
+        );
 
         (uint256 collateralValue, uint256 debtValue) = controller.getVaultStatus(vaultId);
 
