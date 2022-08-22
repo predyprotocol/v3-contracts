@@ -42,6 +42,8 @@ contract Controller is IController, Constants, Initializable {
     using SafeCast for int256;
     using VaultLib for DataType.Vault;
 
+    uint256 public oraclePeriod;
+
     uint256 public lastTouchedTimestamp;
 
     mapping(bytes32 => DataType.PerpStatus) private ranges;
@@ -56,7 +58,7 @@ contract Controller is IController, Constants, Initializable {
 
     address public operator;
 
-    event VaultCreated(uint256 vaultId);
+    event VaultCreated(uint256 vaultId, address owner);
 
     modifier onlyOperator() {
         require(operator == msg.sender, "caller must be operator");
@@ -102,10 +104,16 @@ contract Controller is IController, Constants, Initializable {
         lastTouchedTimestamp = block.timestamp;
 
         operator = msg.sender;
+
+        oraclePeriod = 1 minutes;
     }
 
     function setOperator(address _newOperator) external onlyOperator {
         operator = _newOperator;
+    }
+
+    function setOperator(uint256 _oraclePeriod) external onlyOperator {
+        oraclePeriod = _oraclePeriod;
     }
 
     function updateIRMParams(InterestCalculator.IRMParams memory _irmParams) external onlyOperator {
@@ -223,7 +231,7 @@ contract Controller is IController, Constants, Initializable {
         // check liquidation
         require(_checkLiquidatable(_vaultId), "P4");
 
-        (uint160 sqrtPrice, ) = LPTMath.callUniswapObserve(IUniswapV3Pool(context.uniswapPool), 1 minutes);
+        (uint160 sqrtPrice, ) = LPTMath.callUniswapObserve(IUniswapV3Pool(context.uniswapPool), oraclePeriod);
 
         // calculate penalty
         uint256 debtValue = vaults[_vaultId].getDebtPositionValue(ranges, context, sqrtPrice);
@@ -290,7 +298,7 @@ contract Controller is IController, Constants, Initializable {
     // Private Functions
 
     function _checkLiquidatable(uint256 _vaultId) internal view returns (bool) {
-        (uint160 sqrtPrice, ) = LPTMath.callUniswapObserve(IUniswapV3Pool(context.uniswapPool), 1 minutes);
+        (uint160 sqrtPrice, ) = LPTMath.callUniswapObserve(IUniswapV3Pool(context.uniswapPool), oraclePeriod);
 
         // calculate value using TWAP price
         int256 requiredCollateral = PositionCalculator.calculateRequiredCollateral(
@@ -313,7 +321,7 @@ contract Controller is IController, Constants, Initializable {
             vaults[vaultId].vaultId = vaultId;
             vaults[vaultId].owner = msg.sender;
 
-            emit VaultCreated(vaultId);
+            emit VaultCreated(vaultId, vaults[vaultId].owner);
         } else {
             vaultId = _vaultId;
             require(vaults[vaultId].owner == msg.sender || _quoterMode, "P2");
@@ -371,7 +379,7 @@ contract Controller is IController, Constants, Initializable {
     }
 
     function getTWAPSqrtPrice() public view returns (uint160 sqrtPriceX96) {
-        (sqrtPriceX96, ) = LPTMath.callUniswapObserve(IUniswapV3Pool(context.uniswapPool), 1 minutes);
+        (sqrtPriceX96, ) = LPTMath.callUniswapObserve(IUniswapV3Pool(context.uniswapPool), oraclePeriod);
     }
 
     /**
