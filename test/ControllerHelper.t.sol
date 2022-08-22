@@ -12,6 +12,7 @@ import "../src/mocks/MockERC20.sol";
 
 contract ControllerHelperTest is TestDeployer, Test {
     address owner;
+    bool isQuoteZero;
 
     function setUp() public {
         owner = 0x503828976D22510aad0201ac7EC88293211D23Da;
@@ -26,6 +27,41 @@ contract ControllerHelperTest is TestDeployer, Test {
 
         depositToken(0, 1e10, 5 * 1e18);
         depositLPT(0, 202500, 202600, 2 * 1e18);
+
+        isQuoteZero = controller.getIsMarginZero();
+    }
+
+    function testCannotClosePositionBecauseCallerIsNotOwner() public {
+        uint256 vaultId = depositLPT(0, 202500, 202600, 1e18);
+
+        vm.stopPrank();
+
+        vm.prank(otherAccount);
+        vm.expectRevert(bytes("P2"));
+        controller.closePosition(
+            vaultId,
+            DataType.TradeOption(false, false, false, isQuoteZero),
+            DataType.ClosePositionOption(1500, 2000, 100)
+        );
+    }
+
+    function testDepositETH() public {
+        DataType.LPT[] memory lpts = new DataType.LPT[](0);
+        DataType.Position memory position = DataType.Position(0, 1e18, 0, 0, lpts);
+
+        uint256 beforeBalance0 = token0.balanceOf(owner);
+        uint256 beforeBalance1 = token1.balanceOf(owner);
+        controller.openPosition(
+            0,
+            position,
+            DataType.TradeOption(false, false, false, false),
+            DataType.OpenPositionOption(1500, 1000, 150, 0, 0)
+        );
+        uint256 afterBalance0 = token0.balanceOf(owner);
+        uint256 afterBalance1 = token1.balanceOf(owner);
+
+        assertEq(beforeBalance0, afterBalance0);
+        assertGt(beforeBalance1, afterBalance1);
     }
 
     function testDepositLPT() public {
@@ -73,6 +109,19 @@ contract ControllerHelperTest is TestDeployer, Test {
 
         assertGt(collateralValue, 0);
         assertGt(debtValue, 0);
+    }
+
+    function testWithdrawLPTWithSwapAnyway() public {
+        uint256 vaultId = depositLPT(0, 202500, 202600, 1e18);
+
+        vm.warp(block.timestamp + 5 minutes);
+
+        // vm.expectRevert(bytes("AS"));
+        controller.closePosition(
+            vaultId,
+            DataType.TradeOption(false, true, false, true),
+            DataType.ClosePositionOption(1500, 2000, 100)
+        );
     }
 
     function testWithdrawLPT(uint256 _swapAmount) public {
