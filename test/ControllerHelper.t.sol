@@ -211,4 +211,27 @@ contract ControllerHelperTest is TestDeployer, Test {
             DataType.OpenPositionOption(1500, 1000, 0, 0, 0)
         );
     }
+
+    function testLiquidateBorrowLPTPosition() public {
+        uint256 vaultId = borrowLPT(0, 202600, 202500, 202600, 1e18, 100 * 1e6);
+
+        swapToSamePrice(owner);
+
+        vm.warp(block.timestamp + 27 minutes);
+
+        assertTrue(controller.checkLiquidatable(vaultId));
+
+        uint256 beforeBalance0 = token0.balanceOf(owner);
+        controller.liquidate(vaultId, DataType.LiquidationOption(1500, 2000, 54, true));
+        uint256 afterBalance0 = token0.balanceOf(owner);
+
+        // get penalty amount
+        console.log(afterBalance0 - beforeBalance0);
+        assertGt(afterBalance0, beforeBalance0);
+
+        (uint256 collateralValue, uint256 debtValue) = controller.getVaultStatus(vaultId);
+
+        assertGt(collateralValue, 0);
+        assertEq(debtValue, 0);
+    }
 }

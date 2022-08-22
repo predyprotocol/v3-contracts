@@ -24,6 +24,8 @@ import "./libraries/PositionCalculator.sol";
 import "./libraries/InterestCalculator.sol";
 import "./Constants.sol";
 
+import "forge-std/console.sol";
+
 /**
  * Error Codes
  * P1: caller must be vault owner
@@ -32,6 +34,7 @@ import "./Constants.sol";
  * P4: must be liquidatable
  * P5: no enough token0
  * P6: no enough token1
+ * P7: debt must be 0
  */
 contract Controller is IController, Constants, Initializable {
     using BaseToken for BaseToken.TokenState;
@@ -184,24 +187,24 @@ contract Controller is IController, Constants, Initializable {
     function _reducePosition(
         uint256 _vaultId,
         DataType.PositionUpdate[] memory _positionUpdates,
-        uint256 _penaltyAmount
+        uint256 _penaltyAmount,
+        bool _swapAnyway
     ) internal returns (uint256 penaltyAmount) {
         applyPerpFee(_vaultId);
 
         DataType.Vault storage vault = vaults[_vaultId];
 
-        // update position
+        // reduce debt
         (int256 surplusAmount0, int256 surplusAmount1) = PositionUpdater.updatePosition(
             vault,
             context,
             ranges,
             _positionUpdates,
-            DataType.TradeOption(true, false, false, context.isMarginZero)
+            // reduce only
+            DataType.TradeOption(true, _swapAnyway, false, context.isMarginZero)
         );
         surplusAmount0 = -surplusAmount0;
         surplusAmount1 = -surplusAmount1;
-
-        require(!_checkLiquidatable(_vaultId), "P3");
 
         require(0 <= surplusAmount0, "P5");
         require(0 <= surplusAmount1, "P6");
@@ -225,7 +228,11 @@ contract Controller is IController, Constants, Initializable {
      * @param _vaultId vault id
      * @param _positionUpdates parameters to update position
      */
-    function liquidate(uint256 _vaultId, DataType.PositionUpdate[] memory _positionUpdates) public override {
+    function liquidate(
+        uint256 _vaultId,
+        DataType.PositionUpdate[] memory _positionUpdates,
+        bool _swapAnyway
+    ) public override {
         applyPerpFee(_vaultId);
 
         // check liquidation
@@ -237,7 +244,9 @@ contract Controller is IController, Constants, Initializable {
         uint256 debtValue = vaults[_vaultId].getDebtPositionValue(ranges, context, sqrtPrice);
 
         // close position
-        uint256 penaltyAmount = _reducePosition(_vaultId, _positionUpdates, debtValue / 200);
+        uint256 penaltyAmount = _reducePosition(_vaultId, _positionUpdates, debtValue / 200, _swapAnyway);
+
+        require(vaults[_vaultId].getDebtPositionValue(ranges, context, sqrtPrice) == 0, "P7");
 
         sendReward(msg.sender, penaltyAmount);
     }
@@ -255,7 +264,7 @@ contract Controller is IController, Constants, Initializable {
 
             applyPerpFee(vaultId);
 
-            _reducePosition(vaultId, _positionUpdates, 0);
+            _reducePosition(vaultId, _positionUpdates, 0, false);
         }
     }
 
@@ -273,7 +282,9 @@ contract Controller is IController, Constants, Initializable {
      * @notice Returns the flag whether a vault can be liquidated or not.
      * @param _vaultId vault id
      */
-    function checkLiquidatable(uint256 _vaultId) external view returns (bool) {
+    function checkLiquidatable(uint256 _vaultId) external returns (bool) {
+        applyPerpFee(_vaultId);
+
         return _checkLiquidatable(_vaultId);
     }
 

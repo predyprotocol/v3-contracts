@@ -121,5 +121,6 @@ library DataType {
         uint256 price;
         uint256 slippageTorelance;
         uint256 swapRatio;
+        bool swapAnyway;
     }
 }
