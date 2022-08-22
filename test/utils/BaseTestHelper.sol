@@ -25,6 +25,8 @@ abstract contract BaseTestHelper {
     SwapRouter internal swapRouter;
     IUniswapV3Pool internal uniPool;
 
+    address internal constant otherAccount = address(1500);
+
     bytes32[] internal rangeIds;
 
     function getContext() internal view returns (DataType.Context memory) {
