@@ -138,7 +138,7 @@ contract Controller is IController, Constants, Initializable {
         applyPerpFee(_vaultId);
 
         DataType.Vault storage vault;
-        (vaultId, vault) = createOrGetVault(_vaultId);
+        (vaultId, vault) = createOrGetVault(_vaultId, _tradeOption.quoterMode);
 
         if (_buffer0 > 0) {
             TransferHelper.safeTransferFrom(context.token0, msg.sender, address(this), _buffer0);
@@ -177,36 +177,38 @@ contract Controller is IController, Constants, Initializable {
         uint256 _vaultId,
         DataType.PositionUpdate[] memory _positionUpdates,
         uint256 _penaltyAmount
-    ) internal {
+    ) internal returns (uint256 penaltyAmount) {
         applyPerpFee(_vaultId);
 
         DataType.Vault storage vault = vaults[_vaultId];
 
         // update position
-        (int256 requiredAmount0, int256 requiredAmount1) = PositionUpdater.updatePosition(
+        (int256 surplusAmount0, int256 surplusAmount1) = PositionUpdater.updatePosition(
             vault,
             context,
             ranges,
             _positionUpdates,
-            DataType.TradeOption(true, false, false)
+            DataType.TradeOption(true, false, false, context.isMarginZero)
         );
+        surplusAmount0 = -surplusAmount0;
+        surplusAmount1 = -surplusAmount1;
 
         require(!_checkLiquidatable(_vaultId), "P3");
 
-        require(0 >= requiredAmount0, "P5");
-        require(0 >= requiredAmount1, "P6");
+        require(0 <= surplusAmount0, "P5");
+        require(0 <= surplusAmount1, "P6");
 
-        if (0 > requiredAmount0) {
-            if (context.isMarginZero) {
-                requiredAmount0 = requiredAmount0.sub(int256(_penaltyAmount));
-            }
-            context.tokenState0.addCollateral(vault.balance0, uint256(-requiredAmount0), false);
+        if (context.isMarginZero) {
+            (surplusAmount0, penaltyAmount) = PredyMath.subReward(surplusAmount0, _penaltyAmount);
+        } else {
+            (surplusAmount1, penaltyAmount) = PredyMath.subReward(surplusAmount1, _penaltyAmount);
         }
-        if (0 > requiredAmount1) {
-            if (context.isMarginZero) {
-                requiredAmount1 = requiredAmount1.sub(int256(_penaltyAmount));
-            }
-            context.tokenState1.addCollateral(vault.balance1, uint256(-requiredAmount1), false);
+
+        if (0 < surplusAmount0) {
+            context.tokenState0.addCollateral(vault.balance0, uint256(surplusAmount0), false);
+        }
+        if (0 < surplusAmount1) {
+            context.tokenState1.addCollateral(vault.balance1, uint256(surplusAmount1), false);
         }
     }
 
@@ -227,9 +229,9 @@ contract Controller is IController, Constants, Initializable {
         uint256 debtValue = vaults[_vaultId].getDebtPositionValue(ranges, context, sqrtPrice);
 
         // close position
-        _reducePosition(_vaultId, _positionUpdates, debtValue / 200);
+        uint256 penaltyAmount = _reducePosition(_vaultId, _positionUpdates, debtValue / 200);
 
-        sendReward(msg.sender, debtValue / 200);
+        sendReward(msg.sender, penaltyAmount);
     }
 
     /**
@@ -300,7 +302,10 @@ contract Controller is IController, Constants, Initializable {
         return requiredCollateral > 0;
     }
 
-    function createOrGetVault(uint256 _vaultId) internal returns (uint256 vaultId, DataType.Vault storage) {
+    function createOrGetVault(uint256 _vaultId, bool _quoterMode)
+        internal
+        returns (uint256 vaultId, DataType.Vault storage)
+    {
         if (_vaultId == 0) {
             vaultId = vaultIdCount;
             vaultIdCount++;
@@ -311,7 +316,7 @@ contract Controller is IController, Constants, Initializable {
             emit VaultCreated(vaultId);
         } else {
             vaultId = _vaultId;
-            require(vaults[vaultId].owner == msg.sender, "P2");
+            require(vaults[vaultId].owner == msg.sender || _quoterMode, "P2");
         }
 
         return (vaultId, vaults[vaultId]);

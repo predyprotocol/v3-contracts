@@ -100,5 +100,26 @@ library DataType {
         bool reduceOnly;
         bool swapAnyway;
         bool quoterMode;
+        bool isQuoteZero;
+    }
+
+    struct OpenPositionOption {
+        uint256 price;
+        uint256 slippageTorelance;
+        uint256 bufferRatio;
+        uint256 maximumBufferAmount0;
+        uint256 maximumBufferAmount1;
+    }
+
+    struct ClosePositionOption {
+        uint256 price;
+        uint256 slippageTorelance;
+        uint256 swapRatio;
+    }
+
+    struct LiquidationOption {
+        uint256 price;
+        uint256 slippageTorelance;
+        uint256 swapRatio;
     }
 }

@@ -31,7 +31,7 @@ contract PositionUpdaterTest is TestDeployer, Test {
         vm.warp(block.timestamp + 1 minutes);
 
         context = getContext();
-        tradeOption = DataType.TradeOption(false, false, false);
+        tradeOption = DataType.TradeOption(false, false, false, context.isMarginZero);
 
         // vault1 is empty
         // vault2 has deposited token
@@ -136,9 +136,9 @@ contract PositionUpdaterTest is TestDeployer, Test {
         vm.assume(requiredAmount1 > 0);
 
         DataType.PositionUpdate memory positionUpdate = PositionUpdater.swapAnyway(
-            context,
             requiredAmount0,
-            requiredAmount1
+            requiredAmount1,
+            context.isMarginZero
         );
 
         assertEq(uint256(positionUpdate.positionUpdateType), uint256(DataType.PositionUpdateType.SWAP_EXACT_OUT));
@@ -152,9 +152,9 @@ contract PositionUpdaterTest is TestDeployer, Test {
         vm.assume(requiredAmount1 < 0);
 
         DataType.PositionUpdate memory positionUpdate = PositionUpdater.swapAnyway(
-            context,
             requiredAmount0,
-            requiredAmount1
+            requiredAmount1,
+            context.isMarginZero
         );
 
         assertEq(uint256(positionUpdate.positionUpdateType), uint256(DataType.PositionUpdateType.SWAP_EXACT_IN));
@@ -168,9 +168,9 @@ contract PositionUpdaterTest is TestDeployer, Test {
         vm.assume(requiredAmount1 < 0);
 
         DataType.PositionUpdate memory positionUpdate = PositionUpdater.swapAnyway(
-            context,
             requiredAmount0,
-            requiredAmount1
+            requiredAmount1,
+            context.isMarginZero
         );
 
         assertEq(uint256(positionUpdate.positionUpdateType), uint256(DataType.PositionUpdateType.SWAP_EXACT_IN));

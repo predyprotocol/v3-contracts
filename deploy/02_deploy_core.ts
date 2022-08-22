@@ -20,7 +20,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const PositionUpdater = await ethers.getContract('PositionUpdater', deployer)
   const VaultLib = await ethers.getContract('VaultLib', deployer)
 
-  const result = await deploy('Controller', {
+  const result = await deploy('ControllerHelper', {
     from: deployer,
     args: [
       {
@@ -42,7 +42,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   })
 
   if (result.newlyDeployed) {
-    const controller = await ethers.getContract('Controller', deployer)
+    const controller = await ethers.getContract('ControllerHelper', deployer)
 
     await controller.updateIRMParams({
       baseRate: '1000000000000',
