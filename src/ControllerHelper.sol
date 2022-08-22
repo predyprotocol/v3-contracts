@@ -35,7 +35,14 @@ contract ControllerHelper is Controller {
 
         buffer0 = (buffer0 * _openPositionOptions.bufferRatio) / 100;
 
-        require(_openPositionOptions.maximumBufferAmount0 == 0 || _openPositionOptions.maximumBufferAmount0 >= buffer0);
+        require(
+            _openPositionOptions.maximumBufferAmount0 == 0 || _openPositionOptions.maximumBufferAmount0 >= buffer0,
+            "CH0"
+        );
+        require(
+            _openPositionOptions.maximumBufferAmount1 == 0 || _openPositionOptions.maximumBufferAmount1 >= buffer1,
+            "CH1"
+        );
 
         return
             updatePosition(
@@ -70,7 +77,7 @@ contract ControllerHelper is Controller {
             _liquidationOption.swapRatio
         );
 
-        liquidate(_vaultId, positionUpdates);
+        liquidate(_vaultId, positionUpdates, _liquidationOption.swapAnyway);
     }
 
     function getPositionUpdatesToOpen(
