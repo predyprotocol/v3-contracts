@@ -179,12 +179,12 @@ library PositionUpdater {
                 // exact in
                 isExactIn = true;
                 amountIn = uint256(-requiredAmount1);
-                amountOut = uint256(requiredAmount0);
+                amountOut = 0;
             } else {
                 // exact out
                 isExactIn = false;
                 amountOut = uint256(requiredAmount0);
-                amountIn = uint256(-requiredAmount1);
+                amountIn = type(uint256).max;
             }
         }
 
@@ -195,12 +195,12 @@ library PositionUpdater {
                 // exact out
                 isExactIn = false;
                 amountOut = uint256(requiredAmount1);
-                amountIn = uint256(-requiredAmount0);
+                amountIn = type(uint256).max;
             } else {
                 // exact in
                 isExactIn = true;
                 amountIn = uint256(-requiredAmount0);
-                amountOut = uint256(requiredAmount1);
+                amountOut = 0;
             }
         }
 
