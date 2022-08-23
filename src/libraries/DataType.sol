@@ -123,4 +123,26 @@ library DataType {
         uint256 swapRatio;
         bool swapAnyway;
     }
+
+    struct VaultStatusValue {
+        uint256 collateralValue;
+        uint256 debtValue;
+        int256 premiumValue;
+    }
+
+    struct VaultStatusAmount {
+        uint256 collateralAmount0;
+        uint256 collateralAmount1;
+        uint256 debtAmount0;
+        uint256 debtAmount1;
+        uint256 receivedTradeAmount0;
+        uint256 receivedTradeAmount1;
+        uint256 receivedPremium;
+        uint256 paidpremium;
+    }
+
+    struct VaultStatus {
+        VaultStatusValue values;
+        VaultStatusAmount amounts;
+    }
 }

@@ -292,14 +292,12 @@ contract Controller is IController, Constants, Initializable {
      * @notice Returns collateral value and debt value.
      * @param _vaultId vault id
      */
-    function getVaultStatus(uint256 _vaultId) external returns (uint256, uint256) {
+    function getVaultStatus(uint256 _vaultId) external returns (DataType.VaultStatus memory) {
         uint160 sqrtPriceX96 = getSqrtPrice();
 
         applyPerpFee(_vaultId);
 
-        (uint256 collateralValue, uint256 debtValue) = getPositionValue(_vaultId, sqrtPriceX96);
-
-        return (collateralValue, debtValue);
+        return vaults[_vaultId].getVaultStatus(ranges, context, sqrtPriceX96);
     }
 
     function getVault(uint256 _vaultId) external view returns (DataType.Vault memory) {
@@ -364,7 +362,7 @@ contract Controller is IController, Constants, Initializable {
 
         lastTouchedTimestamp = InterestCalculator.applyInterest(context, irmParams, lastTouchedTimestamp);
 
-        PositionUpdater.collectFeeAndPremium(context, vault, ranges);
+        PositionUpdater.collectFee(context, vault, ranges);
     }
 
     /**
@@ -391,18 +389,6 @@ contract Controller is IController, Constants, Initializable {
 
     function getTWAPSqrtPrice() public view returns (uint160 sqrtPriceX96) {
         (sqrtPriceX96, ) = LPTMath.callUniswapObserve(IUniswapV3Pool(context.uniswapPool), oraclePeriod);
-    }
-
-    /**
-     * returns collateral and debt value scaled by margin token's decimal
-     */
-    function getPositionValue(uint256 _vaultId, uint160 _sqrtPrice) internal view returns (uint256, uint256) {
-        DataType.Vault memory vault = vaults[_vaultId];
-
-        return (
-            vault.getCollateralPositionValue(ranges, context, _sqrtPrice),
-            vault.getDebtPositionValue(ranges, context, _sqrtPrice)
-        );
     }
 
     function getPosition(uint256 _vaultId) public returns (DataType.Position memory position) {

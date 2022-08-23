@@ -105,10 +105,10 @@ contract ControllerHelperTest is TestDeployer, Test {
             DataType.OpenPositionOption(1500, 2000, 110, 0, 0)
         );
 
-        (uint256 collateralValue, uint256 debtValue) = controller.getVaultStatus(vaultId);
+        DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);
 
-        assertGt(collateralValue, 0);
-        assertGt(debtValue, 0);
+        assertGt(vaultStatus.values.collateralValue, 0);
+        assertGt(vaultStatus.values.debtValue, 0);
     }
 
     function testWithdrawLPTWithSwapAnyway() public {
@@ -140,10 +140,10 @@ contract ControllerHelperTest is TestDeployer, Test {
             DataType.ClosePositionOption(1500, 2000, 100)
         );
 
-        (uint256 collateralValue, uint256 debtValue) = controller.getVaultStatus(vaultId);
+        DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);
 
-        assertEq(collateralValue, 0);
-        assertEq(debtValue, 0);
+        assertEq(vaultStatus.values.collateralValue, 0);
+        assertEq(vaultStatus.values.debtValue, 0);
     }
 
     function testRepayLPT() public {
@@ -166,10 +166,10 @@ contract ControllerHelperTest is TestDeployer, Test {
         console.log(0, afterBalance0 - before0);
         console.log(1, afterBalance1 - before1);
 
-        (uint256 collateralValue, uint256 debtValue) = controller.getVaultStatus(vaultId);
+        DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);
 
-        assertEq(collateralValue, 0);
-        assertEq(debtValue, 0);
+        assertEq(vaultStatus.values.collateralValue, 0);
+        assertEq(vaultStatus.values.debtValue, 0);
     }
 
     function testComplecatedPosition() public {
@@ -193,10 +193,10 @@ contract ControllerHelperTest is TestDeployer, Test {
         console.log(0, afterBalance0 - before0);
         console.log(1, afterBalance1 - before1);
 
-        (uint256 collateralValue, uint256 debtValue) = controller.getVaultStatus(vaultId);
+        DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);
 
-        assertEq(collateralValue, 0);
-        assertEq(debtValue, 0);
+        assertEq(vaultStatus.values.collateralValue, 0);
+        assertEq(vaultStatus.values.debtValue, 0);
     }
 
     function testCannotQuoterMode() public {
@@ -229,9 +229,9 @@ contract ControllerHelperTest is TestDeployer, Test {
         console.log(afterBalance0 - beforeBalance0);
         assertGt(afterBalance0, beforeBalance0);
 
-        (uint256 collateralValue, uint256 debtValue) = controller.getVaultStatus(vaultId);
+        DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);
 
-        assertGt(collateralValue, 0);
-        assertEq(debtValue, 0);
+        assertGt(vaultStatus.values.collateralValue, 0);
+        assertEq(vaultStatus.values.debtValue, 0);
     }
 }

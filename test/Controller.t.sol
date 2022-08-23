@@ -229,10 +229,10 @@ contract ControllerTest is TestDeployer, Test {
             DataType.TradeOption(false, false, false, controller.getIsMarginZero())
         );
 
-        (uint256 collateralValue, uint256 debtValue) = controller.getVaultStatus(lpVaultId);
+        DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(lpVaultId);
 
-        assertGt(collateralValue, 0);
-        assertEq(debtValue, 0);
+        assertGt(vaultStatus.values.collateralValue, 0);
+        assertEq(vaultStatus.values.debtValue, 0);
     }
 
     function testBorrowLPT() public {
@@ -250,10 +250,10 @@ contract ControllerTest is TestDeployer, Test {
 
         vm.warp(block.timestamp + 1 minutes);
 
-        (uint256 collateralValue, uint256 debtValue) = controller.getVaultStatus(vaultId);
+        DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);
 
-        assertGt(collateralValue, 0);
-        assertGt(debtValue, 0);
+        assertGt(vaultStatus.values.collateralValue, 0);
+        assertGt(vaultStatus.values.debtValue, 0);
     }
 
     function testCannotBorrowLPT() public {
@@ -301,9 +301,9 @@ contract ControllerTest is TestDeployer, Test {
             DataType.TradeOption(false, false, false, controller.getIsMarginZero())
         );
 
-        (uint256 collateralValue, uint256 debtValue) = controller.getVaultStatus(vaultId);
+        DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);
 
-        assertEq(collateralValue, 0);
-        assertEq(debtValue, 0);
+        assertEq(vaultStatus.values.collateralValue, 0);
+        assertEq(vaultStatus.values.debtValue, 0);
     }
 }

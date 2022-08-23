@@ -25,4 +25,12 @@ library PredyMath {
             return (0, uint256(a));
         }
     }
+
+    function addDelta(uint256 x, int256 y) internal pure returns (uint256 z) {
+        if (y < 0) {
+            require((z = x - uint256(-y)) < x, "LS");
+        } else {
+            require((z = x + uint256(y)) >= x, "LA");
+        }
+    }
 }

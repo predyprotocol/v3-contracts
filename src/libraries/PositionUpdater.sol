@@ -494,7 +494,7 @@ library PositionUpdater {
     /**
      * @notice Collects trade fee and premium.
      */
-    function collectFeeAndPremium(
+    function collectFee(
         DataType.Context storage _context,
         DataType.Vault storage _vault,
         mapping(bytes32 => DataType.PerpStatus) storage _ranges
@@ -502,7 +502,13 @@ library PositionUpdater {
         for (uint256 i = 0; i < _vault.lpts.length; i++) {
             collectTradeFeeFromUni(_context, _ranges[_vault.lpts[i].rangeId]);
         }
+    }
 
+    function collectFeeAndPremium(
+        DataType.Context storage _context,
+        DataType.Vault storage _vault,
+        mapping(bytes32 => DataType.PerpStatus) storage _ranges
+    ) public returns (int256 feeAmount0, int256 feeAmount1) {
         {
             (uint256 fee0, uint256 fee1) = _vault.getEarnedTradeFee(_ranges);
             uint256 earnedPremium = _vault.getEarnedDailyPremium(_ranges);
