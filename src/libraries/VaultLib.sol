@@ -105,7 +105,7 @@ library VaultLib {
         mapping(bytes32 => DataType.PerpStatus) storage _ranges,
         DataType.Context memory _context,
         uint160 _sqrtPrice
-    ) internal view returns (DataType.VaultStatus memory) {
+    ) external view returns (DataType.VaultStatus memory) {
         DataType.VaultStatusAmount memory statusAmount = getVaultStatusAmount(_vault, _ranges, _context, _sqrtPrice);
 
         return DataType.VaultStatus(getVaultStatusValue(statusAmount, _sqrtPrice, _context.isMarginZero), statusAmount);
@@ -115,7 +115,7 @@ library VaultLib {
         DataType.VaultStatusAmount memory statusAmount,
         uint160 _sqrtPrice,
         bool _isMarginZero
-    ) internal view returns (DataType.VaultStatusValue memory) {
+    ) internal pure returns (DataType.VaultStatusValue memory) {
         uint256 price = LPTMath.decodeSqrtPriceX96(_isMarginZero, _sqrtPrice);
 
         int256 premium = int256(statusAmount.receivedPremium).sub(int256(statusAmount.paidpremium));
