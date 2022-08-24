@@ -19,6 +19,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const LPTMath = await ethers.getContract('LPTMath', deployer)
   const PositionUpdater = await ethers.getContract('PositionUpdater', deployer)
   const VaultLib = await ethers.getContract('VaultLib', deployer)
+  const PositionLib = await ethers.getContract('PositionLib', deployer)
 
   const result = await deploy('ControllerHelper', {
     from: deployer,
@@ -37,6 +38,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       LPTMath: LPTMath.address,
       PositionUpdater: PositionUpdater.address,
       VaultLib: VaultLib.address,
+      PositionLib: PositionLib.address,
     },
     log: true,
   })

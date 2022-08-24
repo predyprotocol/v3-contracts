@@ -50,7 +50,8 @@ contract ControllerHelper is Controller {
                 positionUpdates,
                 (buffer0 * _openPositionOptions.bufferRatio) / 100,
                 (buffer1 * _openPositionOptions.bufferRatio) / 100,
-                _tradeOption
+                _tradeOption,
+                _openPositionOptions.metadata
             );
     }
 
@@ -66,7 +67,7 @@ contract ControllerHelper is Controller {
             _closePositionOptions.swapRatio
         );
 
-        return updatePosition(_vaultId, positionUpdates, 0, 0, _tradeOption);
+        return updatePosition(_vaultId, positionUpdates, 0, 0, _tradeOption, _closePositionOptions.metadata);
     }
 
     function liquidate(uint256 _vaultId, DataType.LiquidationOption memory _liquidationOption) external {
@@ -115,10 +116,13 @@ contract ControllerHelper is Controller {
                     uint256(requiredAmount1),
                     maxAmount0
                 );
-            }
 
-            _buffer0 = uint256(int256(maxAmount0).add(requiredAmount0));
-            _buffer1 = 0;
+                _buffer0 = uint256(int256(maxAmount0).add(requiredAmount0));
+                _buffer1 = 0;
+            } else {
+                _buffer0 = uint256(requiredAmount0);
+                _buffer1 = 0;
+            }
         } else {
             uint256 maxAmount1 = calculateMaxAmount1(uint256(requiredAmount0), _price, _slippageTorelance);
             if (requiredAmount0 > 0) {
@@ -131,10 +135,12 @@ contract ControllerHelper is Controller {
                     uint256(requiredAmount0),
                     maxAmount1
                 );
+                _buffer0 = 0;
+                _buffer1 = uint256(int256(maxAmount1).add(requiredAmount1));
+            } else {
+                _buffer0 = 0;
+                _buffer1 = uint256(requiredAmount1);
             }
-
-            _buffer0 = 0;
-            _buffer1 = uint256(int256(maxAmount1).add(requiredAmount1));
         }
     }
 

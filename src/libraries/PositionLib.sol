@@ -23,7 +23,7 @@ library PositionLib {
      * @param _sqrtPrice square root price to calculate
      */
     function getRequiredTokenAmountsToOpen(DataType.Position memory _destPosition, uint160 _sqrtPrice)
-        internal
+        external
         pure
         returns (int256, int256)
     {
@@ -36,7 +36,7 @@ library PositionLib {
      * @param _sqrtPrice square root price to calculate
      */
     function getRequiredTokenAmountsToClose(DataType.Position memory _srcPosition, uint160 _sqrtPrice)
-        internal
+        external
         pure
         returns (int256, int256)
     {
@@ -120,7 +120,7 @@ library PositionLib {
     }
 
     function calculatePositionUpdatesToOpen(DataType.Position memory _position)
-        internal
+        external
         pure
         returns (DataType.PositionUpdate[] memory positionUpdates, uint256 swapIndex)
     {
@@ -191,7 +191,7 @@ library PositionLib {
     }
 
     function calculatePositionUpdatesToClose(DataType.Position memory _position)
-        internal
+        external
         pure
         returns (DataType.PositionUpdate[] memory positionUpdates, uint256 swapIndex)
     {

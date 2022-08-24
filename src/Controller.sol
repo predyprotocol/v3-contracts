@@ -62,6 +62,7 @@ contract Controller is IController, Constants, Initializable {
     address public operator;
 
     event VaultCreated(uint256 vaultId, address owner);
+    event PositionUpdated(uint256 vaultId, int256 a0, int256 a1, uint160 sqrtPrice, bytes metadata);
 
     modifier onlyOperator() {
         require(operator == msg.sender, "caller must be operator");
@@ -144,7 +145,8 @@ contract Controller is IController, Constants, Initializable {
         DataType.PositionUpdate[] memory _positionUpdates,
         uint256 _buffer0,
         uint256 _buffer1,
-        DataType.TradeOption memory _tradeOption
+        DataType.TradeOption memory _tradeOption,
+        bytes memory _metadata
     ) public override returns (uint256 vaultId) {
         applyPerpFee(_vaultId);
 
@@ -182,6 +184,8 @@ contract Controller is IController, Constants, Initializable {
         if (int256(_buffer1) > requiredAmount1) {
             TransferHelper.safeTransfer(context.token1, msg.sender, uint256(int256(_buffer1).sub(requiredAmount1)));
         }
+
+        emit PositionUpdated(vaultId, requiredAmount0, requiredAmount1, getSqrtPrice(), _metadata);
     }
 
     function _reducePosition(
@@ -302,6 +306,10 @@ contract Controller is IController, Constants, Initializable {
 
     function getVault(uint256 _vaultId) external view returns (DataType.Vault memory) {
         return vaults[_vaultId];
+    }
+
+    function getDailyPremium(bytes32 _rangeId) external view returns (uint256) {
+        return InterestCalculator.calculateDailyFee(dpmParams, context, ranges[_rangeId], getSqrtPrice());
     }
 
     // Private Functions

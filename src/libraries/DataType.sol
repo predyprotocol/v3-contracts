@@ -109,12 +109,14 @@ library DataType {
         uint256 bufferRatio;
         uint256 maximumBufferAmount0;
         uint256 maximumBufferAmount1;
+        bytes metadata;
     }
 
     struct ClosePositionOption {
         uint256 price;
         uint256 slippageTorelance;
         uint256 swapRatio;
+        bytes metadata;
     }
 
     struct LiquidationOption {

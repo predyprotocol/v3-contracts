@@ -174,7 +174,8 @@ contract ControllerTest is TestDeployer, Test {
             positionUpdates,
             0,
             amount1 * 2,
-            DataType.TradeOption(false, false, false, isQuoteZero)
+            DataType.TradeOption(false, false, false, isQuoteZero),
+            bytes("")
         );
     }
 
@@ -187,7 +188,8 @@ contract ControllerTest is TestDeployer, Test {
             positionUpdates,
             amount0 * 2,
             0,
-            DataType.TradeOption(false, false, false, isQuoteZero)
+            DataType.TradeOption(false, false, false, isQuoteZero),
+            bytes("")
         );
     }
 
@@ -203,7 +205,8 @@ contract ControllerTest is TestDeployer, Test {
             positionUpdates,
             amount0 * 2,
             amount1 * 2,
-            DataType.TradeOption(false, false, false, controller.getIsMarginZero())
+            DataType.TradeOption(false, false, false, controller.getIsMarginZero()),
+            bytes("")
         );
     }
 
@@ -226,7 +229,8 @@ contract ControllerTest is TestDeployer, Test {
             positionUpdates,
             0,
             0,
-            DataType.TradeOption(false, false, false, controller.getIsMarginZero())
+            DataType.TradeOption(false, false, false, controller.getIsMarginZero()),
+            bytes("")
         );
 
         DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(lpVaultId);
@@ -245,7 +249,8 @@ contract ControllerTest is TestDeployer, Test {
             positionUpdates,
             (1e18 * 1800) / 1e12,
             margin,
-            DataType.TradeOption(false, false, false, controller.getIsMarginZero())
+            DataType.TradeOption(false, false, false, controller.getIsMarginZero()),
+            bytes("")
         );
 
         vm.warp(block.timestamp + 1 minutes);
@@ -268,7 +273,8 @@ contract ControllerTest is TestDeployer, Test {
             positionUpdates,
             (1e18 * 1800) / 1e12,
             margin,
-            DataType.TradeOption(false, false, false, isQuoteZero)
+            DataType.TradeOption(false, false, false, isQuoteZero),
+            bytes("")
         );
     }
 
@@ -282,7 +288,8 @@ contract ControllerTest is TestDeployer, Test {
             positionUpdates,
             (1e18 * 1800) / 1e12,
             margin,
-            DataType.TradeOption(false, false, false, controller.getIsMarginZero())
+            DataType.TradeOption(false, false, false, controller.getIsMarginZero()),
+            bytes("")
         );
 
         DataType.Vault memory vault = controller.getVault(vaultId);
@@ -298,7 +305,8 @@ contract ControllerTest is TestDeployer, Test {
             positionUpdates2,
             0,
             0,
-            DataType.TradeOption(false, false, false, controller.getIsMarginZero())
+            DataType.TradeOption(false, false, false, controller.getIsMarginZero()),
+            bytes("")
         );
 
         DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);

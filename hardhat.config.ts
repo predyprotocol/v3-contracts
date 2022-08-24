@@ -9,7 +9,6 @@ import 'hardhat-deploy'
 import '@eth-optimism/hardhat-ovm'
 import '@nomiclabs/hardhat-ethers'
 import 'hardhat-preprocessor'
-import '@openzeppelin/hardhat-upgrades'
 
 dotenv.config()
 

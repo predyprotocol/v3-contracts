@@ -58,6 +58,31 @@ library InterestCalculator {
         }
 
         if (_perpState.borrowedLiquidity > 0) {
+            uint256 dailyPremium = ((block.timestamp - _perpState.lastTouchedTimestamp) *
+                calculateDailyFee(_params, _context, _perpState, _sqrtPrice)) / 1 days;
+
+            _perpState.premiumGrowthForBorrower = _perpState.premiumGrowthForBorrower.add(dailyPremium);
+            _perpState.premiumGrowthForLender = _perpState.premiumGrowthForLender.add(
+                PredyMath.mulDiv(
+                    dailyPremium,
+                    _perpState.borrowedLiquidity,
+                    getTotalLiquidityAmount(_context, _perpState)
+                )
+            );
+        }
+
+        takeSnapshotForRange(_params, IUniswapV3Pool(_context.uniswapPool), _perpState.lowerTick, _perpState.upperTick);
+
+        _perpState.lastTouchedTimestamp = block.timestamp;
+    }
+
+    function calculateDailyFee(
+        DPMParams storage _params,
+        DataType.Context memory _context,
+        DataType.PerpStatus storage _perpState,
+        uint160 _sqrtPrice
+    ) internal view returns (uint256) {
+        if (_perpState.borrowedLiquidity > 0) {
             uint256 perpUr = getPerpUR(_context, _perpState);
 
             uint256 dailyPremium = calculateStableValueFromTotalPremiumValue(
@@ -79,23 +104,10 @@ library InterestCalculator {
                 _perpState.upperTick
             );
 
-            dailyPremium =
-                ((block.timestamp - _perpState.lastTouchedTimestamp) * (dailyPremium + dailyInterest)) /
-                1 days;
-
-            _perpState.premiumGrowthForBorrower = _perpState.premiumGrowthForBorrower.add(dailyPremium);
-            _perpState.premiumGrowthForLender = _perpState.premiumGrowthForLender.add(
-                PredyMath.mulDiv(
-                    dailyPremium,
-                    _perpState.borrowedLiquidity,
-                    getTotalLiquidityAmount(_context, _perpState)
-                )
-            );
+            return dailyPremium + dailyInterest;
         }
 
-        takeSnapshotForRange(_params, IUniswapV3Pool(_context.uniswapPool), _perpState.lowerTick, _perpState.upperTick);
-
-        _perpState.lastTouchedTimestamp = block.timestamp;
+        return 0;
     }
 
     function applyInterest(
