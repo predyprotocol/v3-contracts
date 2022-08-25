@@ -54,16 +54,16 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     })
     await controller.updateDRMParams(
       {
-        baseRate: '1000000000000000',
+        baseRate: '1000000000000',
         kinkRate: '300000000000000000',
-        slope1: '100000000000000000',
+        slope1: '200000000000000000',
         slope2: '500000000000000000',
       },
       {
         baseRate: '7000000000',
         kinkRate: '300000000000000000',
-        slope1: '5000000000',
-        slope2: '10000000000',
+        slope1: '50000000000',
+        slope2: '100000000000',
       },
     )
   }

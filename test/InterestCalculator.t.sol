@@ -164,7 +164,7 @@ contract InterestCalculatorTest is TestDeployer, Test {
 
         assertEq(InterestCalculator.calculateInterestRate(dpmParams.premiumParams, 50 * 1e16), 15000000000);
 
-        uint256 dailyPremium = InterestCalculator.calculateDailyPremium(
+        uint256 dailyPremium = InterestCalculator.calculatePremium(
             dpmParams,
             uniPool,
             perpStatus.lowerTick,

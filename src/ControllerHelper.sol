@@ -34,6 +34,7 @@ contract ControllerHelper is Controller {
         );
 
         buffer0 = (buffer0 * _openPositionOptions.bufferRatio) / 100;
+        buffer1 = (buffer1 * _openPositionOptions.bufferRatio) / 100;
 
         require(
             _openPositionOptions.maximumBufferAmount0 == 0 || _openPositionOptions.maximumBufferAmount0 >= buffer0,
@@ -44,15 +45,7 @@ contract ControllerHelper is Controller {
             "CH1"
         );
 
-        return
-            updatePosition(
-                _vaultId,
-                positionUpdates,
-                (buffer0 * _openPositionOptions.bufferRatio) / 100,
-                (buffer1 * _openPositionOptions.bufferRatio) / 100,
-                _tradeOption,
-                _openPositionOptions.metadata
-            );
+        return updatePosition(_vaultId, positionUpdates, buffer0, buffer1, _tradeOption, _openPositionOptions.metadata);
     }
 
     function closePosition(
@@ -105,8 +98,8 @@ contract ControllerHelper is Controller {
         );
 
         if (_isQuoteZero) {
-            uint256 maxAmount0 = calculateMaxAmount0(uint256(requiredAmount1), _price, _slippageTorelance);
             if (requiredAmount1 > 0) {
+                uint256 maxAmount0 = calculateMaxAmount0(uint256(requiredAmount1), _price, _slippageTorelance);
                 positionUpdates[swapIndex] = DataType.PositionUpdate(
                     DataType.PositionUpdateType.SWAP_EXACT_OUT,
                     true,
@@ -118,6 +111,21 @@ contract ControllerHelper is Controller {
                 );
 
                 _buffer0 = uint256(int256(maxAmount0).add(requiredAmount0));
+                _buffer1 = 0;
+            } else if (requiredAmount1 < 0) {
+                uint256 minAmount0 = calculateMinAmount0(uint256(-requiredAmount1), _price, _slippageTorelance);
+                positionUpdates[swapIndex] = DataType.PositionUpdate(
+                    DataType.PositionUpdateType.SWAP_EXACT_IN,
+                    false,
+                    0,
+                    0,
+                    0,
+                    uint256(-requiredAmount1),
+                    minAmount0
+                );
+                if (requiredAmount0 > int256(minAmount0)) {
+                    _buffer0 = uint256(requiredAmount0.sub(int256(minAmount0)));
+                }
                 _buffer1 = 0;
             } else {
                 _buffer0 = uint256(requiredAmount0);
@@ -137,6 +145,21 @@ contract ControllerHelper is Controller {
                 );
                 _buffer0 = 0;
                 _buffer1 = uint256(int256(maxAmount1).add(requiredAmount1));
+            } else if (requiredAmount0 < 0) {
+                uint256 minAmount1 = calculateMinAmount1(uint256(-requiredAmount0), _price, _slippageTorelance);
+                positionUpdates[swapIndex] = DataType.PositionUpdate(
+                    DataType.PositionUpdateType.SWAP_EXACT_IN,
+                    true,
+                    0,
+                    0,
+                    0,
+                    uint256(-requiredAmount0),
+                    minAmount1
+                );
+                _buffer0 = 0;
+                if (requiredAmount1 > int256(minAmount1)) {
+                    _buffer1 = uint256(requiredAmount1.sub(int256(minAmount1)));
+                }
             } else {
                 _buffer0 = 0;
                 _buffer1 = uint256(requiredAmount1);

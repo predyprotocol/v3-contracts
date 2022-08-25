@@ -308,8 +308,8 @@ contract Controller is IController, Constants, Initializable {
         return vaults[_vaultId];
     }
 
-    function getDailyPremium(bytes32 _rangeId) external view returns (uint256) {
-        return InterestCalculator.calculateDailyFee(dpmParams, context, ranges[_rangeId], getSqrtPrice());
+    function calculateYearlyPremium(bytes32 _rangeId) external view returns (uint256) {
+        return InterestCalculator.calculateYearlyPremium(dpmParams, context, ranges[_rangeId], getSqrtPrice());
     }
 
     // Private Functions

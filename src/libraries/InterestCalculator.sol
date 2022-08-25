@@ -58,16 +58,12 @@ library InterestCalculator {
         }
 
         if (_perpState.borrowedLiquidity > 0) {
-            uint256 dailyPremium = ((block.timestamp - _perpState.lastTouchedTimestamp) *
-                calculateDailyFee(_params, _context, _perpState, _sqrtPrice)) / 1 days;
+            uint256 premium = ((block.timestamp - _perpState.lastTouchedTimestamp) *
+                calculateYearlyPremium(_params, _context, _perpState, _sqrtPrice)) / 365 days;
 
-            _perpState.premiumGrowthForBorrower = _perpState.premiumGrowthForBorrower.add(dailyPremium);
+            _perpState.premiumGrowthForBorrower = _perpState.premiumGrowthForBorrower.add(premium);
             _perpState.premiumGrowthForLender = _perpState.premiumGrowthForLender.add(
-                PredyMath.mulDiv(
-                    dailyPremium,
-                    _perpState.borrowedLiquidity,
-                    getTotalLiquidityAmount(_context, _perpState)
-                )
+                PredyMath.mulDiv(premium, _perpState.borrowedLiquidity, getTotalLiquidityAmount(_context, _perpState))
             );
         }
 
@@ -76,7 +72,7 @@ library InterestCalculator {
         _perpState.lastTouchedTimestamp = block.timestamp;
     }
 
-    function calculateDailyFee(
+    function calculateYearlyPremium(
         DPMParams storage _params,
         DataType.Context memory _context,
         DataType.PerpStatus storage _perpState,
@@ -86,7 +82,7 @@ library InterestCalculator {
             uint256 perpUr = getPerpUR(_context, _perpState);
 
             uint256 dailyPremium = calculateStableValueFromTotalPremiumValue(
-                calculateDailyPremium(
+                calculatePremium(
                     _params,
                     IUniswapV3Pool(_context.uniswapPool),
                     _perpState.lowerTick,
@@ -183,7 +179,7 @@ library InterestCalculator {
         return getAvailableLiquidityAmount(_context, _perpState) + _perpState.borrowedLiquidity;
     }
 
-    function calculateDailyPremium(
+    function calculatePremium(
         DPMParams storage _params,
         IUniswapV3Pool uniPool,
         int24 _lowerTick,

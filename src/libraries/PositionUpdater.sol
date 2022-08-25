@@ -498,7 +498,7 @@ library PositionUpdater {
         DataType.Context storage _context,
         DataType.Vault storage _vault,
         mapping(bytes32 => DataType.PerpStatus) storage _ranges
-    ) public returns (int256 feeAmount0, int256 feeAmount1) {
+    ) public {
         for (uint256 i = 0; i < _vault.lpts.length; i++) {
             collectTradeFeeFromUni(_context, _ranges[_vault.lpts[i].rangeId]);
         }

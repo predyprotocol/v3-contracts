@@ -217,7 +217,7 @@ contract ControllerHelperTest is TestDeployer, Test {
 
         swapToSamePrice(owner);
 
-        vm.warp(block.timestamp + 27 minutes);
+        vm.warp(block.timestamp + 100 minutes);
 
         assertTrue(controller.checkLiquidatable(vaultId));
 
@@ -251,7 +251,7 @@ contract ControllerHelperTest is TestDeployer, Test {
         controller.openPosition(
             0,
             position,
-            DataType.TradeOption(false, false, false, controller.getIsMarginZero()),
+            DataType.TradeOption(false, true, false, controller.getIsMarginZero()),
             DataType.OpenPositionOption(1500, 1000, 150, 0, 0, bytes(""))
         );
     }

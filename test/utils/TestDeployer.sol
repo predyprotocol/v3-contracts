@@ -81,7 +81,7 @@ abstract contract TestDeployer is BaseTestHelper {
         controller.updateIRMParams(InterestCalculator.IRMParams(1e12, 30 * 1e16, 20 * 1e16, 50 * 1e16));
         controller.updateDRMParams(
             InterestCalculator.IRMParams(1e12, 30 * 1e16, 20 * 1e16, 50 * 1e16),
-            InterestCalculator.IRMParams(7000 * 1e6, 30 * 1e16, 5000 * 1e6, 10000 * 1e6)
+            InterestCalculator.IRMParams(7000 * 1e8, 30 * 1e16, 5000 * 1e8, 10000 * 1e8)
         );
     }
 }
