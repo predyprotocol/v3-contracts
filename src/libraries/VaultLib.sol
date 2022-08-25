@@ -12,8 +12,6 @@ import "./LPTMath.sol";
 import "./BaseToken.sol";
 import "./DataType.sol";
 
-import "forge-std/console.sol";
-
 library VaultLib {
     using SafeMath for uint256;
     using SafeMath for uint128;

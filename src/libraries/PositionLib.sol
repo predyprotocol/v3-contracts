@@ -12,6 +12,227 @@ library PositionLib {
     using SafeMath for uint256;
     using SignedSafeMath for int256;
 
+    function getPositionUpdatesToOpen(
+        DataType.Position memory _position,
+        uint256 _price,
+        uint256 _slippageTorelance,
+        bool _isQuoteZero,
+        uint160 _sqrtPrice,
+        bool _isMarginZero
+    )
+        external
+        pure
+        returns (
+            DataType.PositionUpdate[] memory positionUpdates,
+            uint256 _buffer0,
+            uint256 _buffer1
+        )
+    {
+        uint256 swapIndex;
+
+        (positionUpdates, swapIndex) = calculatePositionUpdatesToOpen(_position);
+
+        (int256 requiredAmount0, int256 requiredAmount1) = getRequiredTokenAmountsToOpen(_position, _sqrtPrice);
+
+        if (_isQuoteZero) {
+            if (requiredAmount1 > 0) {
+                uint256 maxAmount0 = calculateMaxAmount0(
+                    uint256(requiredAmount1),
+                    _price,
+                    _slippageTorelance,
+                    _isMarginZero
+                );
+                positionUpdates[swapIndex] = DataType.PositionUpdate(
+                    DataType.PositionUpdateType.SWAP_EXACT_OUT,
+                    true,
+                    0,
+                    0,
+                    0,
+                    uint256(requiredAmount1),
+                    maxAmount0
+                );
+
+                _buffer0 = uint256(int256(maxAmount0).add(requiredAmount0));
+                _buffer1 = 0;
+            } else if (requiredAmount1 < 0) {
+                uint256 minAmount0 = calculateMinAmount0(
+                    uint256(-requiredAmount1),
+                    _price,
+                    _slippageTorelance,
+                    _isMarginZero
+                );
+                positionUpdates[swapIndex] = DataType.PositionUpdate(
+                    DataType.PositionUpdateType.SWAP_EXACT_IN,
+                    false,
+                    0,
+                    0,
+                    0,
+                    uint256(-requiredAmount1),
+                    minAmount0
+                );
+                if (requiredAmount0 > int256(minAmount0)) {
+                    _buffer0 = uint256(requiredAmount0.sub(int256(minAmount0)));
+                }
+                _buffer1 = 0;
+            } else {
+                _buffer0 = uint256(requiredAmount0);
+                _buffer1 = 0;
+            }
+        } else {
+            uint256 maxAmount1 = calculateMaxAmount1(
+                uint256(requiredAmount0),
+                _price,
+                _slippageTorelance,
+                _isMarginZero
+            );
+            if (requiredAmount0 > 0) {
+                positionUpdates[swapIndex] = DataType.PositionUpdate(
+                    DataType.PositionUpdateType.SWAP_EXACT_OUT,
+                    false,
+                    0,
+                    0,
+                    0,
+                    uint256(requiredAmount0),
+                    maxAmount1
+                );
+                _buffer0 = 0;
+                _buffer1 = uint256(int256(maxAmount1).add(requiredAmount1));
+            } else if (requiredAmount0 < 0) {
+                uint256 minAmount1 = calculateMinAmount1(
+                    uint256(-requiredAmount0),
+                    _price,
+                    _slippageTorelance,
+                    _isMarginZero
+                );
+                positionUpdates[swapIndex] = DataType.PositionUpdate(
+                    DataType.PositionUpdateType.SWAP_EXACT_IN,
+                    true,
+                    0,
+                    0,
+                    0,
+                    uint256(-requiredAmount0),
+                    minAmount1
+                );
+                _buffer0 = 0;
+                if (requiredAmount1 > int256(minAmount1)) {
+                    _buffer1 = uint256(requiredAmount1.sub(int256(minAmount1)));
+                }
+            } else {
+                _buffer0 = 0;
+                _buffer1 = uint256(requiredAmount1);
+            }
+        }
+    }
+
+    function getPositionUpdatesToClose(
+        DataType.Position memory _position,
+        uint256 _price,
+        uint256 _slippageTorelance,
+        uint256 _swapRatio,
+        uint160 _sqrtPrice,
+        bool _isMarginZero
+    ) external pure returns (DataType.PositionUpdate[] memory positionUpdates) {
+        uint256 swapIndex;
+
+        (positionUpdates, swapIndex) = calculatePositionUpdatesToClose(_position);
+
+        (int256 requiredAmount0, int256 requiredAmount1) = getRequiredTokenAmountsToClose(_position, _sqrtPrice);
+
+        if (requiredAmount0 < 0) {
+            uint256 minAmount1 = calculateMinAmount1(
+                uint256(-requiredAmount0),
+                _price,
+                _slippageTorelance,
+                _isMarginZero
+            );
+            positionUpdates[swapIndex] = DataType.PositionUpdate(
+                DataType.PositionUpdateType.SWAP_EXACT_IN,
+                true,
+                0,
+                0,
+                0,
+                (uint256(-requiredAmount0) * _swapRatio) / 100,
+                (minAmount1 * _swapRatio) / 100
+            );
+        } else if (requiredAmount1 < 0) {
+            uint256 minAmount0 = calculateMinAmount0(
+                uint256(-requiredAmount1),
+                _price,
+                _slippageTorelance,
+                _isMarginZero
+            );
+            positionUpdates[swapIndex] = DataType.PositionUpdate(
+                DataType.PositionUpdateType.SWAP_EXACT_IN,
+                false,
+                0,
+                0,
+                0,
+                (uint256(-requiredAmount1) * _swapRatio) / 100,
+                (minAmount0 * _swapRatio) / 100
+            );
+        }
+    }
+
+    function calculateMaxAmount0(
+        uint256 _amount1,
+        uint256 _price,
+        uint256 _slippageTorelance,
+        bool _isMarginZero
+    ) internal pure returns (uint256) {
+        if (_isMarginZero) {
+            uint256 limitPrice = (_price * (1e4 + _slippageTorelance)) / 1e4;
+            return (_amount1 * limitPrice) / 1e18;
+        } else {
+            uint256 limitPrice = (_price * (1e4 - _slippageTorelance)) / 1e4;
+            return (_amount1 * 1e18) / limitPrice;
+        }
+    }
+
+    function calculateMinAmount0(
+        uint256 _amount1,
+        uint256 _price,
+        uint256 _slippageTorelance,
+        bool _isMarginZero
+    ) internal pure returns (uint256) {
+        if (_isMarginZero) {
+            uint256 limitPrice = (_price * (1e4 - _slippageTorelance)) / 1e4;
+            return (_amount1 * limitPrice) / 1e18;
+        } else {
+            uint256 limitPrice = (_price * (1e4 + _slippageTorelance)) / 1e4;
+            return (_amount1 * 1e18) / limitPrice;
+        }
+    }
+
+    function calculateMaxAmount1(
+        uint256 _amount0,
+        uint256 _price,
+        uint256 _slippageTorelance,
+        bool _isMarginZero
+    ) internal pure returns (uint256) {
+        if (_isMarginZero) {
+            uint256 limitPrice = (_price * (1e4 - _slippageTorelance)) / 1e4;
+            return (_amount0 * 1e18) / limitPrice;
+        } else {
+            uint256 limitPrice = (_price * (1e4 + _slippageTorelance)) / 1e4;
+            return (_amount0 * limitPrice) / 1e18;
+        }
+    }
+
+    function calculateMinAmount1(
+        uint256 _amount0,
+        uint256 _price,
+        uint256 _slippageTorelance,
+        bool _isMarginZero
+    ) internal pure returns (uint256) {
+        if (_isMarginZero) {
+            uint256 limitPrice = (_price * (1e4 + _slippageTorelance)) / 1e4;
+            return (_amount0 * 1e18) / limitPrice;
+        } else {
+            uint256 limitPrice = (_price * (1e4 - _slippageTorelance)) / 1e4;
+            return (_amount0 * limitPrice) / 1e18;
+        }
+    }
+
     function emptyPosition() internal pure returns (DataType.Position memory) {
         DataType.LPT[] memory lpts = new DataType.LPT[](0);
         return DataType.Position(0, 0, 0, 0, lpts);
@@ -23,7 +244,7 @@ library PositionLib {
      * @param _sqrtPrice square root price to calculate
      */
     function getRequiredTokenAmountsToOpen(DataType.Position memory _destPosition, uint160 _sqrtPrice)
-        external
+        internal
         pure
         returns (int256, int256)
     {
@@ -36,7 +257,7 @@ library PositionLib {
      * @param _sqrtPrice square root price to calculate
      */
     function getRequiredTokenAmountsToClose(DataType.Position memory _srcPosition, uint160 _sqrtPrice)
-        external
+        internal
         pure
         returns (int256, int256)
     {
@@ -120,7 +341,7 @@ library PositionLib {
     }
 
     function calculatePositionUpdatesToOpen(DataType.Position memory _position)
-        external
+        internal
         pure
         returns (DataType.PositionUpdate[] memory positionUpdates, uint256 swapIndex)
     {
@@ -191,7 +412,7 @@ library PositionLib {
     }
 
     function calculatePositionUpdatesToClose(DataType.Position memory _position)
-        external
+        internal
         pure
         returns (DataType.PositionUpdate[] memory positionUpdates, uint256 swapIndex)
     {

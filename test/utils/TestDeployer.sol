@@ -53,7 +53,8 @@ abstract contract TestDeployer is BaseTestHelper {
             true
         );
 
-        controller = new ControllerHelper(initializationParam, address(positionManager), factory, address(swapRouter));
+        controller = new ControllerHelper();
+        controller.initialize(initializationParam, address(positionManager), factory, address(swapRouter));
 
         INonfungiblePositionManager.MintParams memory params = INonfungiblePositionManager.MintParams(
             initializationParam.token0,

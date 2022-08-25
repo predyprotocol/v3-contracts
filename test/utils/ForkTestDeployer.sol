@@ -46,12 +46,8 @@ abstract contract ForkTestDeployer is BaseTestHelper {
             address(token1),
             !isTokenAToken0
         );
-        controller = new ControllerHelper(
-            initializationParam,
-            address(positionManager),
-            address(factory),
-            address(swapRouter)
-        );
+        controller = new ControllerHelper();
+        controller.initialize(initializationParam, address(positionManager), address(factory), address(swapRouter));
 
         token0.approve(address(controller), 1e24);
         token1.approve(address(controller), 1e24);

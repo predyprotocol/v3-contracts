@@ -23,17 +23,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const result = await deploy('ControllerHelper', {
     from: deployer,
-    args: [
-      {
-        feeTier: 500,
-        token0: wethAddress,
-        token1: usdcAddress,
-        isMarginZero,
-      },
-      uniswapPositionManager,
-      uniswapFactoryAddress,
-      swapRouterAddress,
-    ],
+    args: [],
     libraries: {
       LPTMath: LPTMath.address,
       PositionUpdater: PositionUpdater.address,
@@ -41,6 +31,24 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       PositionLib: PositionLib.address,
     },
     log: true,
+    proxy: {
+      execute: {
+        init: {
+          methodName: 'initialize',
+          args: [
+            {
+              feeTier: 500,
+              token0: wethAddress,
+              token1: usdcAddress,
+              isMarginZero,
+            },
+            uniswapPositionManager,
+            uniswapFactoryAddress,
+            swapRouterAddress,
+          ],
+        },
+      },
+    },
   })
 
   if (result.newlyDeployed) {
