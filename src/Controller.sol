@@ -376,7 +376,7 @@ contract Controller is IController, Constants, Initializable {
     /**
      * Gets current price of underlying token by margin token.
      */
-    function getPrice() external view returns (uint256) {
+    function getPrice() public view returns (uint256) {
         return LPTMath.decodeSqrtPriceX96(context.isMarginZero, getSqrtPrice());
     }
 
