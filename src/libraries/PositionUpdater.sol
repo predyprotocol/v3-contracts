@@ -433,7 +433,7 @@ library PositionUpdater {
             recipient: address(this),
             deadline: block.timestamp,
             amountIn: _positionUpdate.param0,
-            amountOutMinimum: _positionUpdate.param1,
+            amountOutMinimum: 0,
             sqrtPriceLimitX96: 0
         });
 
@@ -466,7 +466,7 @@ library PositionUpdater {
             recipient: address(this),
             deadline: block.timestamp,
             amountOut: _positionUpdate.param0,
-            amountInMaximum: _positionUpdate.param1,
+            amountInMaximum: type(uint256).max,
             sqrtPriceLimitX96: 0
         });
 

@@ -193,7 +193,7 @@ abstract contract BaseTestHelper {
                 _vaultId,
                 position,
                 DataType.TradeOption(false, false, false, controller.getIsMarginZero()),
-                DataType.OpenPositionOption(1500, 1000, 110, 0, 0, bytes(""))
+                DataType.OpenPositionOption(1500 * 1e6, 1000, 110, 0, 0, bytes(""))
             );
     }
 
@@ -540,4 +540,15 @@ abstract contract BaseTestHelper {
         );
     }
     */
+
+    function getSqrtPriceRange(int24 _slippageTolerance)
+        internal
+        view
+        returns (uint160 lowerSqrtPrice, uint160 upperSqrtPrice)
+    {
+        int24 tick = controller.getCurrentTick();
+
+        lowerSqrtPrice = TickMath.getSqrtRatioAtTick(tick - _slippageTolerance);
+        upperSqrtPrice = TickMath.getSqrtRatioAtTick(tick + _slippageTolerance);
+    }
 }

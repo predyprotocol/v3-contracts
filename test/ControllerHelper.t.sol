@@ -41,7 +41,7 @@ contract ControllerHelperTest is TestDeployer, Test {
         controller.closePosition(
             vaultId,
             DataType.TradeOption(false, false, false, isQuoteZero),
-            DataType.ClosePositionOption(1500, 2000, 100, bytes(""))
+            DataType.ClosePositionOption(1500 * 1e6, 2000, 100, bytes(""))
         );
     }
 
@@ -55,7 +55,7 @@ contract ControllerHelperTest is TestDeployer, Test {
             0,
             position,
             DataType.TradeOption(false, false, false, false),
-            DataType.OpenPositionOption(1500, 1000, 150, 0, 0, bytes(""))
+            DataType.OpenPositionOption(1500 * 1e6, 1000, 150, 0, 0, bytes(""))
         );
         uint256 afterBalance0 = token0.balanceOf(owner);
         uint256 afterBalance1 = token1.balanceOf(owner);
@@ -81,7 +81,7 @@ contract ControllerHelperTest is TestDeployer, Test {
             0,
             position,
             DataType.TradeOption(false, false, false, controller.getIsMarginZero()),
-            DataType.OpenPositionOption(1500, 1000, 150, 0, 0, bytes(""))
+            DataType.OpenPositionOption(1500 * 1e6, 1000, 150, 0, 0, bytes(""))
         );
     }
 
@@ -102,7 +102,33 @@ contract ControllerHelperTest is TestDeployer, Test {
             0,
             position,
             DataType.TradeOption(false, false, false, controller.getIsMarginZero()),
-            DataType.OpenPositionOption(1500, 2000, 110, 0, 0, bytes(""))
+            DataType.OpenPositionOption(1500 * 1e6, 2000, 110, 0, 0, bytes(""))
+        );
+
+        DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);
+
+        assertGt(vaultStatus.values.collateralValue, 0);
+        assertGt(vaultStatus.values.debtValue, 0);
+    }
+
+    function testBorrowLPTOTM() public {
+        slip(owner, false, 5 * 1e18);
+
+        uint256 margin = 100 * 1e6;
+
+        (uint128 liquidity, , ) = LPTMath.getLiquidityAndAmountToBorrow(true, 1e18, 202600, 202500, 202600);
+
+        DataType.LPT[] memory lpts = new DataType.LPT[](1);
+        lpts[0] = DataType.LPT(false, liquidity, 202500, 202600);
+        DataType.Position memory position = DataType.Position(margin, 1e18, 0, 0, lpts);
+
+        console.log(controller.getPrice());
+
+        uint256 vaultId = controller.openPosition(
+            0,
+            position,
+            DataType.TradeOption(false, true, false, controller.getIsMarginZero()),
+            DataType.OpenPositionOption(controller.getPrice(), 500, 110, 0, 0, bytes(""))
         );
 
         DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);
@@ -120,7 +146,7 @@ contract ControllerHelperTest is TestDeployer, Test {
         controller.closePosition(
             vaultId,
             DataType.TradeOption(false, true, false, true),
-            DataType.ClosePositionOption(1500, 2000, 100, bytes(""))
+            DataType.ClosePositionOption(1500 * 1e6, 2000, 100, bytes(""))
         );
     }
 
@@ -137,7 +163,7 @@ contract ControllerHelperTest is TestDeployer, Test {
         controller.closePosition(
             vaultId,
             DataType.TradeOption(false, false, false, controller.getIsMarginZero()),
-            DataType.ClosePositionOption(1500, 2000, 100, bytes(""))
+            DataType.ClosePositionOption(1500 * 1e6, 2000, 100, bytes(""))
         );
 
         DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);
@@ -158,7 +184,7 @@ contract ControllerHelperTest is TestDeployer, Test {
         controller.closePosition(
             vaultId,
             DataType.TradeOption(false, true, false, controller.getIsMarginZero()),
-            DataType.ClosePositionOption(1500, 1000, 54, bytes(""))
+            DataType.ClosePositionOption(1500 * 1e6, 1000, 54, bytes(""))
         );
         uint256 afterBalance0 = token0.balanceOf(owner);
         uint256 afterBalance1 = token1.balanceOf(owner);
@@ -185,7 +211,7 @@ contract ControllerHelperTest is TestDeployer, Test {
         controller.closePosition(
             vaultId,
             DataType.TradeOption(false, true, false, controller.getIsMarginZero()),
-            DataType.ClosePositionOption(1500, 1000, 100, bytes(""))
+            DataType.ClosePositionOption(1500 * 1e6, 1000, 100, bytes(""))
         );
         uint256 afterBalance0 = token0.balanceOf(owner);
         uint256 afterBalance1 = token1.balanceOf(owner);
@@ -208,7 +234,7 @@ contract ControllerHelperTest is TestDeployer, Test {
             0,
             position,
             DataType.TradeOption(false, false, true, true),
-            DataType.OpenPositionOption(1500, 1000, 0, 0, 0, bytes(""))
+            DataType.OpenPositionOption(1500 * 1e6, 1000, 0, 0, 0, bytes(""))
         );
     }
 
@@ -222,7 +248,7 @@ contract ControllerHelperTest is TestDeployer, Test {
         assertTrue(controller.checkLiquidatable(vaultId));
 
         uint256 beforeBalance0 = token0.balanceOf(owner);
-        controller.liquidate(vaultId, DataType.LiquidationOption(1500, 2000, 54, true));
+        controller.liquidate(vaultId, DataType.LiquidationOption(1500 * 1e6, 2000, 54, true));
         uint256 afterBalance0 = token0.balanceOf(owner);
 
         // get penalty amount
@@ -252,7 +278,7 @@ contract ControllerHelperTest is TestDeployer, Test {
             0,
             position,
             DataType.TradeOption(false, true, false, controller.getIsMarginZero()),
-            DataType.OpenPositionOption(1500, 1000, 150, 0, 0, bytes(""))
+            DataType.OpenPositionOption(1500 * 1e6, 1000, 150, 0, 0, bytes(""))
         );
     }
 }

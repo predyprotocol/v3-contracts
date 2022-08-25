@@ -45,7 +45,16 @@ contract ControllerHelper is Controller {
             "CH1"
         );
 
-        return updatePosition(_vaultId, positionUpdates, buffer0, buffer1, _tradeOption, _openPositionOptions.metadata);
+        vaultId = updatePosition(
+            _vaultId,
+            positionUpdates,
+            buffer0,
+            buffer1,
+            _tradeOption,
+            _openPositionOptions.metadata
+        );
+
+        checkPrice(_openPositionOptions.price, _openPositionOptions.slippageTorelance);
     }
 
     function closePosition(
@@ -60,7 +69,9 @@ contract ControllerHelper is Controller {
             _closePositionOptions.swapRatio
         );
 
-        return updatePosition(_vaultId, positionUpdates, 0, 0, _tradeOption, _closePositionOptions.metadata);
+        vaultId = updatePosition(_vaultId, positionUpdates, 0, 0, _tradeOption, _closePositionOptions.metadata);
+
+        checkPrice(_closePositionOptions.price, _closePositionOptions.slippageTorelance);
     }
 
     function liquidate(uint256 _vaultId, DataType.LiquidationOption memory _liquidationOption) external {
@@ -72,6 +83,18 @@ contract ControllerHelper is Controller {
         );
 
         liquidate(_vaultId, positionUpdates, _liquidationOption.swapAnyway);
+
+        checkPrice(_liquidationOption.price, _liquidationOption.slippageTorelance);
+    }
+
+    function checkPrice(uint256 _price, uint256 _slippageTorelance) internal view {
+        uint256 price = getPrice();
+
+        require(
+            (_price * (1e4 - _slippageTorelance)) / 1e4 <= price &&
+                price <= (_price * (1e4 + _slippageTorelance)) / 1e4,
+            "CH2"
+        );
     }
 
     function getPositionUpdatesToOpen(
@@ -218,10 +241,10 @@ contract ControllerHelper is Controller {
     ) internal view returns (uint256) {
         if (context.isMarginZero) {
             uint256 limitPrice = (_price * (1e4 + _slippageTorelance)) / 1e4;
-            return (_amount1 * limitPrice) / 1e12;
+            return (_amount1 * limitPrice) / 1e18;
         } else {
             uint256 limitPrice = (_price * (1e4 - _slippageTorelance)) / 1e4;
-            return (_amount1 * 1e12) / limitPrice;
+            return (_amount1 * 1e18) / limitPrice;
         }
     }
 
@@ -232,10 +255,10 @@ contract ControllerHelper is Controller {
     ) internal view returns (uint256) {
         if (context.isMarginZero) {
             uint256 limitPrice = (_price * (1e4 - _slippageTorelance)) / 1e4;
-            return (_amount1 * limitPrice) / 1e12;
+            return (_amount1 * limitPrice) / 1e18;
         } else {
             uint256 limitPrice = (_price * (1e4 + _slippageTorelance)) / 1e4;
-            return (_amount1 * 1e12) / limitPrice;
+            return (_amount1 * 1e18) / limitPrice;
         }
     }
 
@@ -247,10 +270,10 @@ contract ControllerHelper is Controller {
         if (context.isMarginZero) {
             uint256 limitPrice = (_price * (1e4 - _slippageTorelance)) / 1e4;
 
-            return (_amount0 * 1e12) / limitPrice;
+            return (_amount0 * 1e18) / limitPrice;
         } else {
             uint256 limitPrice = (_price * (1e4 + _slippageTorelance)) / 1e4;
-            return (_amount0 * limitPrice) / 1e12;
+            return (_amount0 * limitPrice) / 1e18;
         }
     }
 
@@ -261,10 +284,10 @@ contract ControllerHelper is Controller {
     ) internal view returns (uint256) {
         if (context.isMarginZero) {
             uint256 limitPrice = (_price * (1e4 + _slippageTorelance)) / 1e4;
-            return (_amount0 * 1e12) / limitPrice;
+            return (_amount0 * 1e18) / limitPrice;
         } else {
             uint256 limitPrice = (_price * (1e4 - _slippageTorelance)) / 1e4;
-            return (_amount0 * limitPrice) / 1e12;
+            return (_amount0 * limitPrice) / 1e18;
         }
     }
 }
