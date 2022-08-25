@@ -86,7 +86,7 @@ contract ControllerHelperTest is TestDeployer, Test {
     }
 
     function testBorrowLPT(uint256 _swapAmount) public {
-        vm.assume(1e16 <= _swapAmount && _swapAmount < 5 * 1e18);
+        vm.assume(1e16 <= _swapAmount && _swapAmount < 10 * 1e18);
 
         slip(owner, true, _swapAmount);
 
@@ -102,7 +102,7 @@ contract ControllerHelperTest is TestDeployer, Test {
             0,
             position,
             DataType.TradeOption(false, false, false, controller.getIsMarginZero()),
-            DataType.OpenPositionOption(1500 * 1e6, 2000, 110, 0, 0, bytes(""))
+            DataType.OpenPositionOption(controller.getPrice(), 500, 110, 0, 0, bytes(""))
         );
 
         DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);
@@ -111,8 +111,10 @@ contract ControllerHelperTest is TestDeployer, Test {
         assertGt(vaultStatus.values.debtValue, 0);
     }
 
-    function testBorrowLPTOTM() public {
-        slip(owner, false, 5 * 1e18);
+    function testBorrowLPTWithLowPrice(uint256 _swapAmount) public {
+        vm.assume(1e16 <= _swapAmount && _swapAmount < 10 * 1e18);
+
+        slip(owner, false, _swapAmount);
 
         uint256 margin = 100 * 1e6;
 
@@ -121,8 +123,6 @@ contract ControllerHelperTest is TestDeployer, Test {
         DataType.LPT[] memory lpts = new DataType.LPT[](1);
         lpts[0] = DataType.LPT(false, liquidity, 202500, 202600);
         DataType.Position memory position = DataType.Position(margin, 1e18, 0, 0, lpts);
-
-        console.log(controller.getPrice());
 
         uint256 vaultId = controller.openPosition(
             0,
