@@ -137,6 +137,22 @@ contract ControllerHelperTest is TestDeployer, Test {
         assertGt(vaultStatus.values.debtValue, 0);
     }
 
+    function testCannotOpenPositionBecauseSlippage() public {
+        DataType.LPT[] memory lpts = new DataType.LPT[](0);
+        DataType.Position memory position = DataType.Position(0, 1e18, 0, 0, lpts);
+
+        uint256 price = controller.getPrice();
+        bool isMarginZero = controller.getIsMarginZero();
+
+        vm.expectRevert(bytes("CH2"));
+        controller.openPosition(
+            0,
+            position,
+            DataType.TradeOption(false, true, false, isMarginZero),
+            DataType.OpenPositionOption(price, 0, 110, 0, 0, bytes(""))
+        );
+    }
+
     function testWithdrawLPTWithSwapAnyway() public {
         uint256 vaultId = depositLPT(0, 202500, 202600, 1e18);
 
