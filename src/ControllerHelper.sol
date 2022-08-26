@@ -21,33 +21,17 @@ contract ControllerHelper is Controller {
         DataType.TradeOption memory _tradeOption,
         DataType.OpenPositionOption memory _openPositionOptions
     ) external returns (uint256 vaultId) {
-        (DataType.PositionUpdate[] memory positionUpdates, uint256 buffer0, uint256 buffer1) = PositionLib
-            .getPositionUpdatesToOpen(
-                _position,
-                _openPositionOptions.price,
-                _openPositionOptions.slippageTorelance,
-                _tradeOption.isQuoteZero,
-                getSqrtPrice(),
-                context.isMarginZero
-            );
-
-        buffer0 = (buffer0 * _openPositionOptions.bufferRatio) / 100;
-        buffer1 = (buffer1 * _openPositionOptions.bufferRatio) / 100;
-
-        require(
-            _openPositionOptions.maximumBufferAmount0 == 0 || _openPositionOptions.maximumBufferAmount0 >= buffer0,
-            "CH0"
-        );
-        require(
-            _openPositionOptions.maximumBufferAmount1 == 0 || _openPositionOptions.maximumBufferAmount1 >= buffer1,
-            "CH1"
+        DataType.PositionUpdate[] memory positionUpdates = PositionLib.getPositionUpdatesToOpen(
+            _position,
+            _tradeOption.isQuoteZero,
+            getSqrtPrice()
         );
 
         vaultId = updatePosition(
             _vaultId,
             positionUpdates,
-            buffer0,
-            buffer1,
+            _openPositionOptions.bufferAmount0,
+            _openPositionOptions.bufferAmount1,
             _tradeOption,
             _openPositionOptions.metadata
         );
@@ -99,29 +83,10 @@ contract ControllerHelper is Controller {
 
     function getPositionUpdatesToOpen(
         DataType.Position memory _position,
-        uint256 _price,
-        uint256 _slippageTorelance,
         bool _isQuoteZero,
-        uint160 _sqrtPrice,
-        bool _isMarginZero
-    )
-        public
-        pure
-        returns (
-            DataType.PositionUpdate[] memory positionUpdates,
-            uint256 _buffer0,
-            uint256 _buffer1
-        )
-    {
-        return
-            PositionLib.getPositionUpdatesToOpen(
-                _position,
-                _price,
-                _slippageTorelance,
-                _isQuoteZero,
-                _sqrtPrice,
-                _isMarginZero
-            );
+        uint160 _sqrtPrice
+    ) public pure returns (DataType.PositionUpdate[] memory positionUpdates) {
+        return PositionLib.getPositionUpdatesToOpen(_position, _isQuoteZero, _sqrtPrice);
     }
 
     function getPositionUpdatesToClose(

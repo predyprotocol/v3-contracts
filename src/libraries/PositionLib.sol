@@ -14,20 +14,9 @@ library PositionLib {
 
     function getPositionUpdatesToOpen(
         DataType.Position memory _position,
-        uint256 _price,
-        uint256 _slippageTorelance,
         bool _isQuoteZero,
-        uint160 _sqrtPrice,
-        bool _isMarginZero
-    )
-        external
-        pure
-        returns (
-            DataType.PositionUpdate[] memory positionUpdates,
-            uint256 _buffer0,
-            uint256 _buffer1
-        )
-    {
+        uint160 _sqrtPrice
+    ) external pure returns (DataType.PositionUpdate[] memory positionUpdates) {
         uint256 swapIndex;
 
         (positionUpdates, swapIndex) = calculatePositionUpdatesToOpen(_position);
@@ -36,12 +25,6 @@ library PositionLib {
 
         if (_isQuoteZero) {
             if (requiredAmount1 > 0) {
-                uint256 maxAmount0 = calculateMaxAmount0(
-                    uint256(requiredAmount1),
-                    _price,
-                    _slippageTorelance,
-                    _isMarginZero
-                );
                 positionUpdates[swapIndex] = DataType.PositionUpdate(
                     DataType.PositionUpdateType.SWAP_EXACT_OUT,
                     true,
@@ -49,18 +32,9 @@ library PositionLib {
                     0,
                     0,
                     uint256(requiredAmount1),
-                    maxAmount0
+                    0
                 );
-
-                _buffer0 = uint256(int256(maxAmount0).add(requiredAmount0));
-                _buffer1 = 0;
             } else if (requiredAmount1 < 0) {
-                uint256 minAmount0 = calculateMinAmount0(
-                    uint256(-requiredAmount1),
-                    _price,
-                    _slippageTorelance,
-                    _isMarginZero
-                );
                 positionUpdates[swapIndex] = DataType.PositionUpdate(
                     DataType.PositionUpdateType.SWAP_EXACT_IN,
                     false,
@@ -68,26 +42,11 @@ library PositionLib {
                     0,
                     0,
                     uint256(-requiredAmount1),
-                    minAmount0
+                    0
                 );
-                if (requiredAmount0 > int256(minAmount0)) {
-                    _buffer0 = uint256(requiredAmount0.sub(int256(minAmount0)));
-                }
-                _buffer1 = 0;
-            } else {
-                if (requiredAmount0 >= 0) {
-                    _buffer0 = uint256(requiredAmount0);
-                }
-                _buffer1 = 0;
             }
         } else {
             if (requiredAmount0 > 0) {
-                uint256 maxAmount1 = calculateMaxAmount1(
-                    uint256(requiredAmount0),
-                    _price,
-                    _slippageTorelance,
-                    _isMarginZero
-                );
                 positionUpdates[swapIndex] = DataType.PositionUpdate(
                     DataType.PositionUpdateType.SWAP_EXACT_OUT,
                     false,
@@ -95,17 +54,9 @@ library PositionLib {
                     0,
                     0,
                     uint256(requiredAmount0),
-                    maxAmount1
+                    0
                 );
-                _buffer0 = 0;
-                _buffer1 = uint256(int256(maxAmount1).add(requiredAmount1));
             } else if (requiredAmount0 < 0) {
-                uint256 minAmount1 = calculateMinAmount1(
-                    uint256(-requiredAmount0),
-                    _price,
-                    _slippageTorelance,
-                    _isMarginZero
-                );
                 positionUpdates[swapIndex] = DataType.PositionUpdate(
                     DataType.PositionUpdateType.SWAP_EXACT_IN,
                     true,
@@ -113,17 +64,8 @@ library PositionLib {
                     0,
                     0,
                     uint256(-requiredAmount0),
-                    minAmount1
+                    0
                 );
-                _buffer0 = 0;
-                if (requiredAmount1 > int256(minAmount1)) {
-                    _buffer1 = uint256(requiredAmount1.sub(int256(minAmount1)));
-                }
-            } else {
-                _buffer0 = 0;
-                if (requiredAmount1 >= 0) {
-                    _buffer1 = uint256(requiredAmount1);
-                }
             }
         }
     }

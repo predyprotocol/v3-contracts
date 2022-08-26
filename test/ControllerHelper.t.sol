@@ -55,7 +55,7 @@ contract ControllerHelperTest is TestDeployer, Test {
             0,
             position,
             DataType.TradeOption(false, false, false, false),
-            DataType.OpenPositionOption(1500 * 1e6, 1000, 150, 0, 0, bytes(""))
+            DataType.OpenPositionOption(1500 * 1e6, 1000, 0, 1e18, bytes(""))
         );
         uint256 afterBalance0 = token0.balanceOf(owner);
         uint256 afterBalance1 = token1.balanceOf(owner);
@@ -81,7 +81,7 @@ contract ControllerHelperTest is TestDeployer, Test {
             0,
             position,
             DataType.TradeOption(false, false, false, controller.getIsMarginZero()),
-            DataType.OpenPositionOption(1500 * 1e6, 1000, 150, 0, 0, bytes(""))
+            DataType.OpenPositionOption(1500 * 1e6, 1000, 1e10, 0, bytes(""))
         );
     }
 
@@ -102,7 +102,7 @@ contract ControllerHelperTest is TestDeployer, Test {
             0,
             position,
             DataType.TradeOption(false, false, false, controller.getIsMarginZero()),
-            DataType.OpenPositionOption(controller.getPrice(), 500, 110, 0, 0, bytes(""))
+            DataType.OpenPositionOption(controller.getPrice(), 500, 1e10, 0, bytes(""))
         );
 
         DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);
@@ -128,7 +128,7 @@ contract ControllerHelperTest is TestDeployer, Test {
             0,
             position,
             DataType.TradeOption(false, true, false, controller.getIsMarginZero()),
-            DataType.OpenPositionOption(controller.getPrice(), 500, 110, 0, 0, bytes(""))
+            DataType.OpenPositionOption(controller.getPrice(), 500, 1e10, 0, bytes(""))
         );
 
         DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);
@@ -149,7 +149,7 @@ contract ControllerHelperTest is TestDeployer, Test {
             0,
             position,
             DataType.TradeOption(false, true, false, isMarginZero),
-            DataType.OpenPositionOption(price, 0, 110, 0, 0, bytes(""))
+            DataType.OpenPositionOption(price, 0, 1e10, 0, bytes(""))
         );
     }
 
@@ -250,7 +250,7 @@ contract ControllerHelperTest is TestDeployer, Test {
             0,
             position,
             DataType.TradeOption(false, false, true, true),
-            DataType.OpenPositionOption(1500 * 1e6, 1000, 0, 0, 0, bytes(""))
+            DataType.OpenPositionOption(1500 * 1e6, 1000, 0, 0, bytes(""))
         );
     }
 
@@ -294,7 +294,7 @@ contract ControllerHelperTest is TestDeployer, Test {
             0,
             position,
             DataType.TradeOption(false, true, false, controller.getIsMarginZero()),
-            DataType.OpenPositionOption(1500 * 1e6, 1000, 150, 0, 0, bytes(""))
+            DataType.OpenPositionOption(1500 * 1e6, 1000, 1e10, 0, bytes(""))
         );
     }
 }

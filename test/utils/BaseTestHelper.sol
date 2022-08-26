@@ -193,7 +193,7 @@ abstract contract BaseTestHelper {
                 _vaultId,
                 position,
                 DataType.TradeOption(false, false, false, controller.getIsMarginZero()),
-                DataType.OpenPositionOption(1500 * 1e6, 1000, 110, 0, 0, bytes(""))
+                DataType.OpenPositionOption(1500 * 1e6, 1000, 1e10, 0, bytes(""))
             );
     }
 

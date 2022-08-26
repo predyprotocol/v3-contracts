@@ -106,9 +106,8 @@ library DataType {
     struct OpenPositionOption {
         uint256 price;
         uint256 slippageTorelance;
-        uint256 bufferRatio;
-        uint256 maximumBufferAmount0;
-        uint256 maximumBufferAmount1;
+        uint256 bufferAmount0;
+        uint256 bufferAmount1;
         bytes metadata;
     }
 
