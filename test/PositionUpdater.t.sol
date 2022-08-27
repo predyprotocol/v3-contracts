@@ -144,7 +144,7 @@ contract PositionUpdaterTest is TestDeployer, Test {
         assertEq(uint256(positionUpdate.positionUpdateType), uint256(DataType.PositionUpdateType.SWAP_EXACT_OUT));
         assertEq(positionUpdate.zeroForOne, true);
         assertEq(positionUpdate.param0, uint256(requiredAmount1));
-        assertEq(positionUpdate.param1, type(uint256).max);
+        assertEq(positionUpdate.param1, 0);
     }
 
     function testSwapAnywayUSDCRequired(int256 requiredAmount0, int256 requiredAmount1) public {
@@ -176,6 +176,22 @@ contract PositionUpdaterTest is TestDeployer, Test {
         assertEq(uint256(positionUpdate.positionUpdateType), uint256(DataType.PositionUpdateType.SWAP_EXACT_IN));
         assertEq(positionUpdate.zeroForOne, false);
         assertEq(positionUpdate.param0, uint256(-requiredAmount1));
+        assertEq(positionUpdate.param1, 0);
+    }
+
+    function testSwapAnywayBothRequired(int256 requiredAmount0, int256 requiredAmount1) public {
+        vm.assume(requiredAmount0 > 0);
+        vm.assume(requiredAmount1 > 0);
+
+        DataType.PositionUpdate memory positionUpdate = PositionUpdater.swapAnyway(
+            requiredAmount0,
+            requiredAmount1,
+            context.isMarginZero
+        );
+
+        assertEq(uint256(positionUpdate.positionUpdateType), uint256(DataType.PositionUpdateType.SWAP_EXACT_OUT));
+        assertEq(positionUpdate.zeroForOne, true);
+        assertEq(positionUpdate.param0, uint256(requiredAmount1));
         assertEq(positionUpdate.param1, 0);
     }
 }

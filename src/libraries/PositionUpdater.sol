@@ -153,79 +153,35 @@ library PositionUpdater {
         uint256 amountIn;
         uint256 amountOut;
 
-        if (requiredAmount0 >= 0 && requiredAmount1 >= 0) {
-            return DataType.PositionUpdate(DataType.PositionUpdateType.NOOP, false, 0, 0, 0, 0, 0);
-        }
-
-        if (requiredAmount0 < 0 && requiredAmount1 < 0) {
-            // exact in
-            isExactIn = true;
-
-            if (_isQuoteZero) {
-                zeroForOne = false;
-                amountIn = uint256(-requiredAmount1);
-                amountOut = 0;
-            } else {
+        if (_isQuoteZero) {
+            if (requiredAmount1 > 0) {
                 zeroForOne = true;
-                amountIn = uint256(-requiredAmount0);
-                amountOut = 0;
-            }
-        }
-
-        if (requiredAmount0 > 0 && requiredAmount1 < 0) {
-            zeroForOne = false;
-
-            if (_isQuoteZero) {
-                // exact in
-                isExactIn = true;
-                amountIn = uint256(-requiredAmount1);
-                amountOut = 0;
-            } else {
-                // exact out
-                isExactIn = false;
-                amountOut = uint256(requiredAmount0);
-                amountIn = type(uint256).max;
-            }
-        }
-
-        if (requiredAmount0 < 0 && requiredAmount1 > 0) {
-            zeroForOne = true;
-
-            if (_isQuoteZero) {
-                // exact out
                 isExactIn = false;
                 amountOut = uint256(requiredAmount1);
-                amountIn = type(uint256).max;
-            } else {
-                // exact in
+            } else if (requiredAmount1 < 0) {
+                zeroForOne = false;
+                isExactIn = true;
+                amountIn = uint256(-requiredAmount1);
+            }
+        } else {
+            if (requiredAmount0 > 0) {
+                zeroForOne = false;
+                isExactIn = false;
+                amountOut = uint256(requiredAmount0);
+            } else if (requiredAmount0 < 0) {
+                zeroForOne = true;
                 isExactIn = true;
                 amountIn = uint256(-requiredAmount0);
-                amountOut = 0;
             }
         }
 
-        if (isExactIn) {
+        if (isExactIn && amountIn > 0) {
+            return DataType.PositionUpdate(DataType.PositionUpdateType.SWAP_EXACT_IN, zeroForOne, 0, 0, 0, amountIn, 0);
+        } else if (!isExactIn && amountOut > 0) {
             return
-                DataType.PositionUpdate(
-                    DataType.PositionUpdateType.SWAP_EXACT_IN,
-                    zeroForOne,
-                    0,
-                    0,
-                    0,
-                    amountIn,
-                    amountOut
-                );
+                DataType.PositionUpdate(DataType.PositionUpdateType.SWAP_EXACT_OUT, zeroForOne, 0, 0, 0, amountOut, 0);
         } else {
-            return
-                DataType.PositionUpdate(
-                    DataType.PositionUpdateType.SWAP_EXACT_OUT,
-                    zeroForOne,
-                    0,
-                    0,
-                    0,
-                    amountOut,
-                    amountIn
-                );
+            return DataType.PositionUpdate(DataType.PositionUpdateType.NOOP, false, 0, 0, 0, 0, 0);
         }
     }
 
