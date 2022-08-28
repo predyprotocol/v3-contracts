@@ -9,6 +9,17 @@ import "../src/libraries/PositionCalculator.sol";
 import "../src/libraries/LPTMath.sol";
 
 contract PositionCalculatorTest is Test {
+    function testCalculateMinSqrtPrice(int256 _lowerTick, int256 _upperTick) public {
+        vm.assume(TickMath.MIN_TICK < _lowerTick && _lowerTick < TickMath.MAX_TICK);
+        vm.assume(TickMath.MIN_TICK < _upperTick && _upperTick < TickMath.MAX_TICK);
+        vm.assume(_lowerTick < _upperTick);
+
+        uint160 minSqrtPrice = PositionCalculator.calculateMinSqrtPrice(int24(_lowerTick), int24(_upperTick));
+
+        assertLe(uint256(TickMath.getSqrtRatioAtTick(int24(_lowerTick))), minSqrtPrice);
+        assertLe(minSqrtPrice, uint256(TickMath.getSqrtRatioAtTick(int24(_upperTick))));
+    }
+
     function testCalculateRequiredCollateralOfLongToken0(uint160 _sqrtPrice) public {
         vm.assume(2823045766959374473400000 < _sqrtPrice);
 

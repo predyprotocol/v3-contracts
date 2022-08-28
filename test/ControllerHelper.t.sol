@@ -179,7 +179,7 @@ contract ControllerHelperTest is TestDeployer, Test {
         controller.closePosition(
             vaultId,
             DataType.TradeOption(false, false, false, controller.getIsMarginZero()),
-            DataType.ClosePositionOption(1500 * 1e6, 2000, 100, bytes(""))
+            DataType.ClosePositionOption(controller.getPrice(), 2000, 100, bytes(""))
         );
 
         DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);
