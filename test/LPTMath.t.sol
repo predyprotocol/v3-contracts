@@ -26,7 +26,7 @@ contract LPTMathTest is Test {
         (uint256 a0, uint256 a1) = LPTMath.getAmountsForLiquidity(_sqrtPrice, lower, upper, _l);
         uint256 _l2 = LPTMath.getLiquidityForAmounts(_sqrtPrice, lower, upper, a0, a1);
 
-        assertLt(_l2, _l + 1);
+        assertLe(_l2, _l);
     }
 
     function testGetAmountForLiquidityRoundUp(uint160 _sqrtPrice, uint128 _l) public {
@@ -36,7 +36,7 @@ contract LPTMathTest is Test {
         (uint256 a0, uint256 a1) = LPTMath.getAmountsForLiquidityRoundUp(_sqrtPrice, lower, upper, _l);
         uint256 _l2 = LPTMath.getLiquidityForAmounts(_sqrtPrice, lower, upper, a0, a1);
 
-        assertGt(_l2 + 1, _l);
+        assertGe(_l2, _l);
     }
 
     function testGetAmount0ForLiquidity(
@@ -54,8 +54,8 @@ contract LPTMathTest is Test {
         uint256 _l1 = LiquidityAmounts.getLiquidityForAmount0(_sqrtPrice, _sqrtPrice2, a0);
         uint256 _l2 = LiquidityAmounts.getLiquidityForAmount0(_sqrtPrice, _sqrtPrice2, ar0);
 
-        assertGt(_l + 1, _l1);
-        assertGt(_l2 + 1, _l);
+        assertGe(_l, _l1);
+        assertGe(_l2, _l);
     }
 
     function testGetAmount1ForLiquidity(
@@ -72,7 +72,7 @@ contract LPTMathTest is Test {
         uint256 _l1 = LiquidityAmounts.getLiquidityForAmount1(_sqrtPrice, _sqrtPrice2, a0);
         uint256 _l2 = LiquidityAmounts.getLiquidityForAmount1(_sqrtPrice, _sqrtPrice2, ar0);
 
-        assertGt(_l + 1, _l1);
-        assertGt(_l2 + 1, _l);
+        assertGe(_l, _l1);
+        assertGe(_l2, _l);
     }
 }

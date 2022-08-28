@@ -37,6 +37,13 @@ library PositionCalculator {
         return int256(debtValue) / 100 - minValue;
     }
 
+    /**
+     * @notice Calculates min price (a * b)^(1/4)
+     */
+    function calculateMinSqrtPrice(int24 _lowerTick, int24 _upperTick) internal pure returns (uint160) {
+        return uint160(TickMath.getSqrtRatioAtTick((_lowerTick + _upperTick) / 2));
+    }
+
     function calculateMinValue(
         DataType.Position memory _position,
         uint160 _sqrtPrice,
@@ -50,7 +57,7 @@ library PositionCalculator {
             DataType.LPT memory lpt = _position.lpts[i];
 
             if (!lpt.isCollateral) {
-                uint160 sqrtPrice = uint160(TickMath.getSqrtRatioAtTick((lpt.upperTick + lpt.lowerTick) / 2));
+                uint160 sqrtPrice = calculateMinSqrtPrice(lpt.upperTick, lpt.lowerTick);
 
                 if (sqrtPrice < sqrtPriceLower || sqrtPriceUpper < sqrtPrice) {
                     continue;
