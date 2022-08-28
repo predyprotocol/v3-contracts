@@ -46,7 +46,7 @@ contract LPTMathTest is Test {
     ) public {
         // 340248342086729790484326174814286782778, 340248342086729790484326174814286782778, 3217
         vm.assume(1e18 <= _sqrtPrice);
-        vm.assume(_sqrtPrice <= _sqrtPrice2 && _sqrtPrice2 < 1e40);
+        vm.assume(_sqrtPrice < _sqrtPrice2 && _sqrtPrice2 < 1e40);
         vm.assume(0 < _l && _l < type(uint128).max / 2);
 
         uint256 a0 = LiquidityAmounts.getAmount0ForLiquidity(_sqrtPrice, _sqrtPrice2, _l);
@@ -64,7 +64,7 @@ contract LPTMathTest is Test {
         uint128 _l
     ) public {
         vm.assume(1e18 <= _sqrtPrice);
-        vm.assume(_sqrtPrice <= _sqrtPrice2 && _sqrtPrice2 < 1e40);
+        vm.assume(_sqrtPrice < _sqrtPrice2 && _sqrtPrice2 < 1e40);
         vm.assume(0 < _l && _l < type(uint128).max / 2);
 
         uint256 a0 = LiquidityAmounts.getAmount1ForLiquidity(_sqrtPrice, _sqrtPrice2, _l);
