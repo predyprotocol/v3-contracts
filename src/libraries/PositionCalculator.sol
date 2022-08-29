@@ -7,20 +7,21 @@ import "@openzeppelin/contracts/math/SignedSafeMath.sol";
 import "@uniswap/v3-periphery/libraries/LiquidityAmounts.sol";
 import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import "./DataType.sol";
+import "./LPTMath.sol";
 
 library PositionCalculator {
     using SafeMath for uint256;
     using SignedSafeMath for int256;
 
     uint256 internal constant Q96 = 0x1000000000000000000000000;
-    // sqrt{1.25} = 1.11803398875
-    uint160 internal constant UPPER_E8 = 111803399;
-    // sqrt{1/1.25} = 0.894427191
-    uint160 internal constant LOWER_E8 = 89442719;
+    // sqrt{1.24} = 1.11355287257
+    uint160 internal constant UPPER_E8 = 111355287;
+    // sqrt{1/1.24} = 0.89802651013
+    uint160 internal constant LOWER_E8 = 89802651;
 
     /**
      * @notice Calculates required collateral for a position.
-     * RequiredCollateral = 0.01*DebtValue - minValue
+     * RequiredCollateral = 0.01 * DebtValue - minValue
      * @param _position position object
      * @param _sqrtPrice square root price to calculate
      * @param _isMarginZero whether the stable token is token0 or token1
@@ -34,11 +35,11 @@ library PositionCalculator {
 
         (, uint256 debtValue) = calculateCollateralAndDebtValue(_position, _sqrtPrice, _isMarginZero);
 
-        return int256(debtValue) / 100 - minValue;
+        return int256(debtValue).div(100).sub(minValue);
     }
 
     /**
-     * @notice Calculates min price (a * b)^(1/4)
+     * @notice Calculates square root of min price (a * b)^(1/4)
      */
     function calculateMinSqrtPrice(int24 _lowerTick, int24 _upperTick) internal pure returns (uint160) {
         return uint160(TickMath.getSqrtRatioAtTick((_lowerTick + _upperTick) / 2));
@@ -52,6 +53,16 @@ library PositionCalculator {
         minValue = type(int256).max;
         uint160 sqrtPriceLower = (LOWER_E8 * _sqrtPrice) / 1e8;
         uint160 sqrtPriceUpper = (UPPER_E8 * _sqrtPrice) / 1e8;
+
+        require(TickMath.MIN_SQRT_RATIO < _sqrtPrice && _sqrtPrice < TickMath.MAX_SQRT_RATIO, "PC0");
+
+        if (sqrtPriceLower < TickMath.MIN_SQRT_RATIO) {
+            sqrtPriceLower = TickMath.MIN_SQRT_RATIO;
+        }
+
+        if (sqrtPriceUpper > TickMath.MAX_SQRT_RATIO) {
+            sqrtPriceUpper = TickMath.MAX_SQRT_RATIO;
+        }
 
         for (uint256 i = 0; i < _position.lpts.length; i++) {
             DataType.LPT memory lpt = _position.lpts[i];
@@ -117,10 +128,13 @@ library PositionCalculator {
             uint160 sqrtUpperPrice = TickMath.getSqrtRatioAtTick(lpt.upperTick);
 
             if (!lpt.isCollateral && sqrtLowerPrice <= _sqrtPrice && _sqrtPrice <= sqrtUpperPrice) {
-                debtAmount1 +=
-                    (lpt.liquidity *
-                        (TickMath.getSqrtRatioAtTick(lpt.upperTick) - TickMath.getSqrtRatioAtTick(lpt.lowerTick))) /
-                    Q96;
+                debtAmount1 = debtAmount1.add(
+                    (
+                        uint256(lpt.liquidity).mul(
+                            TickMath.getSqrtRatioAtTick(lpt.upperTick) - TickMath.getSqrtRatioAtTick(lpt.lowerTick)
+                        )
+                    ).div(Q96)
+                );
                 continue;
             }
 
@@ -132,37 +146,22 @@ library PositionCalculator {
             );
 
             if (lpt.isCollateral) {
-                collateralAmount0 += (amount0);
-                collateralAmount1 += (amount1);
+                collateralAmount0 = collateralAmount0.add(amount0);
+                collateralAmount1 = collateralAmount1.add(amount1);
             } else {
-                debtAmount0 += (amount0);
-                debtAmount1 += (amount1);
+                debtAmount0 = debtAmount0.add(amount0);
+                debtAmount1 = debtAmount1.add(amount1);
             }
         }
 
-        uint256 price = decodeSqrtPriceX96(isMarginZero, _sqrtPrice);
+        uint256 price = LPTMath.decodeSqrtPriceX96(isMarginZero, _sqrtPrice);
 
         if (isMarginZero) {
-            collateralValue = collateralAmount0 + (collateralAmount1 * price) / 1e18;
-            debtValue = debtAmount0 + (debtAmount1 * price) / 1e18;
+            collateralValue = collateralAmount0.add(collateralAmount1.mul(price).div(1e18));
+            debtValue = debtAmount0.add(debtAmount1.mul(price).div(1e18));
         } else {
-            collateralValue = (collateralAmount0 * price) / 1e18 + collateralAmount1;
-            debtValue = (debtAmount0 * price) / 1e18 + debtAmount1;
+            collateralValue = collateralAmount0.mul(price).div(1e18).add(collateralAmount1);
+            debtValue = debtAmount0.mul(price).div(1e18).add(debtAmount1);
         }
-    }
-
-    function decodeSqrtPriceX96(bool isMarginZero, uint256 sqrtPriceX96) internal pure returns (uint256 price) {
-        uint256 scaler = 1e18; //10**ERC20(token0).decimals();
-
-        if (isMarginZero) {
-            price = FullMath.mulDiv(sqrtPriceX96, sqrtPriceX96, uint256(2**(96 * 2)) / (scaler));
-            if (price == 0) return 1e36;
-            price = 1e36 / price;
-        } else {
-            price = (FullMath.mulDiv(sqrtPriceX96, sqrtPriceX96, uint256(2**96)) * scaler) / uint256(2**96);
-        }
-
-        if (price > 1e36) price = 1e36;
-        else if (price == 0) price = 1;
     }
 }

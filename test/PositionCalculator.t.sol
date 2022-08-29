@@ -21,7 +21,7 @@ contract PositionCalculatorTest is Test {
     }
 
     function testCalculateRequiredCollateralOfLongToken0(uint160 _sqrtPrice) public {
-        vm.assume(2823045766959374473400000 < _sqrtPrice);
+        vm.assume(2823045766959374473400000 < _sqrtPrice && _sqrtPrice < TickMath.MAX_SQRT_RATIO);
 
         DataType.LPT[] memory lpts = new DataType.LPT[](0);
 
