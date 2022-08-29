@@ -142,7 +142,7 @@ contract Controller is IController, Constants, Initializable {
         DataType.TradeOption memory _tradeOption,
         bytes memory _metadata
     ) public override returns (uint256 vaultId) {
-        applyPerpFee(_vaultId);
+        applyPerpFee(_vaultId, _positionUpdates);
 
         DataType.Vault storage vault;
         (vaultId, vault) = createOrGetVault(_vaultId, _tradeOption.quoterMode);
@@ -188,8 +188,6 @@ contract Controller is IController, Constants, Initializable {
         uint256 _penaltyAmount,
         bool _swapAnyway
     ) internal returns (uint256 penaltyAmount) {
-        applyPerpFee(_vaultId);
-
         DataType.Vault storage vault = vaults[_vaultId];
 
         // reduce debt
@@ -231,7 +229,7 @@ contract Controller is IController, Constants, Initializable {
         DataType.PositionUpdate[] memory _positionUpdates,
         bool _swapAnyway
     ) public override {
-        applyPerpFee(_vaultId);
+        applyPerpFee(_vaultId, _positionUpdates);
 
         // check liquidation
         require(_checkLiquidatable(_vaultId), "P4");
@@ -260,7 +258,7 @@ contract Controller is IController, Constants, Initializable {
                 (uint256, DataType.PositionUpdate[])
             );
 
-            applyPerpFee(vaultId);
+            applyPerpFee(vaultId, _positionUpdates);
 
             _reducePosition(vaultId, _positionUpdates, 0, false);
         }
@@ -354,12 +352,34 @@ contract Controller is IController, Constants, Initializable {
         TransferHelper.safeTransfer(context.token1, _liquidator, _reward1);
     }
 
+    /**
+     * @notice apply interest, premium and trade fee for ranges that the vault has.
+     */
     function applyPerpFee(uint256 _vaultId) internal {
+        applyPerpFee(_vaultId, new DataType.PositionUpdate[](0));
+    }
+
+    /**
+     * @notice apply interest, premium and trade fee for ranges that the vault and positionUpdates have.
+     */
+    function applyPerpFee(uint256 _vaultId, DataType.PositionUpdate[] memory _positionUpdates) internal {
         DataType.Vault storage vault = vaults[_vaultId];
 
-        // calculate fee for perps
+        // calculate fee for ranges thath the vault has.
         for (uint256 i = 0; i < vault.lpts.length; i++) {
             InterestCalculator.applyDailyPremium(dpmParams, context, ranges[vault.lpts[i].rangeId], getSqrtPrice());
+        }
+
+        // calculate fee for ranges thath positionUpdates have.
+        for (uint256 i = 0; i < _positionUpdates.length; i++) {
+            bytes32 rangeId = LPTStateLib.getRangeKey(_positionUpdates[i].lowerTick, _positionUpdates[i].upperTick);
+
+            // if range is not initialized, skip calculation.
+            if (ranges[rangeId].tokenId == 0) {
+                continue;
+            }
+
+            InterestCalculator.applyDailyPremium(dpmParams, context, ranges[rangeId], getSqrtPrice());
         }
 
         lastTouchedTimestamp = InterestCalculator.applyInterest(context, irmParams, lastTouchedTimestamp);
