@@ -46,7 +46,7 @@ abstract contract BaseTestHelper {
             );
     }
 
-    function getPerpState() internal view returns (DataType.PerpStatus memory) {
+    function getPerpState() internal pure returns (DataType.PerpStatus memory) {
         return DataType.PerpStatus(0, 0, 0, 0, 0, 0, 0, 0, 0);
     }
 
@@ -197,200 +197,6 @@ abstract contract BaseTestHelper {
             );
     }
 
-    /*
-
-    function createBoard() public returns(uint256){
-        int24[] memory lowers = new int24[](5);
-        int24[] memory uppers = new int24[](5);
-
-        // current tick is 202562
-        lowers[0] = 202560;
-        uppers[0] = 202570;
-        lowers[1] = 202580;
-        uppers[1] = 202590;
-        lowers[2] = 202680;
-        uppers[2] = 202690;
-        lowers[3] = 202780;
-        uppers[3] = 202790;
-        lowers[4] = 202880;
-        uppers[4] = 202890;
-
-
-        uint256 buffer0;
-        uint256 buffer1;
-        PositionVerifier.LPT[] memory lpts = new PositionVerifier.LPT[](lowers.length);
-        PositionVerifier.Proof[] memory proofs = new PositionVerifier.Proof[](lowers.length);
-
-        for(uint256 i = 0;i < lowers.length;i++) {
-            (uint128 liquidity, uint256 a0, uint256 a1) = getTokenAmountsToDepositLPT(lowers[i], uppers[i], 1e12);
-            console.log(liquidity);
-            buffer0 += a0;
-            buffer1 += a1;
-            lpts[i] = PositionVerifier.LPT(true, liquidity, lowers[i], uppers[i]);
-            proofs[i] = PositionVerifier.Proof(false, false, 0);
-
-            rangeIds.push(getRangeKey(lowers[i], uppers[i]));
-        }
-
-        PositionVerifier.Position memory position = PositionVerifier.Position(0, 0, 0, 0, lpts);
-
-        return pool.updatePosition(0, 0, IProductVerifier.OpenPositionParams(position, 0), buffer0*2, buffer1*2);
-
-    }
-
-    function getRangeKey(int24 _lower, int24 _upper) internal pure returns (bytes32) {
-        return keccak256(abi.encode(_lower, _upper));
-    }
-
-    function preDepositTokens(uint256 _amount0, uint256 _amount1)
-        public
-        returns (
-            IProductVerifier.PositionUpdate[] memory params,
-            uint256 buffer0,
-            uint256 buffer1
-        )
-    {
-        params = new IProductVerifier.PositionUpdate[](1);
-        
-        params[0] = IProductVerifier.PositionUpdate(
-            IProductVerifierPositionUpdateType.DEPOSIT_TOKEN,
-            false,
-            0,
-            0,
-            0,
-            _amount0,
-            _amount1
-        );
-        buffer0 = _amount0;
-        buffer1 = _amount1;
-    }
-
-    function depositLPT(
-        uint256 _vaultId,
-        bytes32 _rangeId,
-        uint256 _amount
-    ) public returns (uint256) {
-        VaultLib.PerpStatus memory range = pool.getRange(_rangeId);
-
-        uint128 liquidity = getLiquidityForOptionAmount(range.lowerTick, range.upperTick, _amount);
-        uint256 a0;
-        uint256 a1;
-        (a0, a1) = LPTMath.getAmountsForLiquidity(
-            pool.getSqrtPrice(),
-            range.lowerTick,
-            range.upperTick,
-            liquidity
-        );
-
-        IProductVerifier.PositionUpdate memory params = new IProductVerifier.PositionUpdate[](1);
-        
-        params[0] = IProductVerifier.PositionUpdate(
-            IProductVerifierPositionUpdateType.DEPOSIT_LPT,
-            false,
-            range.lowerTick,
-            range.upperTick,
-            liquidity,
-            _amount0,
-            _amount1
-        );
-        buffer0 = _amount0;
-        buffer1 = _amount1;
-
-        return pool.updatePosition(_vaultId, params, a0, a1);
-    }
-
-    function preBorrowLPT(
-        bytes32 _rangeId,
-        uint256 _ethAmount,
-        bool _isCall,
-        uint256 _limitPrice
-    )
-        internal
-        returns (
-            IProductVerifier.PositionUpdate[] memory params,
-            uint256 buffer0,
-            uint256 buffer1
-        )
-    {
-        params = new IProductVerifier.PositionUpdate[](_isCall?2:1);
-
-        {
-            VaultLib.PerpStatus memory range = pool.getRange(_rangeId);
-
-            // calculate USDC amount
-            uint256 amountMaximum;
-
-            (amountMaximum, buffer0, buffer1) = getAmountInMaximum(position, pool.getSqrtPrice(), _limitPrice);
-
-            params[0] = IProductVerifier.PositionUpdate(
-                IProductVerifierPositionUpdateType.BORROW_LPT,
-                false,
-                range.lowerTick,
-                range.upperTick,
-                getLiquidityForOptionAmount(_rangeId, _ethAmount),
-                0,
-                0
-            );
-            if(_isCall) {
-                params[1] = IProductVerifier.PositionUpdate(
-                    IProductVerifierPositionUpdateType.SWAP_EXACT_OUT,
-                    false,
-                    0,
-                    0,
-                    0,
-                    _ethAmount,
-                    amountMaximum
-                );
-            }
-        }
-    }
-
-    function borrowLPT(
-        uint256 _vaultId,
-        uint256 _margin,
-        bytes32 _rangeId,
-        uint256 _ethAmount,
-        bool _isCall,
-        uint256 _limitPrice
-    ) internal returns (uint256) {
-        (IProductVerifier.OpenPositionParams memory params, uint256 buffer0, uint256 buffer1) = preBorrowLPT(
-            _rangeId,
-            _ethAmount,
-            _isCall,
-            _limitPrice
-        );
-
-        return pool.updatePosition(_vaultId, _margin, params, buffer0, buffer1);
-    }
-
-    function getAmountInMaximum(
-        PositionVerifier.Position memory _position,
-        uint160 _sqrtPrice,
-        uint256 _limitPrice
-    )
-        internal
-        returns (
-            uint256 amountMaximum,
-            uint256 buffer0,
-            uint256 buffer1
-        )
-    {
-        (int256 requiredAmount0, int256 requiredAmount1) = productVerifier.getRequiredTokenAmounts(
-            _position,
-            _sqrtPrice
-        );
-
-        if (requiredAmount0 > 0) {
-            amountMaximum = (uint256(requiredAmount0) * 1e12) / _limitPrice;
-            buffer1 = amountMaximum - uint256(-requiredAmount1);
-        }
-        if (requiredAmount1 > 0) {
-            amountMaximum = (uint256(requiredAmount1) * _limitPrice) / 1e12;
-            buffer0 = amountMaximum - uint256(requiredAmount0);
-        }
-    }
-    */
-
     function swap(address recipient, bool _priceUp) internal {
         uint256 ethAmount;
         uint256 usdcAmount;
@@ -493,7 +299,7 @@ abstract contract BaseTestHelper {
         );
     }
 
-    function showCurrentTick() internal {
+    function showCurrentTick() internal view {
         (, int24 tick, , , , , ) = uniPool.slot0();
         console.log(6, uint256(tick));
     }
@@ -501,45 +307,6 @@ abstract contract BaseTestHelper {
     function getSqrtPrice() public view returns (uint160 sqrtPriceX96) {
         (sqrtPriceX96, , , , , , ) = uniPool.slot0();
     }
-
-    /**
-     * option size -> liquidity
-     */
-    /*
-    function getLiquidityForOptionAmount(bytes32 _rangeId, uint256 _amount) public view returns (uint128) {
-        DataType.PerpStatus memory range = pool.getRange(_rangeId);
-
-        return getLiquidityForOptionAmount(range.lowerTick, range.upperTick, _amount);
-    }
-
-    function getLiquidityForOptionAmount(int24 lower, int24 upper, uint256 _amount) public view returns (uint128) {
-        (uint128 liquidity, , ) = LPTMath.getLiquidityAndAmountToBorrow(
-            pool.isMarginZero(),
-            _amount,
-            lower,
-            lower,
-            upper
-        );
-
-        return liquidity;
-    }
-
-    function getTokenAmountsToDepositLPT(int24 lower, int24 upper, uint256 _amount) public view
-        returns (
-            uint128 liquidity,
-            uint256 amount0,
-            uint256 amount1
-        )    
-    {
-        return LPTMath.getLiquidityAndAmountToDeposit(
-            pool.isMarginZero(),
-            _amount,
-            pool.getSqrtPrice(),
-            lower,
-            upper
-        );
-    }
-    */
 
     function getSqrtPriceRange(int24 _slippageTolerance)
         internal

@@ -71,7 +71,7 @@ contract ControllerTest is TestDeployer, Test {
 
     function createPositionUpdatesForWithdrawLPT(uint128 _liquidity)
         internal
-        view
+        pure
         returns (DataType.PositionUpdate[] memory positionUpdates)
     {
         positionUpdates = new DataType.PositionUpdate[](1);

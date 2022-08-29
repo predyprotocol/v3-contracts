@@ -11,14 +11,14 @@ import "../src/libraries/InterestCalculator.sol";
 import "./utils/TestDeployer.sol";
 
 contract InterestCalculatorTest is TestDeployer, Test {
-    address owner;
+    address private owner;
 
     DataType.Context private context;
     DataType.PerpStatus private perpStatus;
     InterestCalculator.DPMParams private dpmParams;
     DataType.Vault private vault;
 
-    uint128 liquidity;
+    uint128 private liquidity;
 
     function setUp() public {
         owner = 0x503828976D22510aad0201ac7EC88293211D23Da;
@@ -180,7 +180,7 @@ contract InterestCalculatorTest is TestDeployer, Test {
         );
 
         assertEq(premium, 141104560991);
-        uint128 liquidity = LiquidityAmounts.getLiquidityForAmounts(
+        uint128 liquidityForOne = LiquidityAmounts.getLiquidityForAmounts(
             TickMath.getSqrtRatioAtTick(perpStatus.upperTick),
             TickMath.getSqrtRatioAtTick(perpStatus.lowerTick),
             TickMath.getSqrtRatioAtTick(perpStatus.upperTick),
@@ -188,6 +188,6 @@ contract InterestCalculatorTest is TestDeployer, Test {
             1e18
         );
 
-        assertEq((liquidity * premium) / 1e18, 374281712);
+        assertEq((liquidityForOne * premium) / 1e18, 374281712);
     }
 }
