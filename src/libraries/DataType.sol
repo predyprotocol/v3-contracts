@@ -27,13 +27,19 @@ library DataType {
         uint256 fee1Last;
     }
 
-    struct Vault {
-        uint256 vaultId;
-        address owner;
-        bool isClosed;
+    struct SubVault {
         BaseToken.AccountState balance0;
         BaseToken.AccountState balance1;
         LPTState[] lpts;
+    }
+
+    struct Vault {
+        uint256 vaultId;
+        address owner;
+        uint256 marginAmount0;
+        uint256 marginAmount1;
+        uint256 numSubVaults;
+        mapping(uint256 => SubVault) subVaults;
     }
 
     struct Context {
@@ -65,6 +71,7 @@ library DataType {
     }
 
     struct Position {
+        uint256 subVaultId;
         uint256 collateral0;
         uint256 collateral1;
         uint256 debt0;
@@ -83,11 +90,14 @@ library DataType {
         BORROW_LPT,
         REPAY_LPT,
         SWAP_EXACT_IN,
-        SWAP_EXACT_OUT
+        SWAP_EXACT_OUT,
+        DEPOSIT_MARGIN,
+        WITHDRAW_MARGIN
     }
 
     struct PositionUpdate {
         PositionUpdateType positionUpdateType;
+        uint256 subVaultId;
         bool zeroForOne;
         uint128 liquidity;
         int24 lowerTick;
@@ -104,6 +114,7 @@ library DataType {
     }
 
     struct OpenPositionOption {
+        int256 marginAmount;
         uint256 price;
         uint256 slippageTorelance;
         uint256 bufferAmount0;
@@ -112,6 +123,7 @@ library DataType {
     }
 
     struct ClosePositionOption {
+        int256 marginAmount;
         uint256 price;
         uint256 slippageTorelance;
         uint256 swapRatio;
@@ -142,8 +154,13 @@ library DataType {
         uint256 paidpremium;
     }
 
-    struct VaultStatus {
+    struct SubVaultStatus {
         VaultStatusValue values;
-        VaultStatusAmount amounts;
+        VaultStatusAmount amount;
+    }
+
+    struct VaultStatus {
+        uint256 marginAmount;
+        SubVaultStatus[] subVaults;
     }
 }

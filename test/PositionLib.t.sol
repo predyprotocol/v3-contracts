@@ -17,33 +17,33 @@ contract PositionLibTest is Test {
     function getPosition1() internal view returns (DataType.Position memory position) {
         DataType.LPT[] memory lpts = new DataType.LPT[](1);
         lpts[0] = DataType.LPT(true, liquidity, lower, upper);
-        position = DataType.Position(0, 0, 0, 0, lpts);
+        position = DataType.Position(0, 0, 0, 0, 0, lpts);
     }
 
     function getPosition2() internal view returns (DataType.Position memory position) {
         DataType.LPT[] memory lpts = new DataType.LPT[](1);
         lpts[0] = DataType.LPT(true, liquidity, lower, upper);
-        position = DataType.Position(1e18, 0, 0, 0, lpts);
+        position = DataType.Position(0, 1e18, 0, 0, 0, lpts);
     }
 
     function getPosition3() internal view returns (DataType.Position memory position) {
         DataType.LPT[] memory lpts = new DataType.LPT[](1);
         lpts[0] = DataType.LPT(true, liquidity, lower, upper);
-        position = DataType.Position(1e18, 0, 0, 1e10, lpts);
+        position = DataType.Position(0, 1e18, 0, 0, 1e10, lpts);
     }
 
     function getPosition4() internal view returns (DataType.Position memory position) {
         DataType.LPT[] memory lpts = new DataType.LPT[](2);
         lpts[0] = DataType.LPT(true, liquidity, lower, upper);
         lpts[1] = DataType.LPT(true, liquidity, lower2, upper2);
-        position = DataType.Position(0, 0, 0, 0, lpts);
+        position = DataType.Position(0, 0, 0, 0, 0, lpts);
     }
 
     function testGetRequiredTokenAmounts() public {
         DataType.LPT[] memory lpts = new DataType.LPT[](0);
 
-        DataType.Position memory srcPosition = DataType.Position(1e18, 0, 0, 1e6, lpts);
-        DataType.Position memory destPosition = DataType.Position(1e18, 0, 0, 1e6, lpts);
+        DataType.Position memory srcPosition = DataType.Position(0, 1e18, 0, 0, 1e6, lpts);
+        DataType.Position memory destPosition = DataType.Position(0, 1e18, 0, 0, 1e6, lpts);
 
         (int256 amount0, int256 amount1) = PositionLib.getRequiredTokenAmounts(
             srcPosition,
@@ -76,9 +76,9 @@ contract PositionLibTest is Test {
         DataType.Position memory position = getPosition1();
 
         (DataType.PositionUpdate[] memory positionUpdates, uint256 swapIndex) = PositionLib
-            .calculatePositionUpdatesToOpen(position);
+            .calculatePositionUpdatesToOpen(position, 0);
 
-        assertEq(positionUpdates.length, 2);
+        assertEq(positionUpdates.length, 3);
 
         // empty for swap
         assertEq(swapIndex, 0);
@@ -91,9 +91,9 @@ contract PositionLibTest is Test {
         DataType.Position memory position = getPosition2();
 
         (DataType.PositionUpdate[] memory positionUpdates, uint256 swapIndex) = PositionLib
-            .calculatePositionUpdatesToOpen(position);
+            .calculatePositionUpdatesToOpen(position, 0);
 
-        assertEq(positionUpdates.length, 3);
+        assertEq(positionUpdates.length, 4);
 
         // Deposit Token
         assertEq(positionUpdates[0].param0, 1e18);
@@ -109,9 +109,9 @@ contract PositionLibTest is Test {
         DataType.Position memory position = getPosition4();
 
         (DataType.PositionUpdate[] memory positionUpdates, uint256 swapIndex) = PositionLib
-            .calculatePositionUpdatesToOpen(position);
+            .calculatePositionUpdatesToOpen(position, 0);
 
-        assertEq(positionUpdates.length, 3);
+        assertEq(positionUpdates.length, 4);
 
         // empty for swap
         assertEq(swapIndex, 0);
@@ -124,12 +124,13 @@ contract PositionLibTest is Test {
     }
 
     function testCalculatePositionUpdatesToClose1() public {
-        DataType.Position memory position = getPosition1();
+        DataType.Position[] memory positions = new DataType.Position[](1);
+        positions[0] = getPosition1();
 
         (DataType.PositionUpdate[] memory positionUpdates, uint256 swapIndex) = PositionLib
-            .calculatePositionUpdatesToClose(position);
+            .calculatePositionUpdatesToClose(positions, 0);
 
-        assertEq(positionUpdates.length, 2);
+        assertEq(positionUpdates.length, 3);
 
         // Withdraw LPT
         assertEq(uint256(positionUpdates[0].positionUpdateType), uint256(DataType.PositionUpdateType.WITHDRAW_LPT));

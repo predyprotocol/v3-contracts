@@ -22,6 +22,7 @@ import "./libraries/PredyMath.sol";
 import "./libraries/PositionUpdater.sol";
 import "./libraries/PositionCalculator.sol";
 import "./libraries/InterestCalculator.sol";
+import "./libraries/PositionLib.sol";
 import "./Constants.sol";
 
 /**
@@ -173,10 +174,18 @@ contract Controller is IController, Constants, Initializable {
         require(int256(_buffer1) >= requiredAmount1, "P6");
 
         if (int256(_buffer0) > requiredAmount0) {
-            TransferHelper.safeTransfer(context.token0, msg.sender, uint256(int256(_buffer0).sub(requiredAmount0)));
+            uint256 amount0 = uint256(int256(_buffer0).sub(requiredAmount0));
+
+            console.log(1, uint256(amount0));
+
+            TransferHelper.safeTransfer(context.token0, msg.sender, amount0);
         }
         if (int256(_buffer1) > requiredAmount1) {
-            TransferHelper.safeTransfer(context.token1, msg.sender, uint256(int256(_buffer1).sub(requiredAmount1)));
+            uint256 amount1 = uint256(int256(_buffer1).sub(requiredAmount1));
+
+            console.log(1, uint256(amount1));
+
+            TransferHelper.safeTransfer(context.token1, msg.sender, amount1);
         }
 
         emit PositionUpdated(vaultId, requiredAmount0, requiredAmount1, getSqrtPrice(), _metadata);
@@ -212,10 +221,10 @@ contract Controller is IController, Constants, Initializable {
         }
 
         if (0 < surplusAmount0) {
-            context.tokenState0.addCollateral(vault.balance0, uint256(surplusAmount0), false);
+            vault.marginAmount0 += uint256(surplusAmount0);
         }
         if (0 < surplusAmount1) {
-            context.tokenState1.addCollateral(vault.balance1, uint256(surplusAmount1), false);
+            vault.marginAmount1 += uint256(surplusAmount1);
         }
     }
 
@@ -296,8 +305,8 @@ contract Controller is IController, Constants, Initializable {
         return vaults[_vaultId].getVaultStatus(ranges, context, sqrtPriceX96);
     }
 
-    function getVault(uint256 _vaultId) external view returns (DataType.Vault memory) {
-        return vaults[_vaultId];
+    function getSubVault(uint256 _vaultId, uint256 _subVaultIndex) external view returns (DataType.SubVault memory) {
+        return vaults[_vaultId].subVaults[_subVaultIndex];
     }
 
     function calculateYearlyPremium(bytes32 _rangeId) external view returns (uint256) {
@@ -311,12 +320,12 @@ contract Controller is IController, Constants, Initializable {
 
         // calculate value using TWAP price
         int256 requiredCollateral = PositionCalculator.calculateRequiredCollateral(
-            _getPosition(_vaultId),
+            PositionLib.concat(_getPosition(_vaultId)),
             sqrtPrice,
             context.isMarginZero
         );
 
-        return requiredCollateral > 0;
+        return requiredCollateral > int256(vaults[_vaultId].getMarginValue(context, sqrtPrice));
     }
 
     function createOrGetVault(uint256 _vaultId, bool _quoterMode)
@@ -366,8 +375,15 @@ contract Controller is IController, Constants, Initializable {
         DataType.Vault storage vault = vaults[_vaultId];
 
         // calculate fee for ranges thath the vault has.
-        for (uint256 i = 0; i < vault.lpts.length; i++) {
-            InterestCalculator.applyDailyPremium(dpmParams, context, ranges[vault.lpts[i].rangeId], getSqrtPrice());
+        for (uint256 i = 0; i < vault.numSubVaults; i++) {
+            for (uint256 j = 0; j < vault.subVaults[i].lpts.length; j++) {
+                InterestCalculator.applyDailyPremium(
+                    dpmParams,
+                    context,
+                    ranges[vault.subVaults[i].lpts[j].rangeId],
+                    getSqrtPrice()
+                );
+            }
         }
 
         // calculate fee for ranges thath positionUpdates have.
@@ -413,16 +429,16 @@ contract Controller is IController, Constants, Initializable {
         (sqrtPriceX96, ) = LPTMath.callUniswapObserve(IUniswapV3Pool(context.uniswapPool), ORACLE_PERIOD);
     }
 
-    function getPosition(uint256 _vaultId) public returns (DataType.Position memory position) {
+    function getPosition(uint256 _vaultId) public returns (DataType.Position[] memory) {
         applyPerpFee(_vaultId);
 
         return _getPosition(_vaultId);
     }
 
-    function _getPosition(uint256 _vaultId) internal view returns (DataType.Position memory position) {
-        DataType.Vault memory vault = vaults[_vaultId];
+    function _getPosition(uint256 _vaultId) internal view returns (DataType.Position[] memory) {
+        DataType.Vault storage vault = vaults[_vaultId];
 
-        return vault.getPosition(ranges, context);
+        return vault.getPositions(ranges, context);
     }
 
     function revertRequiredAmounts(int256 _requiredAmount0, int256 _requiredAmount1) internal pure {

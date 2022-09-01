@@ -100,7 +100,7 @@ abstract contract BaseTestHelper {
     ) internal {
         DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](1);
 
-        positionUpdates[0] = DataType.PositionUpdate(_positionUpdateType, false, 0, 0, 0, _amount0, _amount1);
+        positionUpdates[0] = DataType.PositionUpdate(_positionUpdateType, 0, false, 0, 0, 0, _amount0, _amount1);
 
         PositionUpdater.updatePosition(
             _vault,
@@ -120,6 +120,7 @@ abstract contract BaseTestHelper {
 
         positionUpdates[0] = DataType.PositionUpdate(
             DataType.PositionUpdateType.DEPOSIT_TOKEN,
+            0,
             false,
             0,
             0,
@@ -140,6 +141,7 @@ abstract contract BaseTestHelper {
 
     function depositLPT(
         uint256 _vaultId,
+        uint256 _subVaultId,
         int24 _lower,
         int24 _upper,
         uint256 _amount
@@ -155,6 +157,7 @@ abstract contract BaseTestHelper {
         );
         positionUpdates[0] = DataType.PositionUpdate(
             DataType.PositionUpdateType.DEPOSIT_LPT,
+            _subVaultId,
             false,
             liquidity,
             _lower,
@@ -176,6 +179,7 @@ abstract contract BaseTestHelper {
 
     function borrowLPT(
         uint256 _vaultId,
+        uint256 _subVaultId,
         int24 _tick,
         int24 _lower,
         int24 _upper,
@@ -186,14 +190,14 @@ abstract contract BaseTestHelper {
 
         DataType.LPT[] memory lpts = new DataType.LPT[](1);
         lpts[0] = DataType.LPT(false, liquidity, _lower, _upper);
-        DataType.Position memory position = DataType.Position(_margin, _amount, 0, 0, lpts);
+        DataType.Position memory position = DataType.Position(_subVaultId, _margin, _amount, 0, 0, lpts);
 
         return
             controller.openPosition(
                 _vaultId,
                 position,
                 DataType.TradeOption(false, false, false, controller.getIsMarginZero()),
-                DataType.OpenPositionOption(1500 * 1e6, 1000, 1e10, 0, bytes(""))
+                DataType.OpenPositionOption(0, 1500 * 1e6, 1000, 1e10, 0, bytes(""))
             );
     }
 

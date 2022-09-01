@@ -31,7 +31,7 @@ contract ControllerTest is TestDeployer, Test {
         vm.warp(block.timestamp + 1 minutes);
 
         depositToken(0, 2000 * 1e6, 1e18);
-        lpVaultId = depositLPT(0, 202500, 202600, 2 * 1e18);
+        lpVaultId = depositLPT(0, 0, 202500, 202600, 2 * 1e18);
 
         isQuoteZero = controller.getIsMarginZero();
     }
@@ -60,6 +60,7 @@ contract ControllerTest is TestDeployer, Test {
         );
         positionUpdates[0] = DataType.PositionUpdate(
             DataType.PositionUpdateType.DEPOSIT_LPT,
+            0,
             false,
             liquidity,
             202560,
@@ -78,6 +79,7 @@ contract ControllerTest is TestDeployer, Test {
 
         positionUpdates[0] = DataType.PositionUpdate(
             DataType.PositionUpdateType.WITHDRAW_LPT,
+            0,
             false,
             _liquidity,
             202500,
@@ -98,6 +100,7 @@ contract ControllerTest is TestDeployer, Test {
 
         positionUpdates[0] = DataType.PositionUpdate(
             DataType.PositionUpdateType.BORROW_LPT,
+            0,
             false,
             liquidity,
             202500,
@@ -107,6 +110,7 @@ contract ControllerTest is TestDeployer, Test {
         );
         positionUpdates[1] = DataType.PositionUpdate(
             DataType.PositionUpdateType.DEPOSIT_TOKEN,
+            0,
             false,
             0,
             0,
@@ -116,6 +120,7 @@ contract ControllerTest is TestDeployer, Test {
         );
         positionUpdates[2] = DataType.PositionUpdate(
             DataType.PositionUpdateType.SWAP_EXACT_OUT,
+            0,
             true,
             0,
             0,
@@ -134,6 +139,7 @@ contract ControllerTest is TestDeployer, Test {
 
         positionUpdates[0] = DataType.PositionUpdate(
             DataType.PositionUpdateType.WITHDRAW_TOKEN,
+            0,
             false,
             0,
             0,
@@ -144,6 +150,7 @@ contract ControllerTest is TestDeployer, Test {
 
         positionUpdates[1] = DataType.PositionUpdate(
             DataType.PositionUpdateType.SWAP_EXACT_IN,
+            0,
             false,
             0,
             0,
@@ -154,6 +161,7 @@ contract ControllerTest is TestDeployer, Test {
 
         positionUpdates[2] = DataType.PositionUpdate(
             DataType.PositionUpdateType.REPAY_LPT,
+            0,
             false,
             _liquidity,
             202500,
@@ -213,10 +221,10 @@ contract ControllerTest is TestDeployer, Test {
     function testWithdrawLPT() public {
         swapToSamePrice(owner);
 
-        DataType.Vault memory vault = controller.getVault(lpVaultId);
+        DataType.SubVault memory subVault = controller.getSubVault(lpVaultId, 0);
 
         DataType.PositionUpdate[] memory positionUpdates = createPositionUpdatesForWithdrawLPT(
-            vault.lpts[0].liquidityAmount
+            subVault.lpts[0].liquidityAmount
         );
 
         // expect fee collected event
@@ -235,8 +243,7 @@ contract ControllerTest is TestDeployer, Test {
 
         DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(lpVaultId);
 
-        assertGt(vaultStatus.values.collateralValue, 0);
-        assertEq(vaultStatus.values.debtValue, 0);
+        assertEq(vaultStatus.subVaults.length, 0);
     }
 
     function testBorrowLPT() public {
@@ -257,8 +264,8 @@ contract ControllerTest is TestDeployer, Test {
 
         DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);
 
-        assertGt(vaultStatus.values.collateralValue, 0);
-        assertGt(vaultStatus.values.debtValue, 0);
+        assertGt(vaultStatus.subVaults[0].values.collateralValue, 0);
+        assertGt(vaultStatus.subVaults[0].values.debtValue, 0);
     }
 
     function testCannotBorrowLPT() public {
@@ -292,10 +299,10 @@ contract ControllerTest is TestDeployer, Test {
             bytes("")
         );
 
-        DataType.Vault memory vault = controller.getVault(vaultId);
+        DataType.SubVault memory subVault = controller.getSubVault(vaultId, 0);
 
         DataType.PositionUpdate[] memory positionUpdates2 = createPositionUpdatesForRepayLPT(
-            vault.lpts[0].liquidityAmount,
+            subVault.lpts[0].liquidityAmount,
             margin,
             62 * 1e16
         );
@@ -311,7 +318,6 @@ contract ControllerTest is TestDeployer, Test {
 
         DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);
 
-        assertEq(vaultStatus.values.collateralValue, 0);
-        assertEq(vaultStatus.values.debtValue, 0);
+        assertEq(vaultStatus.subVaults.length, 0);
     }
 }

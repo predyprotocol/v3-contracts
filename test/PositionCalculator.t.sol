@@ -25,7 +25,7 @@ contract PositionCalculatorTest is Test {
 
         DataType.LPT[] memory lpts = new DataType.LPT[](0);
 
-        DataType.Position memory position = DataType.Position(1e18, 0, 0, 1000 * 1e6, lpts);
+        DataType.Position memory position = DataType.Position(0, 1e18, 0, 0, 1000 * 1e6, lpts);
 
         assertLt(PositionCalculator.calculateRequiredCollateral(position, _sqrtPrice, false), 0);
     }
@@ -44,7 +44,7 @@ contract PositionCalculatorTest is Test {
 
         lpts[0] = DataType.LPT(false, liquidity, -202560, -202550);
 
-        DataType.Position memory position = DataType.Position(1e18, 50 * 1e6, 0, 0, lpts);
+        DataType.Position memory position = DataType.Position(0, 1e18, 50 * 1e6, 0, 0, lpts);
 
         assertLt(PositionCalculator.calculateRequiredCollateral(position, _sqrtPrice, false), 0);
     }
@@ -63,7 +63,7 @@ contract PositionCalculatorTest is Test {
 
         lpts[0] = DataType.LPT(false, liquidity, -202560, -202550);
 
-        DataType.Position memory position = DataType.Position(0, 1700 * 1e6, 0, 0, lpts);
+        DataType.Position memory position = DataType.Position(0, 0, 1700 * 1e6, 0, 0, lpts);
 
         assertLt(PositionCalculator.calculateRequiredCollateral(position, _sqrtPrice, false), 0);
     }
@@ -93,7 +93,7 @@ contract PositionCalculatorTest is Test {
         lpts[0] = DataType.LPT(false, liquidity0, -202560, -202550);
         lpts[1] = DataType.LPT(true, liquidity1, -202520, -202500);
 
-        DataType.Position memory position = DataType.Position(0, 50 * 1e6, 0, 0, lpts);
+        DataType.Position memory position = DataType.Position(0, 0, 50 * 1e6, 0, 0, lpts);
 
         assertLt(PositionCalculator.calculateRequiredCollateral(position, _sqrtPrice, false), 0);
     }
