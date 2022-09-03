@@ -38,8 +38,7 @@ library DataType {
         address owner;
         uint256 marginAmount0;
         uint256 marginAmount1;
-        uint256 numSubVaults;
-        mapping(uint256 => SubVault) subVaults;
+        uint256[] subVaults;
     }
 
     struct Context {
@@ -50,6 +49,7 @@ library DataType {
         address swapRouter;
         address uniswapPool;
         bool isMarginZero;
+        uint256 nextSubVaultId;
         BaseToken.TokenState tokenState0;
         BaseToken.TokenState tokenState1;
     }
@@ -97,7 +97,7 @@ library DataType {
 
     struct PositionUpdate {
         PositionUpdateType positionUpdateType;
-        uint256 subVaultId;
+        uint256 subVaultIndex;
         bool zeroForOne;
         uint128 liquidity;
         int24 lowerTick;
@@ -106,28 +106,33 @@ library DataType {
         uint256 param1;
     }
 
+    struct MetaData {
+        uint256 subVaultIndex;
+        bytes metadata;
+    }
+
     struct TradeOption {
         bool reduceOnly;
         bool swapAnyway;
         bool quoterMode;
         bool isQuoteZero;
+        int256 targetMarginAmount0;
+        int256 targetMarginAmount1;
     }
 
     struct OpenPositionOption {
-        int256 marginAmount;
         uint256 price;
         uint256 slippageTorelance;
         uint256 bufferAmount0;
         uint256 bufferAmount1;
-        bytes metadata;
+        MetaData metadata;
     }
 
     struct ClosePositionOption {
-        int256 marginAmount;
         uint256 price;
         uint256 slippageTorelance;
         uint256 swapRatio;
-        bytes metadata;
+        MetaData metadata;
     }
 
     struct LiquidationOption {
@@ -160,7 +165,8 @@ library DataType {
     }
 
     struct VaultStatus {
-        uint256 marginAmount;
+        uint256 marginValue;
+        int256 minCollateral;
         SubVaultStatus[] subVaults;
     }
 }

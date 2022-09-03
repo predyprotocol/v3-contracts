@@ -52,7 +52,7 @@ library InterestCalculator {
         DataType.Context memory _context,
         DataType.PerpStatus storage _perpState,
         uint160 _sqrtPrice
-    ) internal {
+    ) external {
         if (block.timestamp <= _perpState.lastTouchedTimestamp) {
             return;
         }
@@ -110,7 +110,7 @@ library InterestCalculator {
         DataType.Context storage _context,
         IRMParams memory _irmParams,
         uint256 lastTouchedTimestamp
-    ) internal returns (uint256) {
+    ) external returns (uint256) {
         if (block.timestamp <= lastTouchedTimestamp) {
             return lastTouchedTimestamp;
         }

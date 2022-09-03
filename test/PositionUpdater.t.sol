@@ -31,7 +31,7 @@ contract PositionUpdaterTest is TestDeployer, Test {
         vm.warp(block.timestamp + 1 minutes);
 
         context = getContext();
-        tradeOption = DataType.TradeOption(false, false, false, context.isMarginZero);
+        tradeOption = DataType.TradeOption(false, false, false, context.isMarginZero, -1, -1);
 
         // vault1 is empty
         // vault2 has deposited token
@@ -42,7 +42,7 @@ contract PositionUpdaterTest is TestDeployer, Test {
 
     function testUpdatePosition() public {
         DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](0);
-        PositionUpdater.updatePosition(vault1, context, ranges, positionUpdates, tradeOption);
+        PositionUpdater.updatePosition(vault1, subVaults, context, ranges, positionUpdates, tradeOption);
     }
 
     function testUpdatePositionDepositToken() public {
@@ -59,10 +59,10 @@ contract PositionUpdaterTest is TestDeployer, Test {
             1e18
         );
 
-        PositionUpdater.updatePosition(vault1, context, ranges, positionUpdates, tradeOption);
+        PositionUpdater.updatePosition(vault1, subVaults, context, ranges, positionUpdates, tradeOption);
 
-        assertEq(BaseToken.getCollateralValue(context.tokenState0, vault1.subVaults[0].balance0), 1e6);
-        assertEq(BaseToken.getCollateralValue(context.tokenState1, vault1.subVaults[0].balance1), 1e18);
+        assertEq(BaseToken.getCollateralValue(context.tokenState0, subVaults[vault1.subVaults[0]].balance0), 1e6);
+        assertEq(BaseToken.getCollateralValue(context.tokenState1, subVaults[vault1.subVaults[0]].balance1), 1e18);
     }
 
     function testUpdatePositionWithdrawToken() public {
@@ -79,10 +79,9 @@ contract PositionUpdaterTest is TestDeployer, Test {
             2 * 1e18
         );
 
-        PositionUpdater.updatePosition(vault2, context, ranges, positionUpdates, tradeOption);
+        PositionUpdater.updatePosition(vault2, subVaults, context, ranges, positionUpdates, tradeOption);
 
-        assertEq(BaseToken.getCollateralValue(context.tokenState0, vault2.subVaults[0].balance0), 0);
-        assertEq(BaseToken.getCollateralValue(context.tokenState1, vault2.subVaults[0].balance1), 0);
+        assertEq(vault2.subVaults.length, 0);
     }
 
     function testUpdatePositionBorrowToken() public {
@@ -99,10 +98,10 @@ contract PositionUpdaterTest is TestDeployer, Test {
             1e18
         );
 
-        PositionUpdater.updatePosition(vault1, context, ranges, positionUpdates, tradeOption);
+        PositionUpdater.updatePosition(vault1, subVaults, context, ranges, positionUpdates, tradeOption);
 
-        assertEq(BaseToken.getDebtValue(context.tokenState0, vault1.subVaults[0].balance0), 0);
-        assertEq(BaseToken.getDebtValue(context.tokenState1, vault1.subVaults[0].balance1), 1e18);
+        assertEq(BaseToken.getDebtValue(context.tokenState0, subVaults[vault1.subVaults[0]].balance0), 0);
+        assertEq(BaseToken.getDebtValue(context.tokenState1, subVaults[vault1.subVaults[0]].balance1), 1e18);
     }
 
     function testUpdatePositionRepayToken() public {
@@ -119,10 +118,9 @@ contract PositionUpdaterTest is TestDeployer, Test {
             1e18
         );
 
-        PositionUpdater.updatePosition(vault3, context, ranges, positionUpdates, tradeOption);
+        PositionUpdater.updatePosition(vault3, subVaults, context, ranges, positionUpdates, tradeOption);
 
-        assertEq(BaseToken.getDebtValue(context.tokenState0, vault3.subVaults[0].balance0), 0);
-        assertEq(BaseToken.getDebtValue(context.tokenState1, vault3.subVaults[0].balance1), 0);
+        assertEq(vault3.subVaults.length, 0);
     }
 
     function testUpdatePositionDepositLPT() public {
@@ -139,10 +137,10 @@ contract PositionUpdaterTest is TestDeployer, Test {
             0
         );
 
-        PositionUpdater.updatePosition(vault1, context, ranges, positionUpdates, tradeOption);
+        PositionUpdater.updatePosition(vault1, subVaults, context, ranges, positionUpdates, tradeOption);
 
-        assertEq(vault1.numSubVaults, 1);
-        assertEq(vault1.subVaults[0].lpts.length, 1);
+        assertEq(vault1.subVaults.length, 1);
+        assertEq(subVaults[vault1.subVaults[0]].lpts.length, 1);
     }
 
     function testSwapAnywayETHRequired(int256 requiredAmount0, int256 requiredAmount1) public {

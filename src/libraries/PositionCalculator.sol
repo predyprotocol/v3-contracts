@@ -30,7 +30,7 @@ library PositionCalculator {
         DataType.Position memory _position,
         uint160 _sqrtPrice,
         bool _isMarginZero
-    ) internal pure returns (int256) {
+    ) external pure returns (int256) {
         int256 minValue = calculateMinValue(_position, _sqrtPrice, _isMarginZero);
 
         (, uint256 debtValue) = calculateCollateralAndDebtValue(_position, _sqrtPrice, _isMarginZero);

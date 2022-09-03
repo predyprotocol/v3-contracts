@@ -23,7 +23,6 @@ contract ControllerHelper is Controller {
     ) external returns (uint256 vaultId) {
         DataType.PositionUpdate[] memory positionUpdates = PositionLib.getPositionUpdatesToOpen(
             _position,
-            _openPositionOptions.marginAmount,
             _tradeOption.isQuoteZero,
             getSqrtPrice()
         );
@@ -40,14 +39,35 @@ contract ControllerHelper is Controller {
         checkPrice(_openPositionOptions.price, _openPositionOptions.slippageTorelance);
     }
 
-    function closePosition(
+    function closeVault(
         uint256 _vaultId,
         DataType.TradeOption memory _tradeOption,
         DataType.ClosePositionOption memory _closePositionOptions
     ) external returns (uint256 vaultId) {
+        return _closePosition(_vaultId, _getPosition(_vaultId), _tradeOption, _closePositionOptions);
+    }
+
+    function closeSubVault(
+        uint256 _vaultId,
+        uint256 _subVaultIndex,
+        DataType.TradeOption memory _tradeOption,
+        DataType.ClosePositionOption memory _closePositionOptions
+    ) external returns (uint256 vaultId) {
+        DataType.Position[] memory positions = new DataType.Position[](1);
+
+        positions[0] = _getPositionOfSubVault(_vaultId, _subVaultIndex);
+
+        return _closePosition(_vaultId, positions, _tradeOption, _closePositionOptions);
+    }
+
+    function _closePosition(
+        uint256 _vaultId,
+        DataType.Position[] memory _positions,
+        DataType.TradeOption memory _tradeOption,
+        DataType.ClosePositionOption memory _closePositionOptions
+    ) internal returns (uint256 vaultId) {
         DataType.PositionUpdate[] memory positionUpdates = PositionLib.getPositionUpdatesToClose(
-            getPosition(_vaultId),
-            _closePositionOptions.marginAmount,
+            _positions,
             _closePositionOptions.swapRatio,
             getSqrtPrice()
         );
@@ -60,7 +80,6 @@ contract ControllerHelper is Controller {
     function liquidate(uint256 _vaultId, DataType.LiquidationOption memory _liquidationOption) external {
         DataType.PositionUpdate[] memory positionUpdates = PositionLib.getPositionUpdatesToClose(
             getPosition(_vaultId),
-            0,
             _liquidationOption.swapRatio,
             getSqrtPrice()
         );
@@ -80,23 +99,16 @@ contract ControllerHelper is Controller {
         );
     }
 
-    function calculateRequiredCollateral(DataType.Position memory _position) external view returns (int256) {
-        return PositionCalculator.calculateRequiredCollateral(_position, getTWAPSqrtPrice(), context.isMarginZero);
-    }
-
-    function getPositionUpdatesToOpen(
-        DataType.Position memory _position,
-        bool _isQuoteZero,
-        uint160 _sqrtPrice
-    ) public pure returns (DataType.PositionUpdate[] memory positionUpdates) {
-        return PositionLib.getPositionUpdatesToOpen(_position, 0, _isQuoteZero, _sqrtPrice);
-    }
-
-    function getPositionUpdatesToClose(
-        DataType.Position[] memory _positions,
-        uint256 _swapRatio,
-        uint160 _sqrtPrice
-    ) public pure returns (DataType.PositionUpdate[] memory positionUpdates) {
-        return PositionLib.getPositionUpdatesToClose(_positions, 0, _swapRatio, _sqrtPrice);
+    function calculateRequiredCollateral(uint256 _vaultId, DataType.Position memory _position)
+        external
+        view
+        returns (int256)
+    {
+        return
+            PositionCalculator.calculateRequiredCollateral(
+                PositionLib.concat(_getPosition(_vaultId), _position),
+                getSqrtPrice(),
+                context.isMarginZero
+            );
     }
 }

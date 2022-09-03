@@ -39,8 +39,7 @@ library PositionUpdater {
     event LPTBorrowed(uint256 indexed vaultId, int24 lowerTick, int24 upperTick, uint128 liquidity);
     event LPTRepaid(uint256 indexed vaultId, int24 lowerTick, int24 upperTick, uint128 liquidity);
     event TokenSwap(uint256 indexed vaultId, bool zeroForOne, uint256 srcAmount, uint256 destAmount);
-    event MarginDeposited(uint256 indexed vaultId, uint256 marginAmount0, uint256 marginAmount1);
-    event MarginWithdrawn(uint256 indexed vaultId, uint256 marginAmount0, uint256 marginAmount1);
+    event MarginUpdated(uint256 indexed vaultId, int256 marginAmount0, int256 marginAmount1);
 
     event FeeCollected(uint256 indexed vaultId, int256 feeAmount0, int256 feeAmount1);
 
@@ -49,6 +48,7 @@ library PositionUpdater {
      */
     function updatePosition(
         DataType.Vault storage _vault,
+        mapping(uint256 => DataType.SubVault) storage _subVaults,
         DataType.Context storage _context,
         mapping(bytes32 => DataType.PerpStatus) storage _ranges,
         DataType.PositionUpdate[] memory _positionUpdates,
@@ -59,13 +59,7 @@ library PositionUpdater {
         for (uint256 i = 0; i < _positionUpdates.length; i++) {
             DataType.PositionUpdate memory positionUpdate = _positionUpdates[i];
 
-            if (_vault.numSubVaults == positionUpdate.subVaultId) {
-                _vault.numSubVaults += 1;
-            }
-
-            require(positionUpdate.subVaultId < _vault.numSubVaults, "PU4");
-
-            DataType.SubVault storage subVault = _vault.subVaults[positionUpdate.subVaultId];
+            DataType.SubVault storage subVault = _vault.addSubVault(_subVaults, _context, positionUpdate.subVaultIndex);
 
             if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.DEPOSIT_TOKEN) {
                 require(!_tradeOption.reduceOnly, "PU1");
@@ -173,47 +167,38 @@ library PositionUpdater {
             requiredAmount1 = requiredAmount1.add(amount1);
         }
 
-        for (uint256 i = 0; i < _positionUpdates.length; i++) {
-            DataType.PositionUpdate memory positionUpdate = _positionUpdates[i];
+        {
+            // targetMarginAmount0 and targetMarginAmount1 determine the margin target.
+            // -1 means that the margin is no changed.
+            int256 deltaMarginAmount0;
+            int256 deltaMarginAmount1;
 
-            if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.DEPOSIT_MARGIN) {
-                _vault.marginAmount0 = _vault.marginAmount0.add(positionUpdate.param0);
-                _vault.marginAmount1 = _vault.marginAmount1.add(positionUpdate.param1);
+            if (_tradeOption.targetMarginAmount0 >= 0) {
+                deltaMarginAmount0 = _tradeOption.targetMarginAmount0.sub(int256(_vault.marginAmount0));
 
-                requiredAmount0 = requiredAmount0.add(int256(positionUpdate.param0));
-                requiredAmount1 = requiredAmount1.add(int256(positionUpdate.param1));
+                _vault.marginAmount0 = uint256(_tradeOption.targetMarginAmount0);
 
-                emit MarginDeposited(_vault.vaultId, positionUpdate.param0, positionUpdate.param1);
-            } else if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.WITHDRAW_MARGIN) {
-                uint256 deltaMarginAmount0;
-                uint256 deltaMarginAmount1;
+                requiredAmount0 = requiredAmount0.add(deltaMarginAmount0);
+            }
 
-                if (_vault.marginAmount0 >= positionUpdate.param0) {
-                    deltaMarginAmount0 = positionUpdate.param0;
-                } else {
-                    deltaMarginAmount0 = _vault.marginAmount0;
-                }
+            if (_tradeOption.targetMarginAmount1 >= 0) {
+                deltaMarginAmount1 = _tradeOption.targetMarginAmount1.sub(int256(_vault.marginAmount1));
 
-                if (_vault.marginAmount1 >= positionUpdate.param1) {
-                    deltaMarginAmount1 = positionUpdate.param1;
-                } else {
-                    deltaMarginAmount1 = _vault.marginAmount1;
-                }
+                _vault.marginAmount1 = uint256(_tradeOption.targetMarginAmount1);
 
-                _vault.marginAmount0 = _vault.marginAmount0.sub(deltaMarginAmount0);
-                _vault.marginAmount1 = _vault.marginAmount1.sub(deltaMarginAmount1);
+                requiredAmount1 = requiredAmount1.add(deltaMarginAmount1);
+            }
 
-                requiredAmount0 = requiredAmount0.sub(int256(deltaMarginAmount0));
-                requiredAmount1 = requiredAmount1.sub(int256(deltaMarginAmount1));
-
-                emit MarginWithdrawn(_vault.vaultId, deltaMarginAmount0, deltaMarginAmount1);
+            if (deltaMarginAmount0 != 0 || deltaMarginAmount1 != 0) {
+                emit MarginUpdated(_vault.vaultId, deltaMarginAmount0, deltaMarginAmount1);
             }
         }
 
-        if (_vault.numSubVaults > 0) {
-            uint256 numSubVaults = _vault.numSubVaults;
-            for (uint256 i = 0; i < numSubVaults; i++) {
-                DataType.SubVault memory subVault = _vault.subVaults[numSubVaults.sub(i).sub(1)];
+        if (_vault.subVaults.length > 0) {
+            uint256 length = _vault.subVaults.length;
+            for (uint256 i = 0; i < length; i++) {
+                uint256 index = length - i - 1;
+                DataType.SubVault memory subVault = _subVaults[_vault.subVaults[index]];
 
                 if (
                     subVault.balance0.collateralAmountNotInMarket == 0 &&
@@ -224,7 +209,7 @@ library PositionUpdater {
                     subVault.balance1.debtAmount == 0 &&
                     subVault.lpts.length == 0
                 ) {
-                    _vault.numSubVaults = _vault.numSubVaults.sub(1);
+                    _vault.removeSubVault(index);
                 } else {
                     break;
                 }
@@ -569,11 +554,14 @@ library PositionUpdater {
     function collectFee(
         DataType.Context storage _context,
         DataType.Vault storage _vault,
+        mapping(uint256 => DataType.SubVault) storage _subVaults,
         mapping(bytes32 => DataType.PerpStatus) storage _ranges
-    ) public {
-        for (uint256 i = 0; i < _vault.numSubVaults; i++) {
-            for (uint256 j = 0; j < _vault.subVaults[i].lpts.length; i++) {
-                collectTradeFeeFromUni(_context, _ranges[_vault.subVaults[i].lpts[j].rangeId]);
+    ) external {
+        for (uint256 i = 0; i < _vault.subVaults.length; i++) {
+            DataType.SubVault memory subVault = _subVaults[_vault.subVaults[i]];
+
+            for (uint256 j = 0; j < subVault.lpts.length; j++) {
+                collectTradeFeeFromUni(_context, _ranges[subVault.lpts[j].rangeId]);
             }
         }
     }

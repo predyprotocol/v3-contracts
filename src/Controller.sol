@@ -53,6 +53,7 @@ contract Controller is IController, Constants, Initializable {
     uint256 public vaultIdCount;
 
     mapping(uint256 => DataType.Vault) internal vaults;
+    mapping(uint256 => DataType.SubVault) internal subVaults;
 
     DataType.Context public context;
     InterestCalculator.IRMParams private irmParams;
@@ -61,7 +62,7 @@ contract Controller is IController, Constants, Initializable {
     address public operator;
 
     event VaultCreated(uint256 vaultId, address owner);
-    event PositionUpdated(uint256 vaultId, int256 a0, int256 a1, uint160 sqrtPrice, bytes metadata);
+    event PositionUpdated(uint256 vaultId, int256 a0, int256 a1, uint160 sqrtPrice, DataType.MetaData metadata);
 
     modifier onlyOperator() {
         require(operator == msg.sender, "caller must be operator");
@@ -97,6 +98,7 @@ contract Controller is IController, Constants, Initializable {
         context.uniswapPool = PoolAddress.computeAddress(_factory, poolKey);
 
         vaultIdCount = 1;
+        context.nextSubVaultId = 1;
 
         ERC20(context.token0).approve(address(_positionManager), type(uint256).max);
         ERC20(context.token1).approve(address(_positionManager), type(uint256).max);
@@ -141,7 +143,7 @@ contract Controller is IController, Constants, Initializable {
         uint256 _buffer0,
         uint256 _buffer1,
         DataType.TradeOption memory _tradeOption,
-        bytes memory _metadata
+        DataType.MetaData memory _metadata
     ) public override returns (uint256 vaultId) {
         applyPerpFee(_vaultId, _positionUpdates);
 
@@ -149,15 +151,16 @@ contract Controller is IController, Constants, Initializable {
         (vaultId, vault) = createOrGetVault(_vaultId, _tradeOption.quoterMode);
 
         if (_buffer0 > 0) {
-            TransferHelper.safeTransferFrom(context.token0, msg.sender, address(this), _buffer0);
+            TransferHelper.safeTransferFrom(context.token0, msg.sender, address(this), uint256(_buffer0));
         }
         if (_buffer1 > 0) {
-            TransferHelper.safeTransferFrom(context.token1, msg.sender, address(this), _buffer1);
+            TransferHelper.safeTransferFrom(context.token1, msg.sender, address(this), uint256(_buffer1));
         }
 
         // update position
         (int256 requiredAmount0, int256 requiredAmount1) = PositionUpdater.updatePosition(
             vault,
+            subVaults,
             context,
             ranges,
             _positionUpdates,
@@ -176,14 +179,10 @@ contract Controller is IController, Constants, Initializable {
         if (int256(_buffer0) > requiredAmount0) {
             uint256 amount0 = uint256(int256(_buffer0).sub(requiredAmount0));
 
-            console.log(1, uint256(amount0));
-
             TransferHelper.safeTransfer(context.token0, msg.sender, amount0);
         }
         if (int256(_buffer1) > requiredAmount1) {
             uint256 amount1 = uint256(int256(_buffer1).sub(requiredAmount1));
-
-            console.log(1, uint256(amount1));
 
             TransferHelper.safeTransfer(context.token1, msg.sender, amount1);
         }
@@ -202,11 +201,12 @@ contract Controller is IController, Constants, Initializable {
         // reduce debt
         (int256 surplusAmount0, int256 surplusAmount1) = PositionUpdater.updatePosition(
             vault,
+            subVaults,
             context,
             ranges,
             _positionUpdates,
             // reduce only
-            DataType.TradeOption(true, _swapAnyway, false, context.isMarginZero)
+            DataType.TradeOption(true, _swapAnyway, false, context.isMarginZero, -1, -1)
         );
         surplusAmount0 = -surplusAmount0;
         surplusAmount1 = -surplusAmount1;
@@ -246,12 +246,12 @@ contract Controller is IController, Constants, Initializable {
         (uint160 sqrtPrice, ) = LPTMath.callUniswapObserve(IUniswapV3Pool(context.uniswapPool), ORACLE_PERIOD);
 
         // calculate penalty
-        uint256 debtValue = vaults[_vaultId].getDebtPositionValue(ranges, context, sqrtPrice);
+        uint256 debtValue = vaults[_vaultId].getDebtPositionValue(subVaults, ranges, context, sqrtPrice);
 
         // close position
         uint256 penaltyAmount = _reducePosition(_vaultId, _positionUpdates, debtValue / 200, _swapAnyway);
 
-        require(vaults[_vaultId].getDebtPositionValue(ranges, context, sqrtPrice) == 0, "P7");
+        require(vaults[_vaultId].getDebtPositionValue(subVaults, ranges, context, sqrtPrice) == 0, "P7");
 
         sendReward(msg.sender, penaltyAmount);
     }
@@ -302,11 +302,15 @@ contract Controller is IController, Constants, Initializable {
 
         applyPerpFee(_vaultId);
 
-        return vaults[_vaultId].getVaultStatus(ranges, context, sqrtPriceX96);
+        return vaults[_vaultId].getVaultStatus(subVaults, ranges, context, sqrtPriceX96);
     }
 
-    function getSubVault(uint256 _vaultId, uint256 _subVaultIndex) external view returns (DataType.SubVault memory) {
-        return vaults[_vaultId].subVaults[_subVaultIndex];
+    function getVault(uint256 _vaultId) external view returns (DataType.Vault memory) {
+        return vaults[_vaultId];
+    }
+
+    function getSubVault(uint256 _subVaultId) external view returns (DataType.SubVault memory) {
+        return subVaults[_subVaultId];
     }
 
     function calculateYearlyPremium(bytes32 _rangeId) external view returns (uint256) {
@@ -375,12 +379,14 @@ contract Controller is IController, Constants, Initializable {
         DataType.Vault storage vault = vaults[_vaultId];
 
         // calculate fee for ranges thath the vault has.
-        for (uint256 i = 0; i < vault.numSubVaults; i++) {
-            for (uint256 j = 0; j < vault.subVaults[i].lpts.length; j++) {
+        for (uint256 i = 0; i < vault.subVaults.length; i++) {
+            DataType.SubVault memory subVault = subVaults[vault.subVaults[i]];
+
+            for (uint256 j = 0; j < subVault.lpts.length; j++) {
                 InterestCalculator.applyDailyPremium(
                     dpmParams,
                     context,
-                    ranges[vault.subVaults[i].lpts[j].rangeId],
+                    ranges[subVault.lpts[j].rangeId],
                     getSqrtPrice()
                 );
             }
@@ -400,7 +406,7 @@ contract Controller is IController, Constants, Initializable {
 
         lastTouchedTimestamp = InterestCalculator.applyInterest(context, irmParams, lastTouchedTimestamp);
 
-        PositionUpdater.collectFee(context, vault, ranges);
+        PositionUpdater.collectFee(context, vault, subVaults, ranges);
     }
 
     /**
@@ -412,10 +418,6 @@ contract Controller is IController, Constants, Initializable {
 
     function getSqrtPrice() public view returns (uint160 sqrtPriceX96) {
         (sqrtPriceX96, , , , , , ) = IUniswapV3Pool(context.uniswapPool).slot0();
-    }
-
-    function getCurrentTick() external view returns (int24 tick) {
-        (, tick, , , , , ) = IUniswapV3Pool(context.uniswapPool).slot0();
     }
 
     /**
@@ -436,9 +438,20 @@ contract Controller is IController, Constants, Initializable {
     }
 
     function _getPosition(uint256 _vaultId) internal view returns (DataType.Position[] memory) {
-        DataType.Vault storage vault = vaults[_vaultId];
+        DataType.Vault memory vault = vaults[_vaultId];
 
-        return vault.getPositions(ranges, context);
+        return vault.getPositions(subVaults, ranges, context);
+    }
+
+    function _getPositionOfSubVault(uint256 _vaultId, uint256 _subVaultIndex)
+        internal
+        view
+        returns (DataType.Position memory)
+    {
+        DataType.Vault memory vault = vaults[_vaultId];
+
+        return
+            VaultLib.getPositionOfSubVault(_subVaultIndex, subVaults[vault.subVaults[_subVaultIndex]], ranges, context);
     }
 
     function revertRequiredAmounts(int256 _requiredAmount0, int256 _requiredAmount1) internal pure {

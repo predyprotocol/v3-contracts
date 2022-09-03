@@ -18,6 +18,10 @@ import "forge-std/Test.sol";
 
 abstract contract TestDeployer is BaseTestHelper {
     function deployContracts(address owner, address factory) public {
+        // init params
+        emptyMetaData = DataType.MetaData(0, bytes(""));
+
+        // deploy contracts
         MockERC20 tokenA = new MockERC20("WETH", "WETH", 18);
         MockERC20 tokenB = new MockERC20("USDC", "USDC", 6);
 

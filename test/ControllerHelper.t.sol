@@ -38,10 +38,10 @@ contract ControllerHelperTest is TestDeployer, Test {
 
         vm.prank(otherAccount);
         vm.expectRevert(bytes("P2"));
-        controller.closePosition(
+        controller.closeVault(
             vaultId,
-            DataType.TradeOption(false, false, false, isQuoteZero),
-            DataType.ClosePositionOption(0, 1500 * 1e6, 2000, 100, bytes(""))
+            DataType.TradeOption(false, false, false, isQuoteZero, -1, -1),
+            DataType.ClosePositionOption(1500 * 1e6, 2000, 100, emptyMetaData)
         );
     }
 
@@ -54,8 +54,8 @@ contract ControllerHelperTest is TestDeployer, Test {
         controller.openPosition(
             0,
             position,
-            DataType.TradeOption(false, false, false, false),
-            DataType.OpenPositionOption(0, 1500 * 1e6, 1000, 0, 1e18, bytes(""))
+            DataType.TradeOption(false, false, false, false, -1, -1),
+            DataType.OpenPositionOption(1500 * 1e6, 1000, 0, 1e18, emptyMetaData)
         );
         uint256 afterBalance0 = token0.balanceOf(owner);
         uint256 afterBalance1 = token1.balanceOf(owner);
@@ -80,8 +80,8 @@ contract ControllerHelperTest is TestDeployer, Test {
         controller.openPosition(
             0,
             position,
-            DataType.TradeOption(false, false, false, controller.getIsMarginZero()),
-            DataType.OpenPositionOption(0, 1500 * 1e6, 1000, 1e10, 0, bytes(""))
+            DataType.TradeOption(false, false, false, controller.getIsMarginZero(), -1, -1),
+            DataType.OpenPositionOption(1500 * 1e6, 1000, 1e10, 0, emptyMetaData)
         );
     }
 
@@ -101,13 +101,14 @@ contract ControllerHelperTest is TestDeployer, Test {
         uint256 vaultId = controller.openPosition(
             0,
             position,
-            DataType.TradeOption(false, true, false, controller.getIsMarginZero()),
+            DataType.TradeOption(false, true, false, controller.getIsMarginZero(), int256(margin), -1),
             // deposit margin
-            DataType.OpenPositionOption(int256(margin), controller.getPrice(), 500, 1e10, 0, bytes(""))
+            DataType.OpenPositionOption(controller.getPrice(), 500, 1000 * 1e6, 0, emptyMetaData)
         );
 
         DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);
 
+        assertEq(vaultStatus.marginValue, margin);
         assertGt(vaultStatus.subVaults[0].values.collateralValue, 0);
         assertGt(vaultStatus.subVaults[0].values.debtValue, 0);
     }
@@ -128,8 +129,8 @@ contract ControllerHelperTest is TestDeployer, Test {
         uint256 vaultId = controller.openPosition(
             0,
             position,
-            DataType.TradeOption(false, true, false, controller.getIsMarginZero()),
-            DataType.OpenPositionOption(0, controller.getPrice(), 500, 1e10, 0, bytes(""))
+            DataType.TradeOption(false, true, false, controller.getIsMarginZero(), -1, -1),
+            DataType.OpenPositionOption(controller.getPrice(), 500, 1e10, 0, emptyMetaData)
         );
 
         DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);
@@ -149,8 +150,8 @@ contract ControllerHelperTest is TestDeployer, Test {
         controller.openPosition(
             0,
             position,
-            DataType.TradeOption(false, true, false, isMarginZero),
-            DataType.OpenPositionOption(0, price, 0, 1e10, 0, bytes(""))
+            DataType.TradeOption(false, true, false, isMarginZero, -1, -1),
+            DataType.OpenPositionOption(price, 0, 1e10, 0, emptyMetaData)
         );
     }
 
@@ -160,10 +161,10 @@ contract ControllerHelperTest is TestDeployer, Test {
         vm.warp(block.timestamp + 5 minutes);
 
         // vm.expectRevert(bytes("AS"));
-        controller.closePosition(
+        controller.closeVault(
             vaultId,
-            DataType.TradeOption(false, true, false, true),
-            DataType.ClosePositionOption(0, 1500 * 1e6, 2000, 100, bytes(""))
+            DataType.TradeOption(false, true, false, true, -1, -1),
+            DataType.ClosePositionOption(1500 * 1e6, 2000, 100, emptyMetaData)
         );
     }
 
@@ -177,10 +178,10 @@ contract ControllerHelperTest is TestDeployer, Test {
 
         vm.warp(block.timestamp + 5 minutes);
 
-        controller.closePosition(
+        controller.closeVault(
             vaultId,
-            DataType.TradeOption(false, true, false, controller.getIsMarginZero()),
-            DataType.ClosePositionOption(0, controller.getPrice(), 2000, 100, bytes(""))
+            DataType.TradeOption(false, true, false, controller.getIsMarginZero(), 0, -1),
+            DataType.ClosePositionOption(controller.getPrice(), 2000, 100, emptyMetaData)
         );
 
         DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);
@@ -197,10 +198,10 @@ contract ControllerHelperTest is TestDeployer, Test {
 
         uint256 before0 = token0.balanceOf(owner);
         uint256 before1 = token1.balanceOf(owner);
-        controller.closePosition(
+        controller.closeVault(
             vaultId,
-            DataType.TradeOption(false, true, false, controller.getIsMarginZero()),
-            DataType.ClosePositionOption(-1e20, 1500 * 1e6, 1000, 54, bytes(""))
+            DataType.TradeOption(false, true, false, controller.getIsMarginZero(), 0, -1),
+            DataType.ClosePositionOption(1500 * 1e6, 1000, 54, emptyMetaData)
         );
         uint256 afterBalance0 = token0.balanceOf(owner);
         uint256 afterBalance1 = token1.balanceOf(owner);
@@ -213,6 +214,7 @@ contract ControllerHelperTest is TestDeployer, Test {
 
         DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);
 
+        assertEq(vaultStatus.marginValue, 0);
         assertEq(vaultStatus.subVaults.length, 0);
     }
 
@@ -226,10 +228,10 @@ contract ControllerHelperTest is TestDeployer, Test {
 
         uint256 before0 = token0.balanceOf(owner);
         uint256 before1 = token1.balanceOf(owner);
-        controller.closePosition(
+        controller.closeVault(
             vaultId,
-            DataType.TradeOption(false, true, false, controller.getIsMarginZero()),
-            DataType.ClosePositionOption(0, 1500 * 1e6, 1000, 100, bytes(""))
+            DataType.TradeOption(false, true, false, controller.getIsMarginZero(), -1, -1),
+            DataType.ClosePositionOption(1500 * 1e6, 1000, 100, emptyMetaData)
         );
         uint256 afterBalance0 = token0.balanceOf(owner);
         uint256 afterBalance1 = token1.balanceOf(owner);
@@ -250,8 +252,8 @@ contract ControllerHelperTest is TestDeployer, Test {
         controller.openPosition(
             0,
             position,
-            DataType.TradeOption(false, false, true, true),
-            DataType.OpenPositionOption(0, 1500 * 1e6, 1000, 0, 0, bytes(""))
+            DataType.TradeOption(false, false, true, true, -1, -1),
+            DataType.OpenPositionOption(1500 * 1e6, 1000, 0, 0, emptyMetaData)
         );
     }
 
@@ -293,8 +295,8 @@ contract ControllerHelperTest is TestDeployer, Test {
         controller.openPosition(
             0,
             position,
-            DataType.TradeOption(false, true, false, controller.getIsMarginZero()),
-            DataType.OpenPositionOption(0, 1500 * 1e6, 1000, 1e10, 0, bytes(""))
+            DataType.TradeOption(false, true, false, controller.getIsMarginZero(), -1, -1),
+            DataType.OpenPositionOption(1500 * 1e6, 1000, 1e10, 0, emptyMetaData)
         );
     }
 
@@ -316,8 +318,8 @@ contract ControllerHelperTest is TestDeployer, Test {
         controller.openPosition(
             vaultId,
             position,
-            DataType.TradeOption(false, false, false, controller.getIsMarginZero()),
-            DataType.OpenPositionOption(0, 1500 * 1e6, 1000, 1e10, 0, bytes(""))
+            DataType.TradeOption(false, false, false, controller.getIsMarginZero(), -1, -1),
+            DataType.OpenPositionOption(1500 * 1e6, 1000, 1e10, 0, emptyMetaData)
         );
 
         DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);
@@ -341,12 +343,12 @@ contract ControllerHelperTest is TestDeployer, Test {
 
         bool isMarginZero = controller.getIsMarginZero();
 
-        vm.expectRevert(bytes("PU4"));
+        vm.expectRevert(bytes("V0"));
         controller.openPosition(
             vaultId,
             position,
-            DataType.TradeOption(false, false, false, isMarginZero),
-            DataType.OpenPositionOption(0, 1500 * 1e6, 1000, 1e10, 0, bytes(""))
+            DataType.TradeOption(false, false, false, isMarginZero, -1, -1),
+            DataType.OpenPositionOption(1500 * 1e6, 1000, 1e10, 0, emptyMetaData)
         );
     }
 
@@ -358,13 +360,32 @@ contract ControllerHelperTest is TestDeployer, Test {
 
         uint256 price = controller.getPrice();
 
-        controller.closePosition(
+        controller.closeVault(
             vaultId,
-            DataType.TradeOption(false, true, false, true),
-            DataType.ClosePositionOption(0, price, 500, 100, bytes(""))
+            DataType.TradeOption(false, true, false, true, -1, -1),
+            DataType.ClosePositionOption(price, 500, 100, emptyMetaData)
         );
 
         DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);
         assertEq(vaultStatus.subVaults.length, 0);
+    }
+
+    function testCloseOneSubVault() public {
+        uint256 vaultId = depositLPT(0, 0, 202500, 202600, 1e18);
+        depositLPT(vaultId, 1, 202600, 202700, 1e18);
+
+        vm.warp(block.timestamp + 5 minutes);
+
+        uint256 price = controller.getPrice();
+
+        controller.closeSubVault(
+            vaultId,
+            0,
+            DataType.TradeOption(false, true, false, true, -1, -1),
+            DataType.ClosePositionOption(price, 500, 100, emptyMetaData)
+        );
+
+        DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);
+        assertEq(vaultStatus.subVaults.length, 2);
     }
 }

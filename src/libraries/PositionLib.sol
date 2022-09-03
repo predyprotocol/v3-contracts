@@ -14,13 +14,12 @@ library PositionLib {
 
     function getPositionUpdatesToOpen(
         DataType.Position memory _position,
-        int256 _marginAmount,
         bool _isQuoteZero,
         uint160 _sqrtPrice
     ) external pure returns (DataType.PositionUpdate[] memory positionUpdates) {
         uint256 swapIndex;
 
-        (positionUpdates, swapIndex) = calculatePositionUpdatesToOpen(_position, _marginAmount);
+        (positionUpdates, swapIndex) = calculatePositionUpdatesToOpen(_position);
 
         (int256 requiredAmount0, int256 requiredAmount1) = getRequiredTokenAmountsToOpen(_position, _sqrtPrice);
 
@@ -77,13 +76,12 @@ library PositionLib {
 
     function getPositionUpdatesToClose(
         DataType.Position[] memory _positions,
-        int256 _marginAmount,
         uint256 _swapRatio,
         uint160 _sqrtPrice
     ) external pure returns (DataType.PositionUpdate[] memory positionUpdates) {
         uint256 swapIndex;
 
-        (positionUpdates, swapIndex) = calculatePositionUpdatesToClose(_positions, _marginAmount);
+        (positionUpdates, swapIndex) = calculatePositionUpdatesToClose(_positions);
 
         (int256 requiredAmount0, int256 requiredAmount1) = getRequiredTokenAmountsToClose(_positions, _sqrtPrice);
 
@@ -170,6 +168,21 @@ library PositionLib {
             uint256 limitPrice = (_price * (1e4 - _slippageTorelance)) / 1e4;
             return (_amount0 * limitPrice) / 1e18;
         }
+    }
+
+    function concat(DataType.Position[] memory _positions, DataType.Position memory _position)
+        internal
+        pure
+        returns (DataType.Position memory)
+    {
+        DataType.Position[] memory positions = new DataType.Position[](_positions.length + 1);
+        for (uint256 i = 0; i < _positions.length; i++) {
+            positions[i] = _positions[i];
+        }
+
+        positions[_positions.length] = _position;
+
+        return concat(positions);
     }
 
     function concat(DataType.Position[] memory _positions) internal pure returns (DataType.Position memory _position) {
@@ -326,40 +339,14 @@ library PositionLib {
         }
     }
 
-    function calculatePositionUpdatesToOpen(DataType.Position memory _position, int256 _marginAmount)
+    function calculatePositionUpdatesToOpen(DataType.Position memory _position)
         internal
         pure
         returns (DataType.PositionUpdate[] memory positionUpdates, uint256 swapIndex)
     {
-        positionUpdates = new DataType.PositionUpdate[](calculateLengthOfPositionUpdates(_position) + 2);
+        positionUpdates = new DataType.PositionUpdate[](calculateLengthOfPositionUpdates(_position) + 1);
 
         uint256 index = 0;
-
-        if (_marginAmount > 0) {
-            positionUpdates[index] = DataType.PositionUpdate(
-                DataType.PositionUpdateType.DEPOSIT_MARGIN,
-                0,
-                false,
-                0,
-                0,
-                0,
-                uint256(_marginAmount),
-                0
-            );
-            index++;
-        } else if (_marginAmount < 0) {
-            positionUpdates[index] = DataType.PositionUpdate(
-                DataType.PositionUpdateType.WITHDRAW_MARGIN,
-                0,
-                false,
-                0,
-                0,
-                0,
-                uint256(-_marginAmount),
-                0
-            );
-            index++;
-        }
 
         for (uint256 i = 0; i < _position.lpts.length; i++) {
             DataType.LPT memory lpt = _position.lpts[i];
@@ -427,40 +414,14 @@ library PositionLib {
         }
     }
 
-    function calculatePositionUpdatesToClose(DataType.Position[] memory _positions, int256 _marginAmount)
+    function calculatePositionUpdatesToClose(DataType.Position[] memory _positions)
         internal
         pure
         returns (DataType.PositionUpdate[] memory positionUpdates, uint256 swapIndex)
     {
-        positionUpdates = new DataType.PositionUpdate[](calculateLengthOfPositionUpdates(_positions) + 2);
+        positionUpdates = new DataType.PositionUpdate[](calculateLengthOfPositionUpdates(_positions) + 1);
 
         uint256 index = 0;
-
-        if (_marginAmount > 0) {
-            positionUpdates[index] = DataType.PositionUpdate(
-                DataType.PositionUpdateType.DEPOSIT_MARGIN,
-                0,
-                false,
-                0,
-                0,
-                0,
-                uint256(_marginAmount),
-                0
-            );
-            index++;
-        } else if (_marginAmount < 0) {
-            positionUpdates[index] = DataType.PositionUpdate(
-                DataType.PositionUpdateType.WITHDRAW_MARGIN,
-                0,
-                false,
-                0,
-                0,
-                0,
-                uint256(-_marginAmount),
-                0
-            );
-            index++;
-        }
 
         for (uint256 i = 0; i < _positions.length; i++) {
             for (uint256 j = 0; j < _positions[i].lpts.length; j++) {

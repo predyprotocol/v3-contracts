@@ -11,14 +11,55 @@ import "../Constants.sol";
 import "./LPTMath.sol";
 import "./BaseToken.sol";
 import "./DataType.sol";
+import "./PositionCalculator.sol";
+import "./PositionLib.sol";
 
-import "forge-std/console.sol";
-
+/**
+ * Error Codes
+ * V0: no permission
+ */
 library VaultLib {
     using SafeMath for uint256;
     using SafeMath for uint128;
     using SignedSafeMath for int256;
     using SafeCast for uint256;
+
+    event SubVaultCreated(uint256 indexed vaultId, uint256 subVaultIndex, uint256 subVaultId);
+    event SubVaultRemoved(uint256 indexed vaultId, uint256 subVaultIndex, uint256 subVaultId);
+
+    function addSubVault(
+        DataType.Vault storage _vault,
+        mapping(uint256 => DataType.SubVault) storage _subVaults,
+        DataType.Context storage _context,
+        uint256 _subVaultIndex
+    ) external returns (DataType.SubVault storage) {
+        if (_subVaultIndex == _vault.subVaults.length) {
+            uint256 subVaultId = _context.nextSubVaultId;
+
+            _context.nextSubVaultId += 1;
+
+            _vault.subVaults.push(subVaultId);
+
+            emit SubVaultCreated(_vault.vaultId, _subVaultIndex, subVaultId);
+
+            return _subVaults[subVaultId];
+        } else if (_subVaultIndex < _vault.subVaults.length) {
+            uint256 subVaultId = _vault.subVaults[_subVaultIndex];
+
+            return _subVaults[subVaultId];
+        } else {
+            revert("V0");
+        }
+    }
+
+    function removeSubVault(DataType.Vault storage _vault, uint256 _subVaultIndex) external {
+        uint256 subVaultId = _vault.subVaults[_subVaultIndex];
+
+        _vault.subVaults[_subVaultIndex] = _vault.subVaults[_vault.subVaults.length - 1];
+        _vault.subVaults.pop();
+
+        emit SubVaultRemoved(_vault.vaultId, _subVaultIndex, subVaultId);
+    }
 
     function depositLPT(
         DataType.SubVault storage _subVault,
@@ -181,16 +222,17 @@ library VaultLib {
     }
 
     function getVaultStatus(
-        DataType.Vault storage _vault,
+        DataType.Vault memory _vault,
+        mapping(uint256 => DataType.SubVault) storage _subVaults,
         mapping(bytes32 => DataType.PerpStatus) storage _ranges,
         DataType.Context memory _context,
         uint160 _sqrtPrice
     ) external view returns (DataType.VaultStatus memory) {
-        DataType.SubVaultStatus[] memory subVaults = new DataType.SubVaultStatus[](_vault.numSubVaults);
+        DataType.SubVaultStatus[] memory subVaultsStatus = new DataType.SubVaultStatus[](_vault.subVaults.length);
 
-        for (uint256 i = 0; i < _vault.numSubVaults; i++) {
+        for (uint256 i = 0; i < _vault.subVaults.length; i++) {
             DataType.VaultStatusAmount memory statusAmount = getVaultStatusAmount(
-                _vault.subVaults[i],
+                _subVaults[_vault.subVaults[i]],
                 _ranges,
                 _context,
                 _sqrtPrice
@@ -201,17 +243,26 @@ library VaultLib {
                 _context.isMarginZero
             );
 
-            subVaults[i] = DataType.SubVaultStatus(statusValue, statusAmount);
+            subVaultsStatus[i] = DataType.SubVaultStatus(statusValue, statusAmount);
         }
 
-        return DataType.VaultStatus(getMarginValue(_vault, _context, _sqrtPrice), subVaults);
+        return
+            DataType.VaultStatus(
+                getMarginValue(_vault, _context, _sqrtPrice),
+                PositionCalculator.calculateRequiredCollateral(
+                    PositionLib.concat(getPositions(_vault, _subVaults, _ranges, _context)),
+                    _sqrtPrice,
+                    _context.isMarginZero
+                ),
+                subVaultsStatus
+            );
     }
 
     function getMarginValue(
-        DataType.Vault storage _vault,
+        DataType.Vault memory _vault,
         DataType.Context memory _context,
         uint160 _sqrtPrice
-    ) public view returns (uint256) {
+    ) public pure returns (uint256) {
         uint256 price = LPTMath.decodeSqrtPriceX96(_context.isMarginZero, _sqrtPrice);
 
         if (_context.isMarginZero) {
@@ -285,15 +336,16 @@ library VaultLib {
     }
 
     function getDebtPositionValue(
-        DataType.Vault storage _vault,
+        DataType.Vault memory _vault,
+        mapping(uint256 => DataType.SubVault) storage _subVaults,
         mapping(bytes32 => DataType.PerpStatus) storage _ranges,
         DataType.Context memory _context,
         uint160 _sqrtPrice
     ) external view returns (uint256 debtValue) {
         uint256 price = LPTMath.decodeSqrtPriceX96(_context.isMarginZero, _sqrtPrice);
 
-        for (uint256 i = 0; i < _vault.numSubVaults; i++) {
-            debtValue += getDebtPositionValue(_vault.subVaults[i], _ranges, _context, _sqrtPrice, price);
+        for (uint256 i = 0; i < _vault.subVaults.length; i++) {
+            debtValue += getDebtPositionValue(_subVaults[_vault.subVaults[i]], _ranges, _context, _sqrtPrice, price);
         }
     }
 
@@ -481,14 +533,15 @@ library VaultLib {
     }
 
     function getPositions(
-        DataType.Vault storage _vault,
+        DataType.Vault memory _vault,
+        mapping(uint256 => DataType.SubVault) storage _subVaults,
         mapping(bytes32 => DataType.PerpStatus) storage _ranges,
         DataType.Context memory _context
     ) public view returns (DataType.Position[] memory positions) {
-        positions = new DataType.Position[](_vault.numSubVaults);
+        positions = new DataType.Position[](_vault.subVaults.length);
 
-        for (uint256 i = 0; i < _vault.numSubVaults; i++) {
-            positions[i] = getPositionOfSubVault(i, _vault.subVaults[i], _ranges, _context);
+        for (uint256 i = 0; i < _vault.subVaults.length; i++) {
+            positions[i] = getPositionOfSubVault(i, _subVaults[_vault.subVaults[i]], _ranges, _context);
         }
     }
 }

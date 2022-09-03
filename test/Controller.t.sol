@@ -182,8 +182,8 @@ contract ControllerTest is TestDeployer, Test {
             positionUpdates,
             0,
             amount1 * 2,
-            DataType.TradeOption(false, false, false, isQuoteZero),
-            bytes("")
+            DataType.TradeOption(false, false, false, isQuoteZero, -1, -1),
+            emptyMetaData
         );
     }
 
@@ -196,8 +196,8 @@ contract ControllerTest is TestDeployer, Test {
             positionUpdates,
             amount0 * 2,
             0,
-            DataType.TradeOption(false, false, false, isQuoteZero),
-            bytes("")
+            DataType.TradeOption(false, false, false, isQuoteZero, -1, -1),
+            emptyMetaData
         );
     }
 
@@ -213,15 +213,16 @@ contract ControllerTest is TestDeployer, Test {
             positionUpdates,
             amount0 * 2,
             amount1 * 2,
-            DataType.TradeOption(false, false, false, controller.getIsMarginZero()),
-            bytes("")
+            DataType.TradeOption(false, false, false, controller.getIsMarginZero(), -1, -1),
+            emptyMetaData
         );
     }
 
     function testWithdrawLPT() public {
         swapToSamePrice(owner);
 
-        DataType.SubVault memory subVault = controller.getSubVault(lpVaultId, 0);
+        DataType.Vault memory vault = controller.getVault(lpVaultId);
+        DataType.SubVault memory subVault = controller.getSubVault(vault.subVaults[0]);
 
         DataType.PositionUpdate[] memory positionUpdates = createPositionUpdatesForWithdrawLPT(
             subVault.lpts[0].liquidityAmount
@@ -237,8 +238,8 @@ contract ControllerTest is TestDeployer, Test {
             positionUpdates,
             0,
             0,
-            DataType.TradeOption(false, false, false, controller.getIsMarginZero()),
-            bytes("")
+            DataType.TradeOption(false, false, false, controller.getIsMarginZero(), -1, -1),
+            emptyMetaData
         );
 
         DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(lpVaultId);
@@ -256,8 +257,8 @@ contract ControllerTest is TestDeployer, Test {
             positionUpdates,
             (1e18 * 1800) / 1e12,
             margin,
-            DataType.TradeOption(false, false, false, controller.getIsMarginZero()),
-            bytes("")
+            DataType.TradeOption(false, false, false, controller.getIsMarginZero(), -1, -1),
+            emptyMetaData
         );
 
         vm.warp(block.timestamp + 1 minutes);
@@ -280,8 +281,8 @@ contract ControllerTest is TestDeployer, Test {
             positionUpdates,
             (1e18 * 1800) / 1e12,
             margin,
-            DataType.TradeOption(false, false, false, isQuoteZero),
-            bytes("")
+            DataType.TradeOption(false, false, false, isQuoteZero, -1, -1),
+            emptyMetaData
         );
     }
 
@@ -295,11 +296,12 @@ contract ControllerTest is TestDeployer, Test {
             positionUpdates,
             (1e18 * 1800) / 1e12,
             margin,
-            DataType.TradeOption(false, false, false, controller.getIsMarginZero()),
-            bytes("")
+            DataType.TradeOption(false, false, false, controller.getIsMarginZero(), -1, -1),
+            emptyMetaData
         );
 
-        DataType.SubVault memory subVault = controller.getSubVault(vaultId, 0);
+        DataType.Vault memory vault = controller.getVault(vaultId);
+        DataType.SubVault memory subVault = controller.getSubVault(vault.subVaults[0]);
 
         DataType.PositionUpdate[] memory positionUpdates2 = createPositionUpdatesForRepayLPT(
             subVault.lpts[0].liquidityAmount,
@@ -312,8 +314,8 @@ contract ControllerTest is TestDeployer, Test {
             positionUpdates2,
             0,
             0,
-            DataType.TradeOption(false, false, false, controller.getIsMarginZero()),
-            bytes("")
+            DataType.TradeOption(false, false, false, controller.getIsMarginZero(), -1, -1),
+            emptyMetaData
         );
 
         DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);

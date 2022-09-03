@@ -76,9 +76,9 @@ contract PositionLibTest is Test {
         DataType.Position memory position = getPosition1();
 
         (DataType.PositionUpdate[] memory positionUpdates, uint256 swapIndex) = PositionLib
-            .calculatePositionUpdatesToOpen(position, 0);
+            .calculatePositionUpdatesToOpen(position);
 
-        assertEq(positionUpdates.length, 3);
+        assertEq(positionUpdates.length, 2);
 
         // empty for swap
         assertEq(swapIndex, 0);
@@ -91,9 +91,9 @@ contract PositionLibTest is Test {
         DataType.Position memory position = getPosition2();
 
         (DataType.PositionUpdate[] memory positionUpdates, uint256 swapIndex) = PositionLib
-            .calculatePositionUpdatesToOpen(position, 0);
+            .calculatePositionUpdatesToOpen(position);
 
-        assertEq(positionUpdates.length, 4);
+        assertEq(positionUpdates.length, 3);
 
         // Deposit Token
         assertEq(positionUpdates[0].param0, 1e18);
@@ -109,9 +109,9 @@ contract PositionLibTest is Test {
         DataType.Position memory position = getPosition4();
 
         (DataType.PositionUpdate[] memory positionUpdates, uint256 swapIndex) = PositionLib
-            .calculatePositionUpdatesToOpen(position, 0);
+            .calculatePositionUpdatesToOpen(position);
 
-        assertEq(positionUpdates.length, 4);
+        assertEq(positionUpdates.length, 3);
 
         // empty for swap
         assertEq(swapIndex, 0);
@@ -128,9 +128,9 @@ contract PositionLibTest is Test {
         positions[0] = getPosition1();
 
         (DataType.PositionUpdate[] memory positionUpdates, uint256 swapIndex) = PositionLib
-            .calculatePositionUpdatesToClose(positions, 0);
+            .calculatePositionUpdatesToClose(positions);
 
-        assertEq(positionUpdates.length, 3);
+        assertEq(positionUpdates.length, 2);
 
         // Withdraw LPT
         assertEq(uint256(positionUpdates[0].positionUpdateType), uint256(DataType.PositionUpdateType.WITHDRAW_LPT));
