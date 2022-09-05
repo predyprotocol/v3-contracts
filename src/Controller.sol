@@ -324,7 +324,7 @@ contract Controller is IController, Constants, Initializable {
         (uint160 sqrtPrice, ) = LPTMath.callUniswapObserve(IUniswapV3Pool(context.uniswapPool), ORACLE_PERIOD);
 
         // calculate value using TWAP price
-        int256 requiredCollateral = PositionCalculator.calculateRequiredCollateral(
+        int256 requiredCollateral = PositionCalculator.calculateMinCollateral(
             PositionLib.concat(_getPosition(_vaultId)),
             sqrtPrice,
             context.isMarginZero

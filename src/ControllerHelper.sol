@@ -90,13 +90,13 @@ contract ControllerHelper is Controller {
      * @param _position position you wanna add to the vault
      * @return minCollateral minimal amount of collateral to keep positions.
      */
-    function calculateRequiredCollateral(uint256 _vaultId, DataType.Position memory _position)
+    function calculateMinCollateral(uint256 _vaultId, DataType.Position memory _position)
         external
         view
         returns (int256)
     {
         return
-            PositionCalculator.calculateRequiredCollateral(
+            PositionCalculator.calculateMinCollateral(
                 PositionLib.concat(_getPosition(_vaultId), _position),
                 getSqrtPrice(),
                 context.isMarginZero

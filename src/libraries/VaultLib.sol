@@ -261,7 +261,7 @@ library VaultLib {
         return
             DataType.VaultStatus(
                 getMarginValue(_vault, _context),
-                PositionCalculator.calculateRequiredCollateral(
+                PositionCalculator.calculateMinCollateral(
                     PositionLib.concat(getPositions(_vault, _subVaults, _ranges, _context)),
                     _sqrtPrice,
                     _context.isMarginZero

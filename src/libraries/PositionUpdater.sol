@@ -181,7 +181,7 @@ library PositionUpdater {
 
                 requiredAmount0 = requiredAmount0.add(deltaMarginAmount0);
             } else if (_tradeOption.targetMarginAmount0 == -2) {
-                // use margin of token 0to make required amount 0
+                // use margin of token0 to make required amount 0
                 deltaMarginAmount0 = requiredAmount0.mul(-1);
 
                 _vault.marginAmount0 = PredyMath.addDelta(_vault.marginAmount0, deltaMarginAmount0);
