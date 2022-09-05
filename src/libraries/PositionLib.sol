@@ -353,7 +353,7 @@ library PositionLib {
             if (!lpt.isCollateral) {
                 positionUpdates[index] = DataType.PositionUpdate(
                     DataType.PositionUpdateType.BORROW_LPT,
-                    _position.subVaultId,
+                    _position.subVaultIndex,
                     false,
                     lpt.liquidity,
                     lpt.lowerTick,
@@ -368,7 +368,7 @@ library PositionLib {
         if (_position.collateral0 > 0 || _position.collateral1 > 0) {
             positionUpdates[index] = DataType.PositionUpdate(
                 DataType.PositionUpdateType.DEPOSIT_TOKEN,
-                _position.subVaultId,
+                _position.subVaultIndex,
                 false,
                 0,
                 0,
@@ -382,7 +382,7 @@ library PositionLib {
         if (_position.debt0 > 0 || _position.debt1 > 0) {
             positionUpdates[index] = DataType.PositionUpdate(
                 DataType.PositionUpdateType.BORROW_TOKEN,
-                _position.subVaultId,
+                _position.subVaultIndex,
                 false,
                 0,
                 0,
@@ -401,7 +401,7 @@ library PositionLib {
             if (lpt.isCollateral) {
                 positionUpdates[index] = DataType.PositionUpdate(
                     DataType.PositionUpdateType.DEPOSIT_LPT,
-                    _position.subVaultId,
+                    _position.subVaultIndex,
                     false,
                     lpt.liquidity,
                     lpt.lowerTick,
@@ -429,7 +429,7 @@ library PositionLib {
                 if (lpt.isCollateral) {
                     positionUpdates[index] = DataType.PositionUpdate(
                         DataType.PositionUpdateType.WITHDRAW_LPT,
-                        _positions[i].subVaultId,
+                        _positions[i].subVaultIndex,
                         false,
                         lpt.liquidity,
                         lpt.lowerTick,
@@ -451,7 +451,7 @@ library PositionLib {
                 if (!lpt.isCollateral) {
                     positionUpdates[index] = DataType.PositionUpdate(
                         DataType.PositionUpdateType.REPAY_LPT,
-                        _positions[i].subVaultId,
+                        _positions[i].subVaultIndex,
                         false,
                         lpt.liquidity,
                         lpt.lowerTick,
@@ -468,7 +468,7 @@ library PositionLib {
             if (_positions[i].collateral0 > 0 || _positions[i].collateral1 > 0) {
                 positionUpdates[index] = DataType.PositionUpdate(
                     DataType.PositionUpdateType.WITHDRAW_TOKEN,
-                    _positions[i].subVaultId,
+                    _positions[i].subVaultIndex,
                     false,
                     0,
                     0,
@@ -484,7 +484,7 @@ library PositionLib {
             if (_positions[i].debt0 > 0 || _positions[i].debt1 > 0) {
                 positionUpdates[index] = DataType.PositionUpdate(
                     DataType.PositionUpdateType.REPAY_TOKEN,
-                    _positions[i].subVaultId,
+                    _positions[i].subVaultIndex,
                     false,
                     0,
                     0,

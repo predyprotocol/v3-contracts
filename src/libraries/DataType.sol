@@ -71,7 +71,7 @@ library DataType {
     }
 
     struct Position {
-        uint256 subVaultId;
+        uint256 subVaultIndex;
         uint256 collateral0;
         uint256 collateral1;
         uint256 debt0;

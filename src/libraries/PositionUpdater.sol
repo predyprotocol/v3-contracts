@@ -179,6 +179,12 @@ library PositionUpdater {
                 _vault.marginAmount0 = uint256(_tradeOption.targetMarginAmount0);
 
                 requiredAmount0 = requiredAmount0.add(deltaMarginAmount0);
+            } else if(_tradeOption.targetMarginAmount0 == -2) {
+                deltaMarginAmount0 = requiredAmount0.mul(-1);
+
+                _vault.marginAmount0 = PredyMath.addDelta(_vault.marginAmount0, deltaMarginAmount0);
+
+                requiredAmount0 = 0;
             }
 
             if (_tradeOption.targetMarginAmount1 >= 0) {
@@ -187,6 +193,12 @@ library PositionUpdater {
                 _vault.marginAmount1 = uint256(_tradeOption.targetMarginAmount1);
 
                 requiredAmount1 = requiredAmount1.add(deltaMarginAmount1);
+            } else if(_tradeOption.targetMarginAmount1 == -2) {
+                deltaMarginAmount1 = requiredAmount1.mul(-1);
+
+                _vault.marginAmount1 = PredyMath.addDelta(_vault.marginAmount1, deltaMarginAmount1);
+
+                requiredAmount1 = 0;
             }
 
             if (deltaMarginAmount0 != 0 || deltaMarginAmount1 != 0) {
