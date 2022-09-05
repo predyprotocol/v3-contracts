@@ -54,11 +54,10 @@ library PositionUpdater {
         DataType.PositionUpdate[] memory _positionUpdates,
         DataType.TradeOption memory _tradeOption
     ) external returns (int256 requiredAmount0, int256 requiredAmount1) {
-        // collectFeeAndPremium(_context, _vault, _ranges);
-
         for (uint256 i = 0; i < _positionUpdates.length; i++) {
             DataType.PositionUpdate memory positionUpdate = _positionUpdates[i];
 
+            // create new sub-vault if needed
             DataType.SubVault storage subVault = _vault.addSubVault(_subVaults, _context, positionUpdate.subVaultIndex);
 
             if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.DEPOSIT_TOKEN) {
@@ -168,18 +167,21 @@ library PositionUpdater {
         }
 
         {
+            // Deposits or withdraw margin
             // targetMarginAmount0 and targetMarginAmount1 determine the margin target.
             // -1 means that the margin is no changed.
             int256 deltaMarginAmount0;
             int256 deltaMarginAmount1;
 
             if (_tradeOption.targetMarginAmount0 >= 0) {
+                // update margin amount of token0 to target margin amount
                 deltaMarginAmount0 = _tradeOption.targetMarginAmount0.sub(int256(_vault.marginAmount0));
 
                 _vault.marginAmount0 = uint256(_tradeOption.targetMarginAmount0);
 
                 requiredAmount0 = requiredAmount0.add(deltaMarginAmount0);
-            } else if(_tradeOption.targetMarginAmount0 == -2) {
+            } else if (_tradeOption.targetMarginAmount0 == -2) {
+                // use margin of token 0to make required amount 0
                 deltaMarginAmount0 = requiredAmount0.mul(-1);
 
                 _vault.marginAmount0 = PredyMath.addDelta(_vault.marginAmount0, deltaMarginAmount0);
@@ -188,12 +190,14 @@ library PositionUpdater {
             }
 
             if (_tradeOption.targetMarginAmount1 >= 0) {
+                // update margin amount of token1 to target margin amount
                 deltaMarginAmount1 = _tradeOption.targetMarginAmount1.sub(int256(_vault.marginAmount1));
 
                 _vault.marginAmount1 = uint256(_tradeOption.targetMarginAmount1);
 
                 requiredAmount1 = requiredAmount1.add(deltaMarginAmount1);
-            } else if(_tradeOption.targetMarginAmount1 == -2) {
+            } else if (_tradeOption.targetMarginAmount1 == -2) {
+                // use margin of token1 to make required amount 0
                 deltaMarginAmount1 = requiredAmount1.mul(-1);
 
                 _vault.marginAmount1 = PredyMath.addDelta(_vault.marginAmount1, deltaMarginAmount1);
@@ -201,11 +205,13 @@ library PositionUpdater {
                 requiredAmount1 = 0;
             }
 
+            // emit event if needed
             if (deltaMarginAmount0 != 0 || deltaMarginAmount1 != 0) {
                 emit MarginUpdated(_vault.vaultId, deltaMarginAmount0, deltaMarginAmount1);
             }
         }
 
+        // remove empty sub-vaults
         if (_vault.subVaults.length > 0) {
             uint256 length = _vault.subVaults.length;
             for (uint256 i = 0; i < length; i++) {

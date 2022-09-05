@@ -15,6 +15,9 @@ contract ControllerHelper is Controller {
 
     constructor() {}
 
+    /**
+     * @notice Opens new position.
+     */
     function openPosition(
         uint256 _vaultId,
         DataType.Position memory _position,
@@ -36,9 +39,12 @@ contract ControllerHelper is Controller {
             _openPositionOptions.metadata
         );
 
-        checkPrice(_openPositionOptions.price, _openPositionOptions.slippageTorelance);
+        _checkPrice(_openPositionOptions.price, _openPositionOptions.slippageTorelance);
     }
 
+    /**
+     * @notice Closes all positions in a vault.
+     */
     function closeVault(
         uint256 _vaultId,
         DataType.TradeOption memory _tradeOption,
@@ -47,6 +53,9 @@ contract ControllerHelper is Controller {
         return _closePosition(_vaultId, _getPosition(_vaultId), _tradeOption, _closePositionOptions);
     }
 
+    /**
+     * @notice Closes position in sub-vault.
+     */
     function closeSubVault(
         uint256 _vaultId,
         uint256 _subVaultIndex,
@@ -58,6 +67,40 @@ contract ControllerHelper is Controller {
         positions[0] = _getPositionOfSubVault(_vaultId, _subVaultIndex);
 
         return _closePosition(_vaultId, positions, _tradeOption, _closePositionOptions);
+    }
+
+    /**
+     * @notice Liquidates a vault.
+     */
+    function liquidate(uint256 _vaultId, DataType.LiquidationOption memory _liquidationOption) external {
+        DataType.PositionUpdate[] memory positionUpdates = PositionLib.getPositionUpdatesToClose(
+            getPosition(_vaultId),
+            _liquidationOption.swapRatio,
+            getSqrtPrice()
+        );
+
+        liquidate(_vaultId, positionUpdates, _liquidationOption.swapAnyway);
+
+        _checkPrice(_liquidationOption.price, _liquidationOption.slippageTorelance);
+    }
+
+    /**
+     * @notice Calculates Min. Collateral of the vault.
+     * @param _vaultId vault id
+     * @param _position position you wanna add to the vault
+     * @return minCollateral minimal amount of collateral to keep positions.
+     */
+    function calculateRequiredCollateral(uint256 _vaultId, DataType.Position memory _position)
+        external
+        view
+        returns (int256)
+    {
+        return
+            PositionCalculator.calculateRequiredCollateral(
+                PositionLib.concat(_getPosition(_vaultId), _position),
+                getSqrtPrice(),
+                context.isMarginZero
+            );
     }
 
     function _closePosition(
@@ -74,22 +117,10 @@ contract ControllerHelper is Controller {
 
         vaultId = updatePosition(_vaultId, positionUpdates, 0, 0, _tradeOption, _closePositionOptions.metadata);
 
-        checkPrice(_closePositionOptions.price, _closePositionOptions.slippageTorelance);
+        _checkPrice(_closePositionOptions.price, _closePositionOptions.slippageTorelance);
     }
 
-    function liquidate(uint256 _vaultId, DataType.LiquidationOption memory _liquidationOption) external {
-        DataType.PositionUpdate[] memory positionUpdates = PositionLib.getPositionUpdatesToClose(
-            getPosition(_vaultId),
-            _liquidationOption.swapRatio,
-            getSqrtPrice()
-        );
-
-        liquidate(_vaultId, positionUpdates, _liquidationOption.swapAnyway);
-
-        checkPrice(_liquidationOption.price, _liquidationOption.slippageTorelance);
-    }
-
-    function checkPrice(uint256 _price, uint256 _slippageTorelance) internal view {
+    function _checkPrice(uint256 _price, uint256 _slippageTorelance) internal view {
         uint256 price = getPrice();
 
         require(
@@ -97,18 +128,5 @@ contract ControllerHelper is Controller {
                 price <= (_price * (1e4 + _slippageTorelance)) / 1e4,
             "CH2"
         );
-    }
-
-    function calculateRequiredCollateral(uint256 _vaultId, DataType.Position memory _position)
-        external
-        view
-        returns (int256)
-    {
-        return
-            PositionCalculator.calculateRequiredCollateral(
-                PositionLib.concat(_getPosition(_vaultId), _position),
-                getSqrtPrice(),
-                context.isMarginZero
-            );
     }
 }

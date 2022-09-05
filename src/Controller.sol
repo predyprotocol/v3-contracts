@@ -157,7 +157,7 @@ contract Controller is IController, Constants, Initializable {
             TransferHelper.safeTransferFrom(context.token1, msg.sender, address(this), uint256(_buffer1));
         }
 
-        // update position
+        // update position in the vault
         (int256 requiredAmount0, int256 requiredAmount1) = PositionUpdater.updatePosition(
             vault,
             subVaults,
@@ -171,6 +171,7 @@ contract Controller is IController, Constants, Initializable {
             revertRequiredAmounts(requiredAmount0, requiredAmount1);
         }
 
+        // check the vault is safe
         require(!_checkLiquidatable(vaultId), "P3");
 
         require(int256(_buffer0) >= requiredAmount0, "P5");
@@ -198,7 +199,7 @@ contract Controller is IController, Constants, Initializable {
     ) internal returns (uint256 penaltyAmount) {
         DataType.Vault storage vault = vaults[_vaultId];
 
-        // reduce debt
+        // reduce position
         (int256 surplusAmount0, int256 surplusAmount1) = PositionUpdater.updatePosition(
             vault,
             subVaults,

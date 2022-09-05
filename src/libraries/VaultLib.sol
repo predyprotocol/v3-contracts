@@ -27,6 +27,13 @@ library VaultLib {
     event SubVaultCreated(uint256 indexed vaultId, uint256 subVaultIndex, uint256 subVaultId);
     event SubVaultRemoved(uint256 indexed vaultId, uint256 subVaultIndex, uint256 subVaultId);
 
+    /**
+     * @notice add sub-vault to the vault
+     * @param _vault vault object
+     * @param _subVaults sub-vaults map
+     * @param _context context object
+     * @param _subVaultIndex index of sub-vault in the vault to add
+     */
     function addSubVault(
         DataType.Vault storage _vault,
         mapping(uint256 => DataType.SubVault) storage _subVaults,
@@ -52,6 +59,11 @@ library VaultLib {
         }
     }
 
+    /**
+     * @notice remove sub-vault from the vault
+     * @param _vault vault object
+     * @param _subVaultIndex index of sub-vault in the vault to remove
+     */
     function removeSubVault(DataType.Vault storage _vault, uint256 _subVaultIndex) external {
         uint256 subVaultId = _vault.subVaults[_subVaultIndex];
 
