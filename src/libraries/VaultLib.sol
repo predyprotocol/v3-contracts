@@ -260,7 +260,7 @@ library VaultLib {
 
         return
             DataType.VaultStatus(
-                getMarginValue(_vault, _context, _sqrtPrice),
+                getMarginValue(_vault, _context),
                 PositionCalculator.calculateRequiredCollateral(
                     PositionLib.concat(getPositions(_vault, _subVaults, _ranges, _context)),
                     _sqrtPrice,
@@ -270,17 +270,15 @@ library VaultLib {
             );
     }
 
-    function getMarginValue(
-        DataType.Vault memory _vault,
-        DataType.Context memory _context,
-        uint160 _sqrtPrice
-    ) public pure returns (uint256) {
-        uint256 price = LPTMath.decodeSqrtPriceX96(_context.isMarginZero, _sqrtPrice);
-
+    function getMarginValue(DataType.Vault memory _vault, DataType.Context memory _context)
+        public
+        pure
+        returns (uint256)
+    {
         if (_context.isMarginZero) {
-            return PredyMath.mulDiv(_vault.marginAmount1, price, 1e18).add(_vault.marginAmount0);
+            return _vault.marginAmount0;
         } else {
-            return PredyMath.mulDiv(_vault.marginAmount0, price, 1e18).add(_vault.marginAmount1);
+            return _vault.marginAmount1;
         }
     }
 

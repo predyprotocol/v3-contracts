@@ -330,7 +330,7 @@ contract Controller is IController, Constants, Initializable {
             context.isMarginZero
         );
 
-        return requiredCollateral > int256(vaults[_vaultId].getMarginValue(context, sqrtPrice));
+        return requiredCollateral > int256(vaults[_vaultId].getMarginValue(context));
     }
 
     function createOrGetVault(uint256 _vaultId, bool _quoterMode)
