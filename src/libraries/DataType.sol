@@ -49,7 +49,6 @@ library DataType {
         address swapRouter;
         address uniswapPool;
         bool isMarginZero;
-        uint256 vaultIdCount;
         uint256 nextSubVaultId;
         BaseToken.TokenState tokenState0;
         BaseToken.TokenState tokenState1;

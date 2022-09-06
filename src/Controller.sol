@@ -50,6 +50,8 @@ contract Controller is IController, Constants, Initializable {
 
     mapping(bytes32 => DataType.PerpStatus) internal ranges;
 
+    uint256 internal vaultIdCount;
+
     mapping(uint256 => DataType.Vault) internal vaults;
     mapping(uint256 => DataType.SubVault) internal subVaults;
 
@@ -95,7 +97,7 @@ contract Controller is IController, Constants, Initializable {
 
         context.uniswapPool = PoolAddress.computeAddress(_factory, poolKey);
 
-        context.vaultIdCount = 1;
+        vaultIdCount = 1;
         context.nextSubVaultId = 1;
 
         ERC20(context.token0).approve(address(_positionManager), type(uint256).max);
@@ -274,7 +276,7 @@ contract Controller is IController, Constants, Initializable {
             uint256
         )
     {
-        return (context.isMarginZero, context.vaultIdCount, context.nextSubVaultId);
+        return (context.isMarginZero, vaultIdCount, context.nextSubVaultId);
     }
 
     function getRange(bytes32 _rangeId) external view returns (DataType.PerpStatus memory) {
@@ -356,8 +358,8 @@ contract Controller is IController, Constants, Initializable {
         returns (uint256 vaultId, DataType.Vault storage)
     {
         if (_vaultId == 0) {
-            vaultId = context.vaultIdCount;
-            context.vaultIdCount++;
+            vaultId = vaultIdCount;
+            vaultIdCount++;
 
             vaults[vaultId].vaultId = vaultId;
             vaults[vaultId].owner = msg.sender;

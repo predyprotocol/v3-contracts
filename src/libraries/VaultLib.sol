@@ -446,12 +446,12 @@ library VaultLib {
                 continue;
             }
             bytes32 rangeId = _subVault.lpts[i].rangeId;
-            totalAmount0 = PredyMath.mulDiv(
+            totalAmount0 += PredyMath.mulDiv(
                 (ranges[rangeId].fee0Growth.sub(_subVault.lpts[i].fee0Last)),
                 _subVault.lpts[i].liquidityAmount,
                 FixedPoint128.Q128
             );
-            totalAmount1 = PredyMath.mulDiv(
+            totalAmount1 += PredyMath.mulDiv(
                 (ranges[rangeId].fee1Growth.sub(_subVault.lpts[i].fee1Last)),
                 _subVault.lpts[i].liquidityAmount,
                 FixedPoint128.Q128

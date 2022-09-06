@@ -46,7 +46,6 @@ abstract contract BaseTestHelper {
                 address(uniPool),
                 true,
                 1,
-                1,
                 tokenState,
                 tokenState
             );
