@@ -28,7 +28,7 @@ contract ControllerHelperTest is TestDeployer, Test {
         depositToken(0, 1e10, 5 * 1e18);
         depositLPT(0, 0, 202500, 202600, 2 * 1e18);
 
-        isQuoteZero = controller.getIsMarginZero();
+        isQuoteZero = getIsMarginZero();
     }
 
     function testCannotClosePositionBecauseCallerIsNotOwner() public {
@@ -80,7 +80,7 @@ contract ControllerHelperTest is TestDeployer, Test {
         controller.openPosition(
             0,
             position,
-            DataType.TradeOption(false, false, false, controller.getIsMarginZero(), -1, -1),
+            DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1),
             DataType.OpenPositionOption(1500 * 1e6, 1000, 1e10, 0, emptyMetaData)
         );
     }
@@ -101,7 +101,7 @@ contract ControllerHelperTest is TestDeployer, Test {
         uint256 vaultId = controller.openPosition(
             0,
             position,
-            DataType.TradeOption(false, true, false, controller.getIsMarginZero(), int256(margin), -1),
+            DataType.TradeOption(false, true, false, getIsMarginZero(), int256(margin), -1),
             // deposit margin
             DataType.OpenPositionOption(controller.getPrice(), 500, 1000 * 1e6, 0, emptyMetaData)
         );
@@ -129,7 +129,7 @@ contract ControllerHelperTest is TestDeployer, Test {
         uint256 vaultId = controller.openPosition(
             0,
             position,
-            DataType.TradeOption(false, true, false, controller.getIsMarginZero(), -1, -1),
+            DataType.TradeOption(false, true, false, getIsMarginZero(), -1, -1),
             DataType.OpenPositionOption(controller.getPrice(), 500, 1e10, 0, emptyMetaData)
         );
 
@@ -144,7 +144,7 @@ contract ControllerHelperTest is TestDeployer, Test {
         DataType.Position memory position = DataType.Position(0, 0, 1e18, 0, 0, lpts);
 
         uint256 price = controller.getPrice();
-        bool isMarginZero = controller.getIsMarginZero();
+        bool isMarginZero = getIsMarginZero();
 
         vm.expectRevert(bytes("CH2"));
         controller.openPosition(
@@ -180,7 +180,7 @@ contract ControllerHelperTest is TestDeployer, Test {
 
         controller.closeVault(
             vaultId,
-            DataType.TradeOption(false, true, false, controller.getIsMarginZero(), 0, -1),
+            DataType.TradeOption(false, true, false, getIsMarginZero(), 0, -1),
             DataType.ClosePositionOption(controller.getPrice(), 2000, 100, emptyMetaData)
         );
 
@@ -200,7 +200,7 @@ contract ControllerHelperTest is TestDeployer, Test {
         uint256 before1 = token1.balanceOf(owner);
         controller.closeVault(
             vaultId,
-            DataType.TradeOption(false, true, false, controller.getIsMarginZero(), 0, -1),
+            DataType.TradeOption(false, true, false, getIsMarginZero(), 0, -1),
             DataType.ClosePositionOption(1500 * 1e6, 1000, 54, emptyMetaData)
         );
         uint256 afterBalance0 = token0.balanceOf(owner);
@@ -230,7 +230,7 @@ contract ControllerHelperTest is TestDeployer, Test {
         uint256 before1 = token1.balanceOf(owner);
         controller.closeVault(
             vaultId,
-            DataType.TradeOption(false, true, false, controller.getIsMarginZero(), -1, -1),
+            DataType.TradeOption(false, true, false, getIsMarginZero(), -1, -1),
             DataType.ClosePositionOption(1500 * 1e6, 1000, 100, emptyMetaData)
         );
         uint256 afterBalance0 = token0.balanceOf(owner);
@@ -295,7 +295,7 @@ contract ControllerHelperTest is TestDeployer, Test {
         controller.openPosition(
             0,
             position,
-            DataType.TradeOption(false, true, false, controller.getIsMarginZero(), -1, -1),
+            DataType.TradeOption(false, true, false, getIsMarginZero(), -1, -1),
             DataType.OpenPositionOption(1500 * 1e6, 1000, 1e10, 0, emptyMetaData)
         );
     }
@@ -318,7 +318,7 @@ contract ControllerHelperTest is TestDeployer, Test {
         controller.openPosition(
             vaultId,
             position,
-            DataType.TradeOption(false, false, false, controller.getIsMarginZero(), -1, -1),
+            DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1),
             DataType.OpenPositionOption(1500 * 1e6, 1000, 1e10, 0, emptyMetaData)
         );
 
@@ -341,7 +341,7 @@ contract ControllerHelperTest is TestDeployer, Test {
         lpts[0] = DataType.LPT(true, liquidity, 202600, 202700);
         DataType.Position memory position = DataType.Position(2, 0, 0, 0, 0, lpts);
 
-        bool isMarginZero = controller.getIsMarginZero();
+        bool isMarginZero = getIsMarginZero();
 
         vm.expectRevert(bytes("V0"));
         controller.openPosition(

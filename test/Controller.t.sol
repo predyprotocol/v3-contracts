@@ -33,7 +33,7 @@ contract ControllerTest is TestDeployer, Test {
         depositToken(0, 2000 * 1e6, 1e18);
         lpVaultId = depositLPT(0, 0, 202500, 202600, 2 * 1e18);
 
-        isQuoteZero = controller.getIsMarginZero();
+        isQuoteZero = getIsMarginZero();
     }
 
     // Helper Functions
@@ -213,7 +213,7 @@ contract ControllerTest is TestDeployer, Test {
             positionUpdates,
             amount0 * 2,
             amount1 * 2,
-            DataType.TradeOption(false, false, false, controller.getIsMarginZero(), -1, -1),
+            DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1),
             emptyMetaData
         );
     }
@@ -238,7 +238,7 @@ contract ControllerTest is TestDeployer, Test {
             positionUpdates,
             0,
             0,
-            DataType.TradeOption(false, false, false, controller.getIsMarginZero(), -1, -1),
+            DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1),
             emptyMetaData
         );
 
@@ -257,7 +257,7 @@ contract ControllerTest is TestDeployer, Test {
             positionUpdates,
             (1e18 * 1800) / 1e12,
             margin,
-            DataType.TradeOption(false, false, false, controller.getIsMarginZero(), -1, -1),
+            DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1),
             emptyMetaData
         );
 
@@ -296,7 +296,7 @@ contract ControllerTest is TestDeployer, Test {
             positionUpdates,
             (1e18 * 1800) / 1e12,
             margin,
-            DataType.TradeOption(false, false, false, controller.getIsMarginZero(), -1, -1),
+            DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1),
             emptyMetaData
         );
 
@@ -314,7 +314,7 @@ contract ControllerTest is TestDeployer, Test {
             positionUpdates2,
             0,
             0,
-            DataType.TradeOption(false, false, false, controller.getIsMarginZero(), -1, -1),
+            DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1),
             emptyMetaData
         );
 

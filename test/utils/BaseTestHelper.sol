@@ -46,6 +46,7 @@ abstract contract BaseTestHelper {
                 address(uniPool),
                 true,
                 1,
+                1,
                 tokenState,
                 tokenState
             );
@@ -53,6 +54,12 @@ abstract contract BaseTestHelper {
 
     function getPerpState() internal pure returns (DataType.PerpStatus memory) {
         return DataType.PerpStatus(0, 0, 0, 0, 0, 0, 0, 0, 0);
+    }
+
+    function getIsMarginZero() internal view returns (bool) {
+        (bool isMarginZero, , ) = controller.getContext();
+
+        return isMarginZero;
     }
 
     function depositToken(
@@ -140,7 +147,7 @@ abstract contract BaseTestHelper {
             positionUpdates,
             _amount0,
             _amount1,
-            DataType.TradeOption(false, false, false, controller.getIsMarginZero(), -1, -1),
+            DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1),
             emptyMetaData
         );
     }
@@ -155,7 +162,7 @@ abstract contract BaseTestHelper {
         DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](1);
 
         (uint128 liquidity, uint256 amount0, uint256 amount1) = LPTMath.getLiquidityAndAmountToDeposit(
-            controller.getIsMarginZero(),
+            getIsMarginZero(),
             _amount,
             controller.getSqrtPrice(),
             _lower,
@@ -178,7 +185,7 @@ abstract contract BaseTestHelper {
                 positionUpdates,
                 (amount0 * 105) / 100,
                 (amount1 * 105) / 100,
-                DataType.TradeOption(false, false, false, controller.getIsMarginZero(), -1, -1),
+                DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1),
                 emptyMetaData
             );
     }
@@ -202,7 +209,7 @@ abstract contract BaseTestHelper {
             controller.openPosition(
                 _vaultId,
                 position,
-                DataType.TradeOption(false, false, false, controller.getIsMarginZero(), -1, -1),
+                DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1),
                 DataType.OpenPositionOption(1500 * 1e6, 1000, 1e10, 0, emptyMetaData)
             );
     }

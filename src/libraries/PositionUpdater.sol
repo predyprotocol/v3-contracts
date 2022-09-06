@@ -570,8 +570,8 @@ library PositionUpdater {
      * @notice Collects trade fee and premium.
      */
     function collectFee(
-        DataType.Context storage _context,
-        DataType.Vault storage _vault,
+        DataType.Context memory _context,
+        DataType.Vault memory _vault,
         mapping(uint256 => DataType.SubVault) storage _subVaults,
         mapping(bytes32 => DataType.PerpStatus) storage _ranges
     ) external {

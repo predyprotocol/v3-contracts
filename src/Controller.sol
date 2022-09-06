@@ -48,16 +48,14 @@ contract Controller is IController, Constants, Initializable {
 
     uint256 public lastTouchedTimestamp;
 
-    mapping(bytes32 => DataType.PerpStatus) private ranges;
-
-    uint256 public vaultIdCount;
+    mapping(bytes32 => DataType.PerpStatus) internal ranges;
 
     mapping(uint256 => DataType.Vault) internal vaults;
     mapping(uint256 => DataType.SubVault) internal subVaults;
 
-    DataType.Context public context;
-    InterestCalculator.IRMParams private irmParams;
-    InterestCalculator.DPMParams private dpmParams;
+    DataType.Context internal context;
+    InterestCalculator.IRMParams public irmParams;
+    InterestCalculator.DPMParams public dpmParams;
 
     address public operator;
 
@@ -97,7 +95,7 @@ contract Controller is IController, Constants, Initializable {
 
         context.uniswapPool = PoolAddress.computeAddress(_factory, poolKey);
 
-        vaultIdCount = 1;
+        context.vaultIdCount = 1;
         context.nextSubVaultId = 1;
 
         ERC20(context.token0).approve(address(_positionManager), type(uint256).max);
@@ -145,17 +143,17 @@ contract Controller is IController, Constants, Initializable {
         DataType.TradeOption memory _tradeOption,
         DataType.MetaData memory _metadata
     ) public override returns (uint256 vaultId) {
-        applyPerpFee(_vaultId, _positionUpdates);
-
-        DataType.Vault storage vault;
-        (vaultId, vault) = createOrGetVault(_vaultId, _tradeOption.quoterMode);
-
         if (_buffer0 > 0) {
             TransferHelper.safeTransferFrom(context.token0, msg.sender, address(this), uint256(_buffer0));
         }
         if (_buffer1 > 0) {
             TransferHelper.safeTransferFrom(context.token1, msg.sender, address(this), uint256(_buffer1));
         }
+
+        applyPerpFee(_vaultId, _positionUpdates);
+
+        DataType.Vault storage vault;
+        (vaultId, vault) = createOrGetVault(_vaultId, _tradeOption.quoterMode);
 
         // update position in the vault
         (int256 requiredAmount0, int256 requiredAmount1) = PositionUpdater.updatePosition(
@@ -207,25 +205,16 @@ contract Controller is IController, Constants, Initializable {
             ranges,
             _positionUpdates,
             // reduce only
-            DataType.TradeOption(true, _swapAnyway, false, context.isMarginZero, -1, -1)
+            DataType.TradeOption(true, _swapAnyway, false, context.isMarginZero, -2, -2)
         );
-        surplusAmount0 = -surplusAmount0;
-        surplusAmount1 = -surplusAmount1;
 
-        require(0 <= surplusAmount0, "P5");
-        require(0 <= surplusAmount1, "P6");
+        require(0 == surplusAmount0, "P5");
+        require(0 == surplusAmount1, "P6");
 
         if (context.isMarginZero) {
-            (surplusAmount0, penaltyAmount) = PredyMath.subReward(surplusAmount0, _penaltyAmount);
+            (vault.marginAmount0, penaltyAmount) = PredyMath.subReward(vault.marginAmount0, _penaltyAmount);
         } else {
-            (surplusAmount1, penaltyAmount) = PredyMath.subReward(surplusAmount1, _penaltyAmount);
-        }
-
-        if (0 < surplusAmount0) {
-            vault.marginAmount0 += uint256(surplusAmount0);
-        }
-        if (0 < surplusAmount1) {
-            vault.marginAmount1 += uint256(surplusAmount1);
+            (vault.marginAmount1, penaltyAmount) = PredyMath.subReward(vault.marginAmount1, _penaltyAmount);
         }
     }
 
@@ -238,7 +227,7 @@ contract Controller is IController, Constants, Initializable {
         uint256 _vaultId,
         DataType.PositionUpdate[] memory _positionUpdates,
         bool _swapAnyway
-    ) public override {
+    ) internal {
         applyPerpFee(_vaultId, _positionUpdates);
 
         // check liquidation
@@ -276,12 +265,54 @@ contract Controller is IController, Constants, Initializable {
 
     // Getter Functions
 
-    function getIsMarginZero() external view returns (bool) {
-        return context.isMarginZero;
+    function getContext()
+        external
+        view
+        returns (
+            bool,
+            uint256,
+            uint256
+        )
+    {
+        return (context.isMarginZero, context.vaultIdCount, context.nextSubVaultId);
     }
 
     function getRange(bytes32 _rangeId) external view returns (DataType.PerpStatus memory) {
         return ranges[_rangeId];
+    }
+
+    function getAssetStatus()
+        external
+        view
+        returns (
+            uint256,
+            uint256,
+            uint256,
+            uint256,
+            uint256,
+            uint256
+        )
+    {
+        return (
+            BaseToken.getTotalCollateralValue(context.tokenState0),
+            BaseToken.getTotalDebtValue(context.tokenState0),
+            BaseToken.getUtilizationRatio(context.tokenState0),
+            BaseToken.getTotalCollateralValue(context.tokenState1),
+            BaseToken.getTotalDebtValue(context.tokenState1),
+            BaseToken.getUtilizationRatio(context.tokenState1)
+        );
+    }
+
+    function getLPTStatus(bytes32 _rangeId)
+        external
+        view
+        returns (
+            uint256,
+            uint256,
+            uint256
+        )
+    {
+        return LPTStateLib.getPerpStatus(context, ranges[_rangeId]);
     }
 
     /**
@@ -320,26 +351,13 @@ contract Controller is IController, Constants, Initializable {
 
     // Private Functions
 
-    function _checkLiquidatable(uint256 _vaultId) internal view returns (bool) {
-        (uint160 sqrtPrice, ) = LPTMath.callUniswapObserve(IUniswapV3Pool(context.uniswapPool), ORACLE_PERIOD);
-
-        // calculate value using TWAP price
-        int256 requiredCollateral = PositionCalculator.calculateMinCollateral(
-            PositionLib.concat(_getPosition(_vaultId)),
-            sqrtPrice,
-            context.isMarginZero
-        );
-
-        return requiredCollateral > int256(vaults[_vaultId].getMarginValue(context));
-    }
-
     function createOrGetVault(uint256 _vaultId, bool _quoterMode)
         internal
         returns (uint256 vaultId, DataType.Vault storage)
     {
         if (_vaultId == 0) {
-            vaultId = vaultIdCount;
-            vaultIdCount++;
+            vaultId = context.vaultIdCount;
+            context.vaultIdCount++;
 
             vaults[vaultId].vaultId = vaultId;
             vaults[vaultId].owner = msg.sender;
@@ -353,17 +371,21 @@ contract Controller is IController, Constants, Initializable {
         return (vaultId, vaults[vaultId]);
     }
 
-    function sendReward(address _liquidator, uint256 _reward) internal {
-        TransferHelper.safeTransfer(context.isMarginZero ? context.token0 : context.token1, _liquidator, _reward);
+    function _checkLiquidatable(uint256 _vaultId) internal view returns (bool) {
+        (uint160 sqrtPrice, ) = LPTMath.callUniswapObserve(IUniswapV3Pool(context.uniswapPool), ORACLE_PERIOD);
+
+        // calculate value using TWAP price
+        int256 requiredCollateral = PositionCalculator.calculateMinCollateral(
+            PositionLib.concat(_getPosition(_vaultId)),
+            sqrtPrice,
+            context.isMarginZero
+        );
+
+        return requiredCollateral > int256(vaults[_vaultId].getMarginValue(context));
     }
 
-    function sendReward(
-        address _liquidator,
-        uint256 _reward0,
-        uint256 _reward1
-    ) internal {
-        TransferHelper.safeTransfer(context.token0, _liquidator, _reward0);
-        TransferHelper.safeTransfer(context.token1, _liquidator, _reward1);
+    function sendReward(address _liquidator, uint256 _reward) internal {
+        TransferHelper.safeTransfer(context.isMarginZero ? context.token0 : context.token1, _liquidator, _reward);
     }
 
     /**
@@ -377,33 +399,17 @@ contract Controller is IController, Constants, Initializable {
      * @notice apply interest, premium and trade fee for ranges that the vault and positionUpdates have.
      */
     function applyPerpFee(uint256 _vaultId, DataType.PositionUpdate[] memory _positionUpdates) internal {
-        DataType.Vault storage vault = vaults[_vaultId];
+        DataType.Vault memory vault = vaults[_vaultId];
 
-        // calculate fee for ranges thath the vault has.
-        for (uint256 i = 0; i < vault.subVaults.length; i++) {
-            DataType.SubVault memory subVault = subVaults[vault.subVaults[i]];
-
-            for (uint256 j = 0; j < subVault.lpts.length; j++) {
-                InterestCalculator.applyDailyPremium(
-                    dpmParams,
-                    context,
-                    ranges[subVault.lpts[j].rangeId],
-                    getSqrtPrice()
-                );
-            }
-        }
-
-        // calculate fee for ranges thath positionUpdates have.
-        for (uint256 i = 0; i < _positionUpdates.length; i++) {
-            bytes32 rangeId = LPTStateLib.getRangeKey(_positionUpdates[i].lowerTick, _positionUpdates[i].upperTick);
-
-            // if range is not initialized, skip calculation.
-            if (ranges[rangeId].tokenId == 0) {
-                continue;
-            }
-
-            InterestCalculator.applyDailyPremium(dpmParams, context, ranges[rangeId], getSqrtPrice());
-        }
+        InterestCalculator.applyPremiumForVault(
+            vault,
+            subVaults,
+            ranges,
+            context,
+            _positionUpdates,
+            dpmParams,
+            getSqrtPrice()
+        );
 
         lastTouchedTimestamp = InterestCalculator.applyInterest(context, irmParams, lastTouchedTimestamp);
 
