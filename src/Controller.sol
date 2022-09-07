@@ -376,14 +376,14 @@ contract Controller is IController, Constants, Initializable {
     function _checkLiquidatable(uint256 _vaultId) internal view returns (bool) {
         (uint160 sqrtPrice, ) = LPTMath.callUniswapObserve(IUniswapV3Pool(context.uniswapPool), ORACLE_PERIOD);
 
-        // calculate value using TWAP price
-        int256 requiredCollateral = PositionCalculator.calculateMinCollateral(
+        // calculate Min Collateral by using TWAP.
+        int256 minCollateral = PositionCalculator.calculateMinCollateral(
             PositionLib.concat(_getPosition(_vaultId)),
             sqrtPrice,
             context.isMarginZero
         );
 
-        return requiredCollateral > int256(vaults[_vaultId].getMarginValue(context));
+        return minCollateral > int256(vaults[_vaultId].getMarginValue(context));
     }
 
     function sendReward(address _liquidator, uint256 _reward) internal {
