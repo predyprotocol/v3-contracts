@@ -12,6 +12,8 @@ library PositionLib {
     using SafeMath for uint256;
     using SignedSafeMath for int256;
 
+    uint256 private constant CLOSE_MARGIN = 120;
+
     function getPositionUpdatesToOpen(
         DataType.Position memory _position,
         bool _isQuoteZero,
@@ -107,66 +109,6 @@ library PositionLib {
                 (uint256(-requiredAmount1) * _swapRatio) / 100,
                 0
             );
-        }
-    }
-
-    function calculateMaxAmount0(
-        uint256 _amount1,
-        uint256 _price,
-        uint256 _slippageTorelance,
-        bool _isMarginZero
-    ) internal pure returns (uint256) {
-        if (_isMarginZero) {
-            uint256 limitPrice = (_price * (1e4 + _slippageTorelance)) / 1e4;
-            return (_amount1 * limitPrice) / 1e18;
-        } else {
-            uint256 limitPrice = (_price * (1e4 - _slippageTorelance)) / 1e4;
-            return (_amount1 * 1e18) / limitPrice;
-        }
-    }
-
-    function calculateMinAmount0(
-        uint256 _amount1,
-        uint256 _price,
-        uint256 _slippageTorelance,
-        bool _isMarginZero
-    ) internal pure returns (uint256) {
-        if (_isMarginZero) {
-            uint256 limitPrice = (_price * (1e4 - _slippageTorelance)) / 1e4;
-            return (_amount1 * limitPrice) / 1e18;
-        } else {
-            uint256 limitPrice = (_price * (1e4 + _slippageTorelance)) / 1e4;
-            return (_amount1 * 1e18) / limitPrice;
-        }
-    }
-
-    function calculateMaxAmount1(
-        uint256 _amount0,
-        uint256 _price,
-        uint256 _slippageTorelance,
-        bool _isMarginZero
-    ) internal pure returns (uint256) {
-        if (_isMarginZero) {
-            uint256 limitPrice = (_price * (1e4 - _slippageTorelance)) / 1e4;
-            return (_amount0 * 1e18) / limitPrice;
-        } else {
-            uint256 limitPrice = (_price * (1e4 + _slippageTorelance)) / 1e4;
-            return (_amount0 * limitPrice) / 1e18;
-        }
-    }
-
-    function calculateMinAmount1(
-        uint256 _amount0,
-        uint256 _price,
-        uint256 _slippageTorelance,
-        bool _isMarginZero
-    ) internal pure returns (uint256) {
-        if (_isMarginZero) {
-            uint256 limitPrice = (_price * (1e4 + _slippageTorelance)) / 1e4;
-            return (_amount0 * 1e18) / limitPrice;
-        } else {
-            uint256 limitPrice = (_price * (1e4 - _slippageTorelance)) / 1e4;
-            return (_amount0 * limitPrice) / 1e18;
         }
     }
 
@@ -473,8 +415,8 @@ library PositionLib {
                     0,
                     0,
                     0,
-                    (_positions[i].collateral0 * 12) / 10,
-                    (_positions[i].collateral1 * 12) / 10
+                    (_positions[i].collateral0 * CLOSE_MARGIN) / 100,
+                    (_positions[i].collateral1 * CLOSE_MARGIN) / 100
                 );
                 index++;
             }
@@ -489,8 +431,8 @@ library PositionLib {
                     0,
                     0,
                     0,
-                    (_positions[i].debt0 * 12) / 10,
-                    (_positions[i].debt1 * 12) / 10
+                    (_positions[i].debt0 * CLOSE_MARGIN) / 100,
+                    (_positions[i].debt1 * CLOSE_MARGIN) / 100
                 );
             }
         }

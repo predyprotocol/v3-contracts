@@ -85,22 +85,18 @@ contract ControllerHelperTest is TestDeployer, Test {
         );
     }
 
-    function testBorrowLPT1(uint256 _swapAmount) public {
+    function testBorrowLPT(uint256 _swapAmount) public {
         vm.assume(1e16 <= _swapAmount && _swapAmount < 10 * 1e18);
 
         slip(owner, true, _swapAmount);
 
         uint256 margin = 500 * 1e6;
 
-        (uint128 liquidity, , ) = LPTMath.getLiquidityAndAmountToBorrow(true, 1e18, 202600, 202500, 202600);
-
-        DataType.LPT[] memory lpts = new DataType.LPT[](1);
-        lpts[0] = DataType.LPT(false, liquidity, 202500, 202600);
-        DataType.Position memory position = DataType.Position(0, 0, 1e18, 0, 0, lpts);
+        DataType.Position[] memory positions = getBorrowLPTPosition(0, 202600, 202500, 202600, 1e18);
 
         uint256 vaultId = controller.openPosition(
             0,
-            position,
+            positions[0],
             DataType.TradeOption(false, true, false, getIsMarginZero(), int256(margin), -1),
             // deposit margin
             DataType.OpenPositionOption(controller.getPrice(), 500, 1000 * 1e6, 0, emptyMetaData)
@@ -216,6 +212,28 @@ contract ControllerHelperTest is TestDeployer, Test {
 
         assertEq(vaultStatus.marginValue, 0);
         assertEq(vaultStatus.subVaults.length, 0);
+    }
+
+    function testRepayHalfOfLPT() public {
+        uint256 vaultId = borrowLPT(0, 0, 202600, 202500, 202600, 1e18, 100 * 1e6);
+
+        swapToSamePrice(owner);
+
+        vm.warp(block.timestamp + 5 minutes);
+
+        DataType.Position[] memory positions = getBorrowLPTPosition(0, 202600, 202500, 202600, 1e18 / 2);
+
+        controller.closePosition(
+            vaultId,
+            positions,
+            DataType.TradeOption(false, true, false, getIsMarginZero(), -2, -2),
+            DataType.ClosePositionOption(1500 * 1e6, 1000, 54, emptyMetaData)
+        );
+
+        DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);
+
+        assertGt(vaultStatus.marginValue, 0);
+        assertEq(vaultStatus.subVaults.length, 1);
     }
 
     function testComplecatedPosition() public {
