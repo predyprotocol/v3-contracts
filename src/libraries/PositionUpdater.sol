@@ -569,7 +569,7 @@ library PositionUpdater {
     /**
      * @notice Collects trade fee and premium.
      */
-    function collectFee(
+    function updateFeeGrowth(
         DataType.Context memory _context,
         DataType.Vault memory _vault,
         mapping(uint256 => DataType.SubVault) storage _subVaults,
@@ -583,69 +583,6 @@ library PositionUpdater {
             }
         }
     }
-
-    /*
-    function collectFeeAndPremium(
-        DataType.Context storage _context,
-        DataType.Vault storage _vault,
-        mapping(bytes32 => DataType.PerpStatus) storage _ranges
-    ) public returns (int256 feeAmount0, int256 feeAmount1) {
-        {
-            (uint256 fee0, uint256 fee1) = _vault.getEarnedTradeFee(_ranges);
-            uint256 earnedPremium = _vault.getEarnedDailyPremium(_ranges);
-            uint256 paidPremium = _vault.getPaidDailyPremium(_ranges);
-
-            feeAmount0 += int256(fee0);
-            feeAmount1 += int256(fee1);
-
-            if (_context.isMarginZero) {
-                feeAmount0 += int256(earnedPremium) - int256(paidPremium);
-            } else {
-                feeAmount1 += int256(earnedPremium) - int256(paidPremium);
-            }
-        }
-
-        if (feeAmount0 > 0 && feeAmount1 > 0) {
-            depositTokens(_vault, _context, uint256(feeAmount0), uint256(feeAmount1));
-        } else if (feeAmount0 > 0) {
-            depositTokens(_vault, _context, uint256(feeAmount0), 0);
-        } else if (feeAmount1 > 0) {
-            depositTokens(_vault, _context, 0, uint256(feeAmount1));
-        }
-
-        if (feeAmount0 < 0) {
-            borrowTokens(_vault, _context, uint256(-feeAmount0), 0);
-        }
-        if (feeAmount1 < 0) {
-            borrowTokens(_vault, _context, 0, uint256(-feeAmount1));
-        }
-
-        // update entry price
-        updateFeeEntry(_vault, _ranges);
-
-        // emit event
-        if (feeAmount0 != 0 || feeAmount1 != 0) {
-            emit FeeCollected(_vault.vaultId, feeAmount0, feeAmount1);
-        }
-    }
-
-    function updateFeeEntry(DataType.Vault storage _vault, mapping(bytes32 => DataType.PerpStatus) storage _ranges)
-        internal
-    {
-        for (uint256 i = 0; i < _vault.lpts.length; i++) {
-            DataType.LPTState storage lptState = _vault.lpts[i];
-
-            if (lptState.isCollateral) {
-                lptState.premiumGrowthLast = _ranges[lptState.rangeId].premiumGrowthForLender;
-                lptState.fee0Last = _ranges[lptState.rangeId].fee0Growth;
-                lptState.fee1Last = _ranges[lptState.rangeId].fee1Growth;
-            } else {
-                lptState.premiumGrowthLast = _ranges[lptState.rangeId].premiumGrowthForBorrower;
-            }
-        }
-    }
-
-    */
 
     function decreaseLiquidityFromUni(
         DataType.Context memory _context,

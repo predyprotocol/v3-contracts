@@ -98,7 +98,7 @@ contract InterestCalculatorTest is TestDeployer, Test {
         assertEq(ir60, 210001000000000000);
     }
 
-    function testApplyDailyPremium() public {
+    function testupdatePremiumGrowth() public {
         vm.warp(block.timestamp + 5 minutes);
 
         swapRouter.exactInputSingle(
@@ -127,7 +127,7 @@ contract InterestCalculatorTest is TestDeployer, Test {
             })
         );
 
-        InterestCalculator.applyDailyPremium(dpmParams, getContext(), perpStatus, getSqrtPrice());
+        InterestCalculator.updatePremiumGrowth(dpmParams, getContext(), perpStatus, getSqrtPrice());
 
         assertGt(perpStatus.premiumGrowthForLender, 0);
         assertGt(perpStatus.premiumGrowthForBorrower, 0);

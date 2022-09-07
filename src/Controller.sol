@@ -403,7 +403,7 @@ contract Controller is IController, Constants, Initializable {
     function applyPerpFee(uint256 _vaultId, DataType.PositionUpdate[] memory _positionUpdates) internal {
         DataType.Vault memory vault = vaults[_vaultId];
 
-        InterestCalculator.applyPremiumForVault(
+        InterestCalculator.updatePremiumGrowthForVault(
             vault,
             subVaults,
             ranges,
@@ -415,7 +415,7 @@ contract Controller is IController, Constants, Initializable {
 
         lastTouchedTimestamp = InterestCalculator.applyInterest(context, irmParams, lastTouchedTimestamp);
 
-        PositionUpdater.collectFee(context, vault, subVaults, ranges);
+        PositionUpdater.updateFeeGrowth(context, vault, subVaults, ranges);
     }
 
     /**

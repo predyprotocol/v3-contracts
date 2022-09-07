@@ -48,7 +48,8 @@ library InterestCalculator {
         uint256 slope2;
     }
 
-    function applyPremiumForVault(
+    // update premium growth
+    function updatePremiumGrowthForVault(
         DataType.Vault memory _vault,
         mapping(uint256 => DataType.SubVault) storage _subVaults,
         mapping(bytes32 => DataType.PerpStatus) storage _ranges,
@@ -57,12 +58,12 @@ library InterestCalculator {
         DPMParams storage _dpmParams,
         uint160 _sqrtPrice
     ) external {
-        // calculate fee for ranges thath the vault has.
+        // calculate fee for ranges that the vault has.
         for (uint256 i = 0; i < _vault.subVaults.length; i++) {
             DataType.SubVault memory subVault = _subVaults[_vault.subVaults[i]];
 
             for (uint256 j = 0; j < subVault.lpts.length; j++) {
-                InterestCalculator.applyDailyPremium(
+                InterestCalculator.updatePremiumGrowth(
                     _dpmParams,
                     _context,
                     _ranges[subVault.lpts[j].rangeId],
@@ -71,7 +72,7 @@ library InterestCalculator {
             }
         }
 
-        // calculate fee for ranges thath positionUpdates have.
+        // calculate fee for ranges that positionUpdates have.
         for (uint256 i = 0; i < _positionUpdates.length; i++) {
             bytes32 rangeId = LPTStateLib.getRangeKey(_positionUpdates[i].lowerTick, _positionUpdates[i].upperTick);
 
@@ -80,11 +81,34 @@ library InterestCalculator {
                 continue;
             }
 
-            InterestCalculator.applyDailyPremium(_dpmParams, _context, _ranges[rangeId], _sqrtPrice);
+            InterestCalculator.updatePremiumGrowth(_dpmParams, _context, _ranges[rangeId], _sqrtPrice);
         }
     }
 
-    function applyDailyPremium(
+    // update scaler for reserves
+    function applyInterest(
+        DataType.Context storage _context,
+        IRMParams memory _irmParams,
+        uint256 lastTouchedTimestamp
+    ) external returns (uint256) {
+        if (block.timestamp <= lastTouchedTimestamp) {
+            return lastTouchedTimestamp;
+        }
+
+        // calculate interest for tokens
+        uint256 interest0 = ((block.timestamp - lastTouchedTimestamp) *
+            calculateInterestRate(_irmParams, BaseToken.getUtilizationRatio(_context.tokenState0))) / 365 days;
+
+        uint256 interest1 = ((block.timestamp - lastTouchedTimestamp) *
+            calculateInterestRate(_irmParams, BaseToken.getUtilizationRatio(_context.tokenState0))) / 365 days;
+
+        _context.tokenState0.updateScaler(interest0);
+        _context.tokenState1.updateScaler(interest1);
+
+        return block.timestamp;
+    }
+
+    function updatePremiumGrowth(
         DPMParams storage _params,
         DataType.Context memory _context,
         DataType.PerpStatus storage _perpState,
@@ -145,28 +169,6 @@ library InterestCalculator {
         }
 
         return 0;
-    }
-
-    function applyInterest(
-        DataType.Context storage _context,
-        IRMParams memory _irmParams,
-        uint256 lastTouchedTimestamp
-    ) external returns (uint256) {
-        if (block.timestamp <= lastTouchedTimestamp) {
-            return lastTouchedTimestamp;
-        }
-
-        // calculate interest for tokens
-        uint256 interest0 = ((block.timestamp - lastTouchedTimestamp) *
-            calculateInterestRate(_irmParams, BaseToken.getUtilizationRatio(_context.tokenState0))) / 365 days;
-
-        uint256 interest1 = ((block.timestamp - lastTouchedTimestamp) *
-            calculateInterestRate(_irmParams, BaseToken.getUtilizationRatio(_context.tokenState0))) / 365 days;
-
-        _context.tokenState0.updateScaler(interest0);
-        _context.tokenState1.updateScaler(interest1);
-
-        return block.timestamp;
     }
 
     function calculateStableValueFromTotalPremiumValue(uint256 _premiumInUsd, uint256 _totalLiquidity)
