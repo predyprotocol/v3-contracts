@@ -16,7 +16,7 @@ contract InterestCalculatorTest is TestDeployer, Test {
     DataType.Context private context;
     DataType.PerpStatus private perpStatus;
     InterestCalculator.DPMParams private dpmParams;
-    DataType.Vault private vault;
+    BaseToken.AccountState private balance0;
 
     uint128 private liquidity;
 
@@ -61,9 +61,9 @@ contract InterestCalculatorTest is TestDeployer, Test {
 
     function testApplyInterest() public {
         // deposit token
-        BaseToken.addCollateral(context.tokenState0, vault.balance0, 1e18, true);
+        BaseToken.addCollateral(context.tokenState0, balance0, 1e18, true);
         // borrow token
-        BaseToken.addDebt(context.tokenState0, vault.balance0, 1e17);
+        BaseToken.addDebt(context.tokenState0, balance0, 1e17);
 
         // 1 day passed
         vm.warp(block.timestamp + 1 days);
@@ -98,7 +98,7 @@ contract InterestCalculatorTest is TestDeployer, Test {
         assertEq(ir60, 210001000000000000);
     }
 
-    function testApplyDailyPremium() public {
+    function testupdatePremiumGrowth() public {
         vm.warp(block.timestamp + 5 minutes);
 
         swapRouter.exactInputSingle(
@@ -127,7 +127,7 @@ contract InterestCalculatorTest is TestDeployer, Test {
             })
         );
 
-        InterestCalculator.applyDailyPremium(dpmParams, getContext(), perpStatus, getSqrtPrice());
+        InterestCalculator.updatePremiumGrowth(dpmParams, getContext(), perpStatus, getSqrtPrice());
 
         assertGt(perpStatus.premiumGrowthForLender, 0);
         assertGt(perpStatus.premiumGrowthForBorrower, 0);

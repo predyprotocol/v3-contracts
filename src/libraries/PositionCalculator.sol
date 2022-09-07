@@ -20,17 +20,17 @@ library PositionCalculator {
     uint160 internal constant LOWER_E8 = 89802651;
 
     /**
-     * @notice Calculates required collateral for a position.
-     * RequiredCollateral = 0.01 * DebtValue - minValue
+     * @notice Calculates Min. Collateral for a position.
+     * MinCollateral = 0.01 * DebtValue - minValue
      * @param _position position object
      * @param _sqrtPrice square root price to calculate
      * @param _isMarginZero whether the stable token is token0 or token1
      */
-    function calculateRequiredCollateral(
+    function calculateMinCollateral(
         DataType.Position memory _position,
         uint160 _sqrtPrice,
         bool _isMarginZero
-    ) internal pure returns (int256) {
+    ) external pure returns (int256) {
         int256 minValue = calculateMinValue(_position, _sqrtPrice, _isMarginZero);
 
         (, uint256 debtValue) = calculateCollateralAndDebtValue(_position, _sqrtPrice, _isMarginZero);
@@ -40,11 +40,19 @@ library PositionCalculator {
 
     /**
      * @notice Calculates square root of min price (a * b)^(1/4)
+     * P_{min}^(1/2) = (a * b)^(1/4)
      */
     function calculateMinSqrtPrice(int24 _lowerTick, int24 _upperTick) internal pure returns (uint160) {
         return uint160(TickMath.getSqrtRatioAtTick((_lowerTick + _upperTick) / 2));
     }
 
+    /**
+     * @notice Calculates minValue.
+     * MinValue is minimal value of following values.
+     * 1. value of at P*1.24
+     * 2. value of at P/1.24
+     * 3. values of at P_{min} of LPTs
+     */
     function calculateMinValue(
         DataType.Position memory _position,
         uint160 _sqrtPrice,
@@ -64,6 +72,23 @@ library PositionCalculator {
             sqrtPriceUpper = TickMath.MAX_SQRT_RATIO;
         }
 
+        {
+            // 1. check value of at P*1.24
+            int256 value = calculateValue(_position, sqrtPriceUpper, _isMarginZero);
+            if (minValue > value) {
+                minValue = value;
+            }
+        }
+
+        {
+            // 2. check value of at P/1.24
+            int256 value = calculateValue(_position, sqrtPriceLower, _isMarginZero);
+            if (minValue > value) {
+                minValue = value;
+            }
+        }
+
+        // 3. check values of at P_{min} of LPTs
         for (uint256 i = 0; i < _position.lpts.length; i++) {
             DataType.LPT memory lpt = _position.lpts[i];
 
@@ -79,20 +104,6 @@ library PositionCalculator {
                 if (minValue > value) {
                     minValue = value;
                 }
-            }
-        }
-
-        {
-            int256 value = calculateValue(_position, sqrtPriceUpper, _isMarginZero);
-            if (minValue > value) {
-                minValue = value;
-            }
-        }
-
-        {
-            int256 value = calculateValue(_position, sqrtPriceLower, _isMarginZero);
-            if (minValue > value) {
-                minValue = value;
             }
         }
     }

@@ -27,13 +27,18 @@ library DataType {
         uint256 fee1Last;
     }
 
-    struct Vault {
-        uint256 vaultId;
-        address owner;
-        bool isClosed;
+    struct SubVault {
         BaseToken.AccountState balance0;
         BaseToken.AccountState balance1;
         LPTState[] lpts;
+    }
+
+    struct Vault {
+        uint256 vaultId;
+        address owner;
+        uint256 marginAmount0;
+        uint256 marginAmount1;
+        uint256[] subVaults;
     }
 
     struct Context {
@@ -44,6 +49,7 @@ library DataType {
         address swapRouter;
         address uniswapPool;
         bool isMarginZero;
+        uint256 nextSubVaultId;
         BaseToken.TokenState tokenState0;
         BaseToken.TokenState tokenState1;
     }
@@ -65,6 +71,7 @@ library DataType {
     }
 
     struct Position {
+        uint256 subVaultIndex;
         uint256 collateral0;
         uint256 collateral1;
         uint256 debt0;
@@ -83,11 +90,14 @@ library DataType {
         BORROW_LPT,
         REPAY_LPT,
         SWAP_EXACT_IN,
-        SWAP_EXACT_OUT
+        SWAP_EXACT_OUT,
+        DEPOSIT_MARGIN,
+        WITHDRAW_MARGIN
     }
 
     struct PositionUpdate {
         PositionUpdateType positionUpdateType;
+        uint256 subVaultIndex;
         bool zeroForOne;
         uint128 liquidity;
         int24 lowerTick;
@@ -96,11 +106,18 @@ library DataType {
         uint256 param1;
     }
 
+    struct MetaData {
+        uint256 subVaultIndex;
+        bytes metadata;
+    }
+
     struct TradeOption {
         bool reduceOnly;
         bool swapAnyway;
         bool quoterMode;
         bool isQuoteZero;
+        int256 targetMarginAmount0;
+        int256 targetMarginAmount1;
     }
 
     struct OpenPositionOption {
@@ -108,14 +125,14 @@ library DataType {
         uint256 slippageTorelance;
         uint256 bufferAmount0;
         uint256 bufferAmount1;
-        bytes metadata;
+        MetaData metadata;
     }
 
     struct ClosePositionOption {
         uint256 price;
         uint256 slippageTorelance;
         uint256 swapRatio;
-        bytes metadata;
+        MetaData metadata;
     }
 
     struct LiquidationOption {
@@ -142,8 +159,14 @@ library DataType {
         uint256 paidpremium;
     }
 
-    struct VaultStatus {
+    struct SubVaultStatus {
         VaultStatusValue values;
-        VaultStatusAmount amounts;
+        VaultStatusAmount amount;
+    }
+
+    struct VaultStatus {
+        uint256 marginValue;
+        int256 minCollateral;
+        SubVaultStatus[] subVaults;
     }
 }

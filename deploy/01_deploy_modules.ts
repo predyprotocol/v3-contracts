@@ -9,17 +9,25 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const { deploy } = deployments
 
+  await deploy('InterestCalculator', { from: deployer, log: true })
+  await deploy('PositionCalculator', { from: deployer, log: true })
   await deploy('LPTMath', { from: deployer, log: true })
-  await deploy('VaultLib', { from: deployer, log: true })
   await deploy('PositionLib', { from: deployer, log: true })
 
-  const LPTMath = await ethers.getContract('LPTMath', deployer)
+  const PositionCalculator = await ethers.getContract('PositionCalculator', deployer)
+  await deploy('VaultLib', {
+    from: deployer,
+    log: true,
+    libraries: {
+      PositionCalculator: PositionCalculator.address,
+    },
+  })
+
   const VaultLib = await ethers.getContract('VaultLib', deployer)
 
   await deploy('PositionUpdater', {
     from: deployer,
     libraries: {
-      LPTMath: LPTMath.address,
       VaultLib: VaultLib.address,
     },
     log: true,

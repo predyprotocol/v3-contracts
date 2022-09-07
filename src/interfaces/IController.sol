@@ -11,12 +11,6 @@ interface IController {
         uint256 _buffer0,
         uint256 _buffer1,
         DataType.TradeOption memory _tradeOption,
-        bytes memory _metadata
+        DataType.MetaData memory _metadata
     ) external returns (uint256 vaultId);
-
-    function liquidate(
-        uint256 _vaultId,
-        DataType.PositionUpdate[] memory _positionUpdates,
-        bool _swapAnyway
-    ) external;
 }

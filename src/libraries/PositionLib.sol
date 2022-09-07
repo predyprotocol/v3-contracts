@@ -27,6 +27,7 @@ library PositionLib {
             if (requiredAmount1 > 0) {
                 positionUpdates[swapIndex] = DataType.PositionUpdate(
                     DataType.PositionUpdateType.SWAP_EXACT_OUT,
+                    0,
                     true,
                     0,
                     0,
@@ -37,6 +38,7 @@ library PositionLib {
             } else if (requiredAmount1 < 0) {
                 positionUpdates[swapIndex] = DataType.PositionUpdate(
                     DataType.PositionUpdateType.SWAP_EXACT_IN,
+                    0,
                     false,
                     0,
                     0,
@@ -49,6 +51,7 @@ library PositionLib {
             if (requiredAmount0 > 0) {
                 positionUpdates[swapIndex] = DataType.PositionUpdate(
                     DataType.PositionUpdateType.SWAP_EXACT_OUT,
+                    0,
                     false,
                     0,
                     0,
@@ -59,6 +62,7 @@ library PositionLib {
             } else if (requiredAmount0 < 0) {
                 positionUpdates[swapIndex] = DataType.PositionUpdate(
                     DataType.PositionUpdateType.SWAP_EXACT_IN,
+                    0,
                     true,
                     0,
                     0,
@@ -71,19 +75,20 @@ library PositionLib {
     }
 
     function getPositionUpdatesToClose(
-        DataType.Position memory _position,
+        DataType.Position[] memory _positions,
         uint256 _swapRatio,
         uint160 _sqrtPrice
     ) external pure returns (DataType.PositionUpdate[] memory positionUpdates) {
         uint256 swapIndex;
 
-        (positionUpdates, swapIndex) = calculatePositionUpdatesToClose(_position);
+        (positionUpdates, swapIndex) = calculatePositionUpdatesToClose(_positions);
 
-        (int256 requiredAmount0, int256 requiredAmount1) = getRequiredTokenAmountsToClose(_position, _sqrtPrice);
+        (int256 requiredAmount0, int256 requiredAmount1) = getRequiredTokenAmountsToClose(_positions, _sqrtPrice);
 
         if (requiredAmount0 < 0) {
             positionUpdates[swapIndex] = DataType.PositionUpdate(
                 DataType.PositionUpdateType.SWAP_EXACT_IN,
+                0,
                 true,
                 0,
                 0,
@@ -94,6 +99,7 @@ library PositionLib {
         } else if (requiredAmount1 < 0) {
             positionUpdates[swapIndex] = DataType.PositionUpdate(
                 DataType.PositionUpdateType.SWAP_EXACT_IN,
+                0,
                 false,
                 0,
                 0,
@@ -164,9 +170,49 @@ library PositionLib {
         }
     }
 
+    function concat(DataType.Position[] memory _positions, DataType.Position memory _position)
+        internal
+        pure
+        returns (DataType.Position memory)
+    {
+        DataType.Position[] memory positions = new DataType.Position[](_positions.length + 1);
+        for (uint256 i = 0; i < _positions.length; i++) {
+            positions[i] = _positions[i];
+        }
+
+        positions[_positions.length] = _position;
+
+        return concat(positions);
+    }
+
+    function concat(DataType.Position[] memory _positions) internal pure returns (DataType.Position memory _position) {
+        uint256 numLPTs;
+        for (uint256 i = 0; i < _positions.length; i++) {
+            numLPTs += _positions[i].lpts.length;
+        }
+
+        DataType.LPT[] memory lpts = new DataType.LPT[](numLPTs);
+
+        _position = DataType.Position(0, 0, 0, 0, 0, lpts);
+
+        uint256 k;
+
+        for (uint256 i = 0; i < _positions.length; i++) {
+            _position.collateral0 += _positions[i].collateral0;
+            _position.collateral1 += _positions[i].collateral1;
+            _position.debt0 += _positions[i].debt0;
+            _position.debt1 += _positions[i].debt1;
+
+            for (uint256 j = 0; j < _positions[i].lpts.length; j++) {
+                _position.lpts[k] = _positions[i].lpts[j];
+                k++;
+            }
+        }
+    }
+
     function emptyPosition() internal pure returns (DataType.Position memory) {
         DataType.LPT[] memory lpts = new DataType.LPT[](0);
-        return DataType.Position(0, 0, 0, 0, lpts);
+        return DataType.Position(0, 0, 0, 0, 0, lpts);
     }
 
     /**
@@ -193,6 +239,18 @@ library PositionLib {
         returns (int256, int256)
     {
         return getRequiredTokenAmounts(_srcPosition, emptyPosition(), _sqrtPrice);
+    }
+
+    function getRequiredTokenAmountsToClose(DataType.Position[] memory _srcPositions, uint160 _sqrtPrice)
+        internal
+        pure
+        returns (int256 requiredAmount0, int256 requiredAmount1)
+    {
+        for (uint256 i = 0; i < _srcPositions.length; i++) {
+            (int256 a0, int256 a1) = getRequiredTokenAmounts(_srcPositions[i], emptyPosition(), _sqrtPrice);
+            requiredAmount0 += a0;
+            requiredAmount1 += a1;
+        }
     }
 
     /**
@@ -255,6 +313,16 @@ library PositionLib {
         }
     }
 
+    function calculateLengthOfPositionUpdates(DataType.Position[] memory _positions)
+        internal
+        pure
+        returns (uint256 length)
+    {
+        for (uint256 i = 0; i < _positions.length; i++) {
+            length += calculateLengthOfPositionUpdates(_positions[i]);
+        }
+    }
+
     function calculateLengthOfPositionUpdates(DataType.Position memory _position)
         internal
         pure
@@ -278,13 +346,14 @@ library PositionLib {
     {
         positionUpdates = new DataType.PositionUpdate[](calculateLengthOfPositionUpdates(_position) + 1);
 
-        uint256 index;
+        uint256 index = 0;
 
         for (uint256 i = 0; i < _position.lpts.length; i++) {
             DataType.LPT memory lpt = _position.lpts[i];
             if (!lpt.isCollateral) {
                 positionUpdates[index] = DataType.PositionUpdate(
                     DataType.PositionUpdateType.BORROW_LPT,
+                    _position.subVaultIndex,
                     false,
                     lpt.liquidity,
                     lpt.lowerTick,
@@ -299,6 +368,7 @@ library PositionLib {
         if (_position.collateral0 > 0 || _position.collateral1 > 0) {
             positionUpdates[index] = DataType.PositionUpdate(
                 DataType.PositionUpdateType.DEPOSIT_TOKEN,
+                _position.subVaultIndex,
                 false,
                 0,
                 0,
@@ -312,6 +382,7 @@ library PositionLib {
         if (_position.debt0 > 0 || _position.debt1 > 0) {
             positionUpdates[index] = DataType.PositionUpdate(
                 DataType.PositionUpdateType.BORROW_TOKEN,
+                _position.subVaultIndex,
                 false,
                 0,
                 0,
@@ -330,6 +401,7 @@ library PositionLib {
             if (lpt.isCollateral) {
                 positionUpdates[index] = DataType.PositionUpdate(
                     DataType.PositionUpdateType.DEPOSIT_LPT,
+                    _position.subVaultIndex,
                     false,
                     lpt.liquidity,
                     lpt.lowerTick,
@@ -342,73 +414,85 @@ library PositionLib {
         }
     }
 
-    function calculatePositionUpdatesToClose(DataType.Position memory _position)
+    function calculatePositionUpdatesToClose(DataType.Position[] memory _positions)
         internal
         pure
         returns (DataType.PositionUpdate[] memory positionUpdates, uint256 swapIndex)
     {
-        positionUpdates = new DataType.PositionUpdate[](calculateLengthOfPositionUpdates(_position) + 1);
+        positionUpdates = new DataType.PositionUpdate[](calculateLengthOfPositionUpdates(_positions) + 1);
 
         uint256 index = 0;
 
-        for (uint256 i = 0; i < _position.lpts.length; i++) {
-            DataType.LPT memory lpt = _position.lpts[i];
-            if (lpt.isCollateral) {
-                positionUpdates[index] = DataType.PositionUpdate(
-                    DataType.PositionUpdateType.WITHDRAW_LPT,
-                    false,
-                    lpt.liquidity,
-                    lpt.lowerTick,
-                    lpt.upperTick,
-                    0,
-                    0
-                );
-                index++;
+        for (uint256 i = 0; i < _positions.length; i++) {
+            for (uint256 j = 0; j < _positions[i].lpts.length; j++) {
+                DataType.LPT memory lpt = _positions[i].lpts[j];
+                if (lpt.isCollateral) {
+                    positionUpdates[index] = DataType.PositionUpdate(
+                        DataType.PositionUpdateType.WITHDRAW_LPT,
+                        _positions[i].subVaultIndex,
+                        false,
+                        lpt.liquidity,
+                        lpt.lowerTick,
+                        lpt.upperTick,
+                        0,
+                        0
+                    );
+                    index++;
+                }
             }
         }
 
         swapIndex = index;
         index++;
 
-        for (uint256 i = 0; i < _position.lpts.length; i++) {
-            DataType.LPT memory lpt = _position.lpts[i];
-            if (!lpt.isCollateral) {
+        for (uint256 i = 0; i < _positions.length; i++) {
+            for (uint256 j = 0; j < _positions[i].lpts.length; j++) {
+                DataType.LPT memory lpt = _positions[i].lpts[j];
+                if (!lpt.isCollateral) {
+                    positionUpdates[index] = DataType.PositionUpdate(
+                        DataType.PositionUpdateType.REPAY_LPT,
+                        _positions[i].subVaultIndex,
+                        false,
+                        lpt.liquidity,
+                        lpt.lowerTick,
+                        lpt.upperTick,
+                        0,
+                        0
+                    );
+                    index++;
+                }
+            }
+        }
+
+        for (uint256 i = 0; i < _positions.length; i++) {
+            if (_positions[i].collateral0 > 0 || _positions[i].collateral1 > 0) {
                 positionUpdates[index] = DataType.PositionUpdate(
-                    DataType.PositionUpdateType.REPAY_LPT,
+                    DataType.PositionUpdateType.WITHDRAW_TOKEN,
+                    _positions[i].subVaultIndex,
                     false,
-                    lpt.liquidity,
-                    lpt.lowerTick,
-                    lpt.upperTick,
                     0,
-                    0
+                    0,
+                    0,
+                    (_positions[i].collateral0 * 12) / 10,
+                    (_positions[i].collateral1 * 12) / 10
                 );
                 index++;
             }
         }
 
-        if (_position.collateral0 > 0 || _position.collateral1 > 0) {
-            positionUpdates[index] = DataType.PositionUpdate(
-                DataType.PositionUpdateType.WITHDRAW_TOKEN,
-                false,
-                0,
-                0,
-                0,
-                (_position.collateral0 * 12) / 10,
-                (_position.collateral1 * 12) / 10
-            );
-            index++;
-        }
-
-        if (_position.debt0 > 0 || _position.debt1 > 0) {
-            positionUpdates[index] = DataType.PositionUpdate(
-                DataType.PositionUpdateType.REPAY_TOKEN,
-                false,
-                0,
-                0,
-                0,
-                (_position.debt0 * 12) / 10,
-                (_position.debt1 * 12) / 10
-            );
+        for (uint256 i = 0; i < _positions.length; i++) {
+            if (_positions[i].debt0 > 0 || _positions[i].debt1 > 0) {
+                positionUpdates[index] = DataType.PositionUpdate(
+                    DataType.PositionUpdateType.REPAY_TOKEN,
+                    _positions[i].subVaultIndex,
+                    false,
+                    0,
+                    0,
+                    0,
+                    (_positions[i].debt0 * 12) / 10,
+                    (_positions[i].debt1 * 12) / 10
+                );
+            }
         }
     }
 }

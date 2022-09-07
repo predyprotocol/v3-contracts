@@ -29,6 +29,10 @@ abstract contract BaseTestHelper {
 
     bytes32[] internal rangeIds;
 
+    DataType.MetaData internal emptyMetaData;
+
+    mapping(uint256 => DataType.SubVault) internal subVaults;
+
     function getContext() internal view returns (DataType.Context memory) {
         BaseToken.TokenState memory tokenState = BaseToken.TokenState(0, 0, 1e18, 1e18);
 
@@ -41,6 +45,7 @@ abstract contract BaseTestHelper {
                 address(swapRouter),
                 address(uniPool),
                 true,
+                1,
                 tokenState,
                 tokenState
             );
@@ -48,6 +53,12 @@ abstract contract BaseTestHelper {
 
     function getPerpState() internal pure returns (DataType.PerpStatus memory) {
         return DataType.PerpStatus(0, 0, 0, 0, 0, 0, 0, 0, 0);
+    }
+
+    function getIsMarginZero() internal view returns (bool) {
+        (bool isMarginZero, , ) = controller.getContext();
+
+        return isMarginZero;
     }
 
     function depositToken(
@@ -100,14 +111,15 @@ abstract contract BaseTestHelper {
     ) internal {
         DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](1);
 
-        positionUpdates[0] = DataType.PositionUpdate(_positionUpdateType, false, 0, 0, 0, _amount0, _amount1);
+        positionUpdates[0] = DataType.PositionUpdate(_positionUpdateType, 0, false, 0, 0, 0, _amount0, _amount1);
 
         PositionUpdater.updatePosition(
             _vault,
+            subVaults,
             _context,
             _ranges,
             positionUpdates,
-            DataType.TradeOption(false, false, false, _context.isMarginZero)
+            DataType.TradeOption(false, false, false, _context.isMarginZero, -1, -1)
         );
     }
 
@@ -120,6 +132,7 @@ abstract contract BaseTestHelper {
 
         positionUpdates[0] = DataType.PositionUpdate(
             DataType.PositionUpdateType.DEPOSIT_TOKEN,
+            0,
             false,
             0,
             0,
@@ -133,13 +146,14 @@ abstract contract BaseTestHelper {
             positionUpdates,
             _amount0,
             _amount1,
-            DataType.TradeOption(false, false, false, controller.getIsMarginZero()),
-            bytes("")
+            DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1),
+            emptyMetaData
         );
     }
 
     function depositLPT(
         uint256 _vaultId,
+        uint256 _subVaultId,
         int24 _lower,
         int24 _upper,
         uint256 _amount
@@ -147,7 +161,7 @@ abstract contract BaseTestHelper {
         DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](1);
 
         (uint128 liquidity, uint256 amount0, uint256 amount1) = LPTMath.getLiquidityAndAmountToDeposit(
-            controller.getIsMarginZero(),
+            getIsMarginZero(),
             _amount,
             controller.getSqrtPrice(),
             _lower,
@@ -155,6 +169,7 @@ abstract contract BaseTestHelper {
         );
         positionUpdates[0] = DataType.PositionUpdate(
             DataType.PositionUpdateType.DEPOSIT_LPT,
+            _subVaultId,
             false,
             liquidity,
             _lower,
@@ -169,13 +184,14 @@ abstract contract BaseTestHelper {
                 positionUpdates,
                 (amount0 * 105) / 100,
                 (amount1 * 105) / 100,
-                DataType.TradeOption(false, false, false, controller.getIsMarginZero()),
-                bytes("")
+                DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1),
+                emptyMetaData
             );
     }
 
     function borrowLPT(
         uint256 _vaultId,
+        uint256 _subVaultId,
         int24 _tick,
         int24 _lower,
         int24 _upper,
@@ -186,14 +202,14 @@ abstract contract BaseTestHelper {
 
         DataType.LPT[] memory lpts = new DataType.LPT[](1);
         lpts[0] = DataType.LPT(false, liquidity, _lower, _upper);
-        DataType.Position memory position = DataType.Position(_margin, _amount, 0, 0, lpts);
+        DataType.Position memory position = DataType.Position(_subVaultId, _margin, _amount, 0, 0, lpts);
 
         return
             controller.openPosition(
                 _vaultId,
                 position,
-                DataType.TradeOption(false, false, false, controller.getIsMarginZero()),
-                DataType.OpenPositionOption(1500 * 1e6, 1000, 1e10, 0, bytes(""))
+                DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1),
+                DataType.OpenPositionOption(1500 * 1e6, 1000, 1e10, 0, emptyMetaData)
             );
     }
 
@@ -306,16 +322,5 @@ abstract contract BaseTestHelper {
 
     function getSqrtPrice() public view returns (uint160 sqrtPriceX96) {
         (sqrtPriceX96, , , , , , ) = uniPool.slot0();
-    }
-
-    function getSqrtPriceRange(int24 _slippageTolerance)
-        internal
-        view
-        returns (uint160 lowerSqrtPrice, uint160 upperSqrtPrice)
-    {
-        int24 tick = controller.getCurrentTick();
-
-        lowerSqrtPrice = TickMath.getSqrtRatioAtTick(tick - _slippageTolerance);
-        upperSqrtPrice = TickMath.getSqrtRatioAtTick(tick + _slippageTolerance);
     }
 }
