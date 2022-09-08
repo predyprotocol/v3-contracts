@@ -11,7 +11,6 @@ import "@uniswap/v3-periphery/interfaces/INonfungiblePositionManager.sol";
 import {TransferHelper} from "@uniswap/v3-periphery/libraries/TransferHelper.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
-import "@uniswap/v3-core/contracts/libraries/FixedPoint128.sol";
 import "@uniswap/v3-periphery/interfaces/ISwapRouter.sol";
 
 import "./interfaces/IController.sol";
@@ -24,7 +23,7 @@ import "./libraries/PositionCalculator.sol";
 import "./libraries/InterestCalculator.sol";
 import "./libraries/PositionLib.sol";
 import "./libraries/logic/LiquidationLogic.sol";
-import "./Constants.sol";
+import "./libraries/Constants.sol";
 
 /**
  * Error Codes
@@ -36,7 +35,7 @@ import "./Constants.sol";
  * P6: no enough token1
  * P7: debt must be 0
  */
-contract Controller is IController, Constants, Initializable {
+contract Controller is IController, Initializable {
     using BaseToken for BaseToken.TokenState;
     using SafeMath for uint256;
     using SafeMath for uint128;
@@ -44,8 +43,6 @@ contract Controller is IController, Constants, Initializable {
     using SafeCast for uint256;
     using SafeCast for int256;
     using VaultLib for DataType.Vault;
-
-    uint256 internal constant ORACLE_PERIOD = 1 minutes;
 
     uint256 public lastTouchedTimestamp;
 
@@ -115,6 +112,7 @@ contract Controller is IController, Constants, Initializable {
     }
 
     function setOperator(address _newOperator) external onlyOperator {
+        require(_newOperator != address(0));
         operator = _newOperator;
     }
 
@@ -130,7 +128,22 @@ contract Controller is IController, Constants, Initializable {
         dpmParams.premiumParams = _premiumParams;
     }
 
+    function withdrawProtocolFee(uint256 _amount0, uint256 _amount1) external onlyOperator {
+        require(context.accumuratedProtocolFee0 >= _amount0 && context.accumuratedProtocolFee1 >= _amount1, "P8");
+
+        context.accumuratedProtocolFee0 -= _amount0;
+        context.accumuratedProtocolFee1 -= _amount1;
+
+        if (_amount0 > 0) {
+            TransferHelper.safeTransfer(context.token0, msg.sender, _amount0);
+        }
+        if (_amount1 > 0) {
+            TransferHelper.safeTransfer(context.token1, msg.sender, _amount1);
+        }
+    }
+
     // User API
+
     /**
      * @notice Update position in a vault.
      * @param _vaultId vault id
@@ -229,10 +242,19 @@ contract Controller is IController, Constants, Initializable {
             bool,
             uint256,
             uint256,
-            address
+            address,
+            uint256,
+            uint256
         )
     {
-        return (context.isMarginZero, vaultIdCount, context.nextSubVaultId, context.uniswapPool);
+        return (
+            context.isMarginZero,
+            vaultIdCount,
+            context.nextSubVaultId,
+            context.uniswapPool,
+            context.accumuratedProtocolFee0,
+            context.accumuratedProtocolFee1
+        );
     }
 
     function getRange(bytes32 _rangeId) external view returns (DataType.PerpStatus memory) {

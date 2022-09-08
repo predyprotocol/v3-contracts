@@ -45,12 +45,13 @@ contract BaseTokenTest is Test {
         vm.assume(_interestAmount > 0);
         vm.assume(_interestAmount <= 1e20);
 
-        BaseToken.updateScaler(tokenState, _interestAmount);
+        uint256 protocolFee = BaseToken.updateScaler(tokenState, _interestAmount);
 
         uint256 collateralValue = BaseToken.getCollateralValue(tokenState, accountState);
         uint256 debtValue = BaseToken.getDebtValue(tokenState, accountState);
 
-        assertEq(collateralValue - debtValue, 800000000);
+        assertLe(collateralValue - debtValue + protocolFee, 800000000);
+        assertGe(collateralValue - debtValue + protocolFee, 800000000 - 1);
     }
 
     function testRemoveCollateralAll(uint256 _amount) public {

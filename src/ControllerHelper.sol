@@ -9,8 +9,6 @@ import "./libraries/PositionCalculator.sol";
 import "./libraries/PositionLib.sol";
 import "./Controller.sol";
 
-import "forge-std/console.sol";
-
 contract ControllerHelper is Controller {
     using SafeMath for uint256;
     using SignedSafeMath for int256;
@@ -108,8 +106,6 @@ contract ControllerHelper is Controller {
 
     function _checkPrice(uint256 _lowerSqrtPrice, uint256 _upperSqrtPrice) internal view {
         uint256 sqrtPrice = getSqrtPrice();
-
-        console.log(_lowerSqrtPrice, sqrtPrice, _upperSqrtPrice);
 
         require(_lowerSqrtPrice <= sqrtPrice && sqrtPrice <= _upperSqrtPrice, "CH2");
     }

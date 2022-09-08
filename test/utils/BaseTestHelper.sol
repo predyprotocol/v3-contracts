@@ -50,7 +50,9 @@ abstract contract BaseTestHelper {
                 true,
                 1,
                 tokenState,
-                tokenState
+                tokenState,
+                0,
+                0
             );
     }
 
@@ -59,7 +61,7 @@ abstract contract BaseTestHelper {
     }
 
     function getIsMarginZero() internal view returns (bool) {
-        (bool isMarginZero, , , ) = controller.getContext();
+        (bool isMarginZero, , , , , ) = controller.getContext();
 
         return isMarginZero;
     }

@@ -5,9 +5,8 @@ pragma abicoder v2;
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/math/SignedSafeMath.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
-import "@uniswap/v3-core/contracts/libraries/FixedPoint128.sol";
 import "./PredyMath.sol";
-import "../Constants.sol";
+import "./Constants.sol";
 import "./LPTMath.sol";
 import "./BaseToken.sol";
 import "./DataType.sol";
@@ -119,14 +118,14 @@ library VaultLib {
                     _subVault.lpts[i].fee0Last,
                     ranges[_rangeId].fee0Growth,
                     _liquidityAmount,
-                    FixedPoint128.Q128
+                    Constants.ONE
                 );
 
                 fee1 = calculateProfit(
                     _subVault.lpts[i].fee1Last,
                     ranges[_rangeId].fee1Growth,
                     _liquidityAmount,
-                    FixedPoint128.Q128
+                    Constants.ONE
                 );
 
                 {
@@ -449,12 +448,12 @@ library VaultLib {
             totalAmount0 += PredyMath.mulDiv(
                 (ranges[rangeId].fee0Growth.sub(_subVault.lpts[i].fee0Last)),
                 _subVault.lpts[i].liquidityAmount,
-                FixedPoint128.Q128
+                Constants.ONE
             );
             totalAmount1 += PredyMath.mulDiv(
                 (ranges[rangeId].fee1Growth.sub(_subVault.lpts[i].fee1Last)),
                 _subVault.lpts[i].liquidityAmount,
-                FixedPoint128.Q128
+                Constants.ONE
             );
         }
     }
@@ -472,7 +471,7 @@ library VaultLib {
                     PredyMath.mulDiv(
                         (perpStatus.premiumGrowthForLender.sub(_subVault.lpts[i].premiumGrowthLast)),
                         _subVault.lpts[i].liquidityAmount,
-                        1e18
+                        Constants.ONE
                     )
                 );
             }
@@ -492,7 +491,7 @@ library VaultLib {
                     PredyMath.mulDiv(
                         (perpStatus.premiumGrowthForBorrower.sub(_subVault.lpts[i].premiumGrowthLast)),
                         _subVault.lpts[i].liquidityAmount,
-                        1e18
+                        Constants.ONE
                     )
                 );
             }

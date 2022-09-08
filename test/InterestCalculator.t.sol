@@ -127,7 +127,7 @@ contract InterestCalculatorTest is TestDeployer, Test {
             })
         );
 
-        InterestCalculator.updatePremiumGrowth(dpmParams, getContext(), perpStatus, getSqrtPrice());
+        InterestCalculator.updatePremiumGrowth(dpmParams, context, perpStatus, getSqrtPrice());
 
         assertGt(perpStatus.premiumGrowthForLender, 0);
         assertGt(perpStatus.premiumGrowthForBorrower, 0);

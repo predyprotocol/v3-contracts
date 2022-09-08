@@ -410,4 +410,29 @@ contract ControllerHelperTest is TestDeployer, Test {
         DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);
         assertEq(vaultStatus.subVaults.length, 2);
     }
+
+    function testWithdrawProtocolFee() public {
+        uint256 vaultId = borrowLPT(0, 0, 202600, 202500, 202600, 1e18, 100 * 1e6);
+
+        swapToSamePrice(owner);
+
+        vm.warp(block.timestamp + 60 minutes);
+
+        controller.closeVault(
+            vaultId,
+            DataType.TradeOption(false, true, false, getIsMarginZero(), 0, -1),
+            DataType.ClosePositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 54, emptyMetaData)
+        );
+
+        (, , , , uint256 protocolFee0, uint256 protocolFee1) = controller.getContext();
+
+        controller.withdrawProtocolFee(protocolFee0, protocolFee1);
+
+        (, , , , uint256 protocolFee0After, uint256 protocolFee1After) = controller.getContext();
+
+        assertEq(protocolFee0After, 0);
+        assertEq(protocolFee1After, 0);
+        assertGt(protocolFee0, 0);
+        assertEq(protocolFee1, 0);
+    }
 }

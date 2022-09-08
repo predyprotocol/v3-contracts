@@ -13,15 +13,12 @@ import "./DataType.sol";
 import "./BaseToken.sol";
 import "./LPTMath.sol";
 import "./LPTStateLib.sol";
+import "./Constants.sol";
 
 library InterestCalculator {
     using SafeMath for uint256;
     using SafeCast for uint256;
     using BaseToken for BaseToken.TokenState;
-
-    uint256 internal constant ONE = 1e18;
-
-    uint256 internal constant Q96 = 0x1000000000000000000000000;
 
     struct TickSnapshot {
         uint256 lastFeeGrowthInside0X128;
@@ -53,7 +50,7 @@ library InterestCalculator {
         DataType.Vault memory _vault,
         mapping(uint256 => DataType.SubVault) storage _subVaults,
         mapping(bytes32 => DataType.PerpStatus) storage _ranges,
-        DataType.Context memory _context,
+        DataType.Context storage _context,
         DataType.PositionUpdate[] memory _positionUpdates,
         DPMParams storage _dpmParams,
         uint160 _sqrtPrice
@@ -102,15 +99,15 @@ library InterestCalculator {
         uint256 interest1 = ((block.timestamp - lastTouchedTimestamp) *
             calculateInterestRate(_irmParams, BaseToken.getUtilizationRatio(_context.tokenState0))) / 365 days;
 
-        _context.tokenState0.updateScaler(interest0);
-        _context.tokenState1.updateScaler(interest1);
+        _context.accumuratedProtocolFee0 += _context.tokenState0.updateScaler(interest0);
+        _context.accumuratedProtocolFee1 += _context.tokenState1.updateScaler(interest1);
 
         return block.timestamp;
     }
 
     function updatePremiumGrowth(
         DPMParams storage _params,
-        DataType.Context memory _context,
+        DataType.Context storage _context,
         DataType.PerpStatus storage _perpState,
         uint160 _sqrtPrice
     ) internal {
@@ -123,13 +120,27 @@ library InterestCalculator {
                 calculateYearlyPremium(_params, _context, _perpState, _sqrtPrice)) / 365 days;
 
             _perpState.premiumGrowthForBorrower = _perpState.premiumGrowthForBorrower.add(premium);
+
+            uint256 protocolFeePerLiquidity = PredyMath.mulDiv(premium, Constants.RESERVE_FACTOR, Constants.ONE);
+
             _perpState.premiumGrowthForLender = _perpState.premiumGrowthForLender.add(
                 PredyMath.mulDiv(
-                    premium,
+                    premium.sub(protocolFeePerLiquidity),
                     _perpState.borrowedLiquidity,
                     LPTStateLib.getTotalLiquidityAmount(_context, _perpState)
                 )
             );
+
+            // accumurate protocol fee
+            {
+                uint256 protocolFee = PredyMath.mulDiv(protocolFeePerLiquidity, _perpState.borrowedLiquidity, 1e18);
+
+                if (_context.isMarginZero) {
+                    _context.accumuratedProtocolFee0 = _context.accumuratedProtocolFee0.add(protocolFee);
+                } else {
+                    _context.accumuratedProtocolFee1 = _context.accumuratedProtocolFee1.add(protocolFee);
+                }
+            }
         }
 
         takeSnapshotForRange(_params, IUniswapV3Pool(_context.uniswapPool), _perpState.lowerTick, _perpState.upperTick);
@@ -253,17 +264,17 @@ library InterestCalculator {
 
         if (feeGrowthGlobal0X128 > snapshot.lastFeeGrowthGlobal0X128) {
             a =
-                (ONE * (feeGrowthInside0X128 - snapshot.lastFeeGrowthInside0X128)) /
+                (Constants.ONE * (feeGrowthInside0X128 - snapshot.lastFeeGrowthInside0X128)) /
                 (feeGrowthGlobal0X128 - snapshot.lastFeeGrowthGlobal0X128);
         }
 
         if (feeGrowthGlobal1X128 > snapshot.lastFeeGrowthGlobal1X128) {
             b =
-                (ONE * (feeGrowthInside1X128 - snapshot.lastFeeGrowthInside1X128)) /
+                (Constants.ONE * (feeGrowthInside1X128 - snapshot.lastFeeGrowthInside1X128)) /
                 (feeGrowthGlobal1X128 - snapshot.lastFeeGrowthGlobal1X128);
         }
 
-        return (_dailyFeeAmount * (a + b)) / (2 * ONE);
+        return (_dailyFeeAmount * (a + b)) / (2 * Constants.ONE);
     }
 
     function calculateInterestRate(IRMParams memory _irmParams, uint256 _utilizationRatio)
@@ -274,10 +285,10 @@ library InterestCalculator {
         uint256 ir = _irmParams.baseRate;
 
         if (_utilizationRatio <= _irmParams.kinkRate) {
-            ir += (_utilizationRatio * _irmParams.slope1) / ONE;
+            ir += (_utilizationRatio * _irmParams.slope1) / Constants.ONE;
         } else {
-            ir += (_irmParams.kinkRate * _irmParams.slope1) / ONE;
-            ir += (_irmParams.slope2 * (_utilizationRatio - _irmParams.kinkRate)) / ONE;
+            ir += (_irmParams.kinkRate * _irmParams.slope1) / Constants.ONE;
+            ir += (_irmParams.slope2 * (_utilizationRatio - _irmParams.kinkRate)) / Constants.ONE;
         }
 
         return ir;

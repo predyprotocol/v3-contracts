@@ -8,8 +8,9 @@ import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@uniswap/v3-periphery/interfaces/INonfungiblePositionManager.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-periphery/interfaces/ISwapRouter.sol";
-import "./DataType.sol";
 import "./BaseToken.sol";
+import "./Constants.sol";
+import "./DataType.sol";
 import "./VaultLib.sol";
 import "./LPTStateLib.sol";
 import "./UniHelper.sol";
@@ -635,8 +636,8 @@ library PositionUpdater {
         (uint256 a0, uint256 a1) = INonfungiblePositionManager(_context.positionManager).collect(params);
 
         // Update cumulative trade fee
-        _range.fee0Growth += (a0 * FixedPoint128.Q128) / liquidityAmount;
-        _range.fee1Growth += (a1 * FixedPoint128.Q128) / liquidityAmount;
+        _range.fee0Growth += (a0 * Constants.ONE) / liquidityAmount;
+        _range.fee1Growth += (a1 * Constants.ONE) / liquidityAmount;
     }
 
     function getTotalLiquidityAmount(INonfungiblePositionManager _positionManager, uint256 _tokenId)
