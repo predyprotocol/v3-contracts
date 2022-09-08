@@ -235,7 +235,7 @@ contract Controller is IController, Constants, Initializable {
         // check liquidation
         require(_checkLiquidatable(_vaultId), "P4");
 
-        uint160 sqrtPrice = getTWAPSqrtPrice();
+        uint160 sqrtPrice = getSqrtTWAP();
 
         // calculate penalty
         uint256 debtValue = vaults[_vaultId].getDebtPositionValue(subVaults, ranges, context, sqrtPrice);
@@ -419,24 +419,16 @@ contract Controller is IController, Constants, Initializable {
     }
 
     /**
-     * Gets current price of underlying token by margin token.
+     * Gets square root of current underlying token price by quote token.
      */
-    function getPrice() public view returns (uint256) {
-        return LPTMath.decodeSqrtPriceX96(context.isMarginZero, getSqrtPrice());
-    }
-
     function getSqrtPrice() public view returns (uint160 sqrtPriceX96) {
         (sqrtPriceX96, , , , , , ) = IUniswapV3Pool(context.uniswapPool).slot0();
     }
 
     /**
-     * Gets Time Weighted Average Price of underlying token by margin token.
+     * Gets square root of time Wweighted average price.
      */
-    function getTWAP() external view returns (uint256) {
-        return LPTMath.decodeSqrtPriceX96(context.isMarginZero, getTWAPSqrtPrice());
-    }
-
-    function getTWAPSqrtPrice() internal view returns (uint160 sqrtPriceX96) {
+    function getSqrtTWAP() public view returns (uint160 sqrtPriceX96) {
         (sqrtPriceX96, ) = LPTMath.callUniswapObserve(IUniswapV3Pool(context.uniswapPool), ORACLE_PERIOD);
     }
 

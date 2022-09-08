@@ -3,7 +3,8 @@ pragma solidity =0.7.6;
 pragma abicoder v2;
 
 import "./BaseTestHelper.sol";
-import "../../src/Controller.sol";
+import "../../src/ControllerHelper.sol";
+import "../../src/Reader.sol";
 import "../../src/mocks/MockERC20.sol";
 import "../../src/libraries/DataType.sol";
 import {NonfungiblePositionManager} from "v3-periphery/NonfungiblePositionManager.sol";
@@ -59,6 +60,8 @@ abstract contract TestDeployer is BaseTestHelper {
 
         controller = new ControllerHelper();
         controller.initialize(initializationParam, address(positionManager), factory, address(swapRouter));
+
+        reader = new Reader(controller);
 
         INonfungiblePositionManager.MintParams memory params = INonfungiblePositionManager.MintParams(
             initializationParam.token0,

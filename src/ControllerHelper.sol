@@ -9,6 +9,8 @@ import "./libraries/PositionCalculator.sol";
 import "./libraries/PositionLib.sol";
 import "./Controller.sol";
 
+import "forge-std/console.sol";
+
 contract ControllerHelper is Controller {
     using SafeMath for uint256;
     using SignedSafeMath for int256;
@@ -39,7 +41,7 @@ contract ControllerHelper is Controller {
             _openPositionOptions.metadata
         );
 
-        _checkPrice(_openPositionOptions.price, _openPositionOptions.slippageTorelance);
+        _checkPrice(_openPositionOptions.lowerSqrtPrice, _openPositionOptions.upperSqrtPrice);
     }
 
     /**
@@ -86,7 +88,7 @@ contract ControllerHelper is Controller {
 
         updatePosition(_vaultId, positionUpdates, 0, 0, _tradeOption, _closePositionOptions.metadata);
 
-        _checkPrice(_closePositionOptions.price, _closePositionOptions.slippageTorelance);
+        _checkPrice(_closePositionOptions.lowerSqrtPrice, _closePositionOptions.upperSqrtPrice);
     }
 
     /**
@@ -101,35 +103,14 @@ contract ControllerHelper is Controller {
 
         liquidate(_vaultId, positionUpdates, _liquidationOption.swapAnyway);
 
-        _checkPrice(_liquidationOption.price, _liquidationOption.slippageTorelance);
+        _checkPrice(_liquidationOption.lowerSqrtPrice, _liquidationOption.upperSqrtPrice);
     }
+    
+    function _checkPrice(uint256 _lowerSqrtPrice, uint256 _upperSqrtPrice) internal view {
+        uint256 sqrtPrice = getSqrtPrice();
 
-    /**
-     * @notice Calculates Min. Collateral of the vault.
-     * @param _vaultId vault id
-     * @param _position position you wanna add to the vault
-     * @return minCollateral minimal amount of collateral to keep positions.
-     */
-    function calculateMinCollateral(uint256 _vaultId, DataType.Position memory _position)
-        external
-        view
-        returns (int256)
-    {
-        return
-            PositionCalculator.calculateMinCollateral(
-                PositionLib.concat(_getPosition(_vaultId), _position),
-                getSqrtPrice(),
-                context.isMarginZero
-            );
-    }
+        console.log(_lowerSqrtPrice, sqrtPrice, _upperSqrtPrice);
 
-    function _checkPrice(uint256 _price, uint256 _slippageTorelance) internal view {
-        uint256 price = getPrice();
-
-        require(
-            (_price * (1e4 - _slippageTorelance)) / 1e4 <= price &&
-                price <= (_price * (1e4 + _slippageTorelance)) / 1e4,
-            "CH2"
-        );
+        require(_lowerSqrtPrice <= sqrtPrice && sqrtPrice <= _upperSqrtPrice, "CH2");
     }
 }

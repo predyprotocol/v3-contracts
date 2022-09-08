@@ -7,6 +7,7 @@ import "v3-core/contracts/libraries/TickMath.sol";
 import {NonfungiblePositionManager} from "v3-periphery/NonfungiblePositionManager.sol";
 import "../../src/Controller.sol";
 import "../../src/ControllerHelper.sol";
+import "../../src/Reader.sol";
 import "../../src/mocks/MockERC20.sol";
 import "../../src/libraries/LPTMath.sol";
 import "../../src/libraries/VaultLib.sol";
@@ -19,8 +20,10 @@ import "forge-std/Test.sol";
 abstract contract BaseTestHelper {
     IERC20 internal token0;
     IERC20 internal token1;
+
     ControllerHelper internal controller;
-    // ControllerHelper internal controllerHelper;
+    Reader internal reader;
+
     NonfungiblePositionManager internal positionManager;
     SwapRouter internal swapRouter;
     IUniswapV3Pool internal uniPool;
@@ -222,7 +225,7 @@ abstract contract BaseTestHelper {
                 _vaultId,
                 positions[0],
                 DataType.TradeOption(false, false, false, getIsMarginZero(), int256(_margin), -1),
-                DataType.OpenPositionOption(1500 * 1e6, 1000, 1e10, 0, emptyMetaData)
+                DataType.OpenPositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 1e10, 0, emptyMetaData)
             );
     }
 
@@ -335,5 +338,13 @@ abstract contract BaseTestHelper {
 
     function getSqrtPrice() public view returns (uint160 sqrtPriceX96) {
         (sqrtPriceX96, , , , , , ) = uniPool.slot0();
+    }
+
+    function getLowerSqrtPrice() internal view returns (uint160) {
+        return (controller.getSqrtPrice() * 100) / 120;
+    }
+
+    function getUpperSqrtPrice() internal view returns (uint160) {
+        return (controller.getSqrtPrice() * 120) / 100;
     }
 }

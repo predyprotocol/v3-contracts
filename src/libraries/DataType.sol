@@ -121,23 +121,23 @@ library DataType {
     }
 
     struct OpenPositionOption {
-        uint256 price;
-        uint256 slippageTorelance;
+        uint256 lowerSqrtPrice;
+        uint256 upperSqrtPrice;
         uint256 bufferAmount0;
         uint256 bufferAmount1;
         MetaData metadata;
     }
 
     struct ClosePositionOption {
-        uint256 price;
-        uint256 slippageTorelance;
+        uint256 lowerSqrtPrice;
+        uint256 upperSqrtPrice;
         uint256 swapRatio;
         MetaData metadata;
     }
 
     struct LiquidationOption {
-        uint256 price;
-        uint256 slippageTorelance;
+        uint256 lowerSqrtPrice;
+        uint256 upperSqrtPrice;
         uint256 swapRatio;
         bool swapAnyway;
     }
