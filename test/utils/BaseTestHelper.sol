@@ -189,6 +189,23 @@ abstract contract BaseTestHelper {
             );
     }
 
+    function getBorrowLPTPosition(
+        uint256 _subVaultId,
+        int24 _tick,
+        int24 _lower,
+        int24 _upper,
+        uint256 _amount
+    ) internal returns (DataType.Position[] memory positions) {
+        (uint128 liquidity, , ) = LPTMath.getLiquidityAndAmountToBorrow(true, _amount, _tick, _lower, _upper);
+
+        DataType.LPT[] memory lpts = new DataType.LPT[](1);
+        lpts[0] = DataType.LPT(false, liquidity, _lower, _upper);
+
+        positions = new DataType.Position[](1);
+
+        positions[0] = DataType.Position(_subVaultId, 0, _amount, 0, 0, lpts);
+    }
+
     function borrowLPT(
         uint256 _vaultId,
         uint256 _subVaultId,
@@ -198,17 +215,13 @@ abstract contract BaseTestHelper {
         uint256 _amount,
         uint256 _margin
     ) public returns (uint256) {
-        (uint128 liquidity, , ) = LPTMath.getLiquidityAndAmountToBorrow(true, _amount, _tick, _lower, _upper);
-
-        DataType.LPT[] memory lpts = new DataType.LPT[](1);
-        lpts[0] = DataType.LPT(false, liquidity, _lower, _upper);
-        DataType.Position memory position = DataType.Position(_subVaultId, _margin, _amount, 0, 0, lpts);
+        DataType.Position[] memory positions = getBorrowLPTPosition(_subVaultId, _tick, _lower, _upper, _amount);
 
         return
             controller.openPosition(
                 _vaultId,
-                position,
-                DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1),
+                positions[0],
+                DataType.TradeOption(false, false, false, getIsMarginZero(), int256(_margin), -1),
                 DataType.OpenPositionOption(1500 * 1e6, 1000, 1e10, 0, emptyMetaData)
             );
     }

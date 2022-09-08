@@ -457,26 +457,28 @@ library PositionUpdater {
     ) internal returns (uint256 requiredAmount0, uint256 requiredAmount1) {
         bytes32 rangeId = LPTStateLib.getRangeKey(_positionUpdate.lowerTick, _positionUpdate.upperTick);
 
-        (uint256 amount0, uint256 amount1) = LPTMath.getAmountsForLiquidityRoundUp(
-            getSqrtPrice(IUniswapV3Pool(_context.uniswapPool)),
-            _positionUpdate.lowerTick,
-            _positionUpdate.upperTick,
-            _positionUpdate.liquidity
-        );
+        {
+            (uint256 amount0, uint256 amount1) = LPTMath.getAmountsForLiquidityRoundUp(
+                getSqrtPrice(IUniswapV3Pool(_context.uniswapPool)),
+                _positionUpdate.lowerTick,
+                _positionUpdate.upperTick,
+                _positionUpdate.liquidity
+            );
 
-        // liquidity amount actually deposited
-        uint128 finalLiquidityAmount;
+            // liquidity amount actually deposited
+            uint128 finalLiquidityAmount;
 
-        (, finalLiquidityAmount, requiredAmount0, requiredAmount1) = UniHelper.increaseLiquidity(
-            _context,
-            _ranges[rangeId].tokenId,
-            amount0,
-            amount1,
-            _positionUpdate.param0,
-            _positionUpdate.param1
-        );
+            (, finalLiquidityAmount, requiredAmount0, requiredAmount1) = UniHelper.increaseLiquidity(
+                _context,
+                _ranges[rangeId].tokenId,
+                amount0,
+                amount1,
+                _positionUpdate.param0,
+                _positionUpdate.param1
+            );
 
-        require(finalLiquidityAmount >= _positionUpdate.liquidity, "PU2");
+            require(finalLiquidityAmount >= _positionUpdate.liquidity, "PU2");
+        }
 
         _ranges[rangeId].borrowedLiquidity = _ranges[rangeId]
             .borrowedLiquidity

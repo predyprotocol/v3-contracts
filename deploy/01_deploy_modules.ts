@@ -23,13 +23,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     },
   })
 
-  const VaultLib = await ethers.getContract('VaultLib', deployer)
-
   await deploy('PositionUpdater', {
     from: deployer,
-    libraries: {
-      VaultLib: VaultLib.address,
-    },
     log: true,
   })
 }

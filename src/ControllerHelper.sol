@@ -49,24 +49,44 @@ contract ControllerHelper is Controller {
         uint256 _vaultId,
         DataType.TradeOption memory _tradeOption,
         DataType.ClosePositionOption memory _closePositionOptions
-    ) external returns (uint256 vaultId) {
-        return _closePosition(_vaultId, _getPosition(_vaultId), _tradeOption, _closePositionOptions);
+    ) external {
+        closePosition(_vaultId, _getPosition(_vaultId), _tradeOption, _closePositionOptions);
     }
 
     /**
-     * @notice Closes position in sub-vault.
+     * @notice Closes all positions in sub-vault.
      */
     function closeSubVault(
         uint256 _vaultId,
         uint256 _subVaultIndex,
         DataType.TradeOption memory _tradeOption,
         DataType.ClosePositionOption memory _closePositionOptions
-    ) external returns (uint256 vaultId) {
+    ) external {
         DataType.Position[] memory positions = new DataType.Position[](1);
 
         positions[0] = _getPositionOfSubVault(_vaultId, _subVaultIndex);
 
-        return _closePosition(_vaultId, positions, _tradeOption, _closePositionOptions);
+        closePosition(_vaultId, positions, _tradeOption, _closePositionOptions);
+    }
+
+    /**
+     * @notice Closes position partially.
+     */
+    function closePosition(
+        uint256 _vaultId,
+        DataType.Position[] memory _positions,
+        DataType.TradeOption memory _tradeOption,
+        DataType.ClosePositionOption memory _closePositionOptions
+    ) public {
+        DataType.PositionUpdate[] memory positionUpdates = PositionLib.getPositionUpdatesToClose(
+            _positions,
+            _closePositionOptions.swapRatio,
+            getSqrtPrice()
+        );
+
+        updatePosition(_vaultId, positionUpdates, 0, 0, _tradeOption, _closePositionOptions.metadata);
+
+        _checkPrice(_closePositionOptions.price, _closePositionOptions.slippageTorelance);
     }
 
     /**
@@ -101,23 +121,6 @@ contract ControllerHelper is Controller {
                 getSqrtPrice(),
                 context.isMarginZero
             );
-    }
-
-    function _closePosition(
-        uint256 _vaultId,
-        DataType.Position[] memory _positions,
-        DataType.TradeOption memory _tradeOption,
-        DataType.ClosePositionOption memory _closePositionOptions
-    ) internal returns (uint256 vaultId) {
-        DataType.PositionUpdate[] memory positionUpdates = PositionLib.getPositionUpdatesToClose(
-            _positions,
-            _closePositionOptions.swapRatio,
-            getSqrtPrice()
-        );
-
-        vaultId = updatePosition(_vaultId, positionUpdates, 0, 0, _tradeOption, _closePositionOptions.metadata);
-
-        _checkPrice(_closePositionOptions.price, _closePositionOptions.slippageTorelance);
     }
 
     function _checkPrice(uint256 _price, uint256 _slippageTorelance) internal view {
