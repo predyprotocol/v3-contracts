@@ -39,7 +39,7 @@ library VaultLib {
         mapping(uint256 => DataType.SubVault) storage _subVaults,
         DataType.Context storage _context,
         uint256 _subVaultIndex
-    ) external returns (DataType.SubVault storage) {
+    ) internal returns (DataType.SubVault storage) {
         if (_subVaultIndex == _vault.subVaults.length) {
             uint256 subVaultId = _context.nextSubVaultId;
 
@@ -64,7 +64,7 @@ library VaultLib {
      * @param _vault vault object
      * @param _subVaultIndex index of sub-vault in the vault to remove
      */
-    function removeSubVault(DataType.Vault storage _vault, uint256 _subVaultIndex) external {
+    function removeSubVault(DataType.Vault storage _vault, uint256 _subVaultIndex) internal {
         uint256 subVaultId = _vault.subVaults[_subVaultIndex];
 
         _vault.subVaults[_subVaultIndex] = _vault.subVaults[_vault.subVaults.length - 1];
@@ -78,7 +78,7 @@ library VaultLib {
         mapping(bytes32 => DataType.PerpStatus) storage ranges,
         bytes32 _rangeId,
         uint128 _liquidityAmount
-    ) external {
+    ) internal {
         for (uint256 i = 0; i < _subVault.lpts.length; i++) {
             if (_subVault.lpts[i].rangeId == _rangeId && _subVault.lpts[i].isCollateral) {
                 _subVault.lpts[i].premiumGrowthLast = updateEntryPrice(
@@ -112,7 +112,7 @@ library VaultLib {
         mapping(bytes32 => DataType.PerpStatus) storage ranges,
         bytes32 _rangeId,
         uint128 _liquidityAmount
-    ) external returns (uint256 fee0, uint256 fee1) {
+    ) internal returns (uint256 fee0, uint256 fee1) {
         for (uint256 i = 0; i < _subVault.lpts.length; i++) {
             if (_subVault.lpts[i].rangeId == _rangeId && _subVault.lpts[i].isCollateral) {
                 fee0 = calculateProfit(
@@ -159,7 +159,7 @@ library VaultLib {
         mapping(bytes32 => DataType.PerpStatus) storage ranges,
         bytes32 _rangeId,
         uint128 _liquidityAmount
-    ) external {
+    ) internal {
         for (uint256 i = 0; i < _subVault.lpts.length; i++) {
             if (_subVault.lpts[i].rangeId == _rangeId && !_subVault.lpts[i].isCollateral) {
                 _subVault.lpts[i].premiumGrowthLast = updateEntryPrice(
@@ -185,7 +185,7 @@ library VaultLib {
         mapping(bytes32 => DataType.PerpStatus) storage ranges,
         bytes32 _rangeId,
         uint128 _liquidityAmount
-    ) external returns (uint256 fee0, uint256 fee1) {
+    ) internal returns (uint256 fee0, uint256 fee1) {
         for (uint256 i = 0; i < _subVault.lpts.length; i++) {
             if (_subVault.lpts[i].rangeId == _rangeId && !_subVault.lpts[i].isCollateral) {
                 {

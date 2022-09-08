@@ -235,7 +235,7 @@ contract Controller is IController, Constants, Initializable {
         // check liquidation
         require(_checkLiquidatable(_vaultId), "P4");
 
-        (uint160 sqrtPrice, ) = LPTMath.callUniswapObserve(IUniswapV3Pool(context.uniswapPool), ORACLE_PERIOD);
+        uint160 sqrtPrice = getTWAPSqrtPrice();
 
         // calculate penalty
         uint256 debtValue = vaults[_vaultId].getDebtPositionValue(subVaults, ranges, context, sqrtPrice);
@@ -436,7 +436,7 @@ contract Controller is IController, Constants, Initializable {
         return LPTMath.decodeSqrtPriceX96(context.isMarginZero, getTWAPSqrtPrice());
     }
 
-    function getTWAPSqrtPrice() public view returns (uint160 sqrtPriceX96) {
+    function getTWAPSqrtPrice() internal view returns (uint160 sqrtPriceX96) {
         (sqrtPriceX96, ) = LPTMath.callUniswapObserve(IUniswapV3Pool(context.uniswapPool), ORACLE_PERIOD);
     }
 
