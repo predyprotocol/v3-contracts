@@ -101,11 +101,11 @@ contract ControllerHelper is Controller {
             getSqrtPrice()
         );
 
-        liquidate(_vaultId, positionUpdates, _liquidationOption.swapAnyway);
+        liquidate(_vaultId, positionUpdates);
 
         _checkPrice(_liquidationOption.lowerSqrtPrice, _liquidationOption.upperSqrtPrice);
     }
-    
+
     function _checkPrice(uint256 _lowerSqrtPrice, uint256 _upperSqrtPrice) internal view {
         uint256 sqrtPrice = getSqrtPrice();
 

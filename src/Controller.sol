@@ -23,6 +23,7 @@ import "./libraries/PositionUpdater.sol";
 import "./libraries/PositionCalculator.sol";
 import "./libraries/InterestCalculator.sol";
 import "./libraries/PositionLib.sol";
+import "./libraries/logic/LiquidationLogic.sol";
 import "./Constants.sol";
 
 /**
@@ -172,7 +173,7 @@ contract Controller is IController, Constants, Initializable {
         }
 
         // check the vault is safe
-        require(!_checkLiquidatable(vaultId), "P3");
+        require(!LiquidationLogic.checkLiquidatable(vault, subVaults, context, ranges), "P3");
 
         require(int256(_buffer0) >= requiredAmount0, "P5");
         require(int256(_buffer1) >= requiredAmount1, "P6");
@@ -191,61 +192,15 @@ contract Controller is IController, Constants, Initializable {
         emit PositionUpdated(vaultId, requiredAmount0, requiredAmount1, getSqrtPrice(), _metadata);
     }
 
-    function _reducePosition(
-        uint256 _vaultId,
-        DataType.PositionUpdate[] memory _positionUpdates,
-        uint256 _penaltyAmount,
-        bool _swapAnyway
-    ) internal returns (uint256 penaltyAmount) {
-        DataType.Vault storage vault = vaults[_vaultId];
-
-        // reduce position
-        (int256 surplusAmount0, int256 surplusAmount1) = PositionUpdater.updatePosition(
-            vault,
-            subVaults,
-            context,
-            ranges,
-            _positionUpdates,
-            // reduce only
-            DataType.TradeOption(true, _swapAnyway, false, context.isMarginZero, -2, -2)
-        );
-
-        require(0 == surplusAmount0, "P5");
-        require(0 == surplusAmount1, "P6");
-
-        if (context.isMarginZero) {
-            (vault.marginAmount0, penaltyAmount) = PredyMath.subReward(vault.marginAmount0, _penaltyAmount);
-        } else {
-            (vault.marginAmount1, penaltyAmount) = PredyMath.subReward(vault.marginAmount1, _penaltyAmount);
-        }
-    }
-
     /**
      * @notice Anyone can liquidates the vault if its required collateral value is positive.
      * @param _vaultId vault id
      * @param _positionUpdates parameters to update position
      */
-    function liquidate(
-        uint256 _vaultId,
-        DataType.PositionUpdate[] memory _positionUpdates,
-        bool _swapAnyway
-    ) internal {
+    function liquidate(uint256 _vaultId, DataType.PositionUpdate[] memory _positionUpdates) internal {
         applyPerpFee(_vaultId, _positionUpdates);
 
-        // check liquidation
-        require(_checkLiquidatable(_vaultId), "P4");
-
-        uint160 sqrtPrice = getSqrtTWAP();
-
-        // calculate penalty
-        uint256 debtValue = vaults[_vaultId].getDebtPositionValue(subVaults, ranges, context, sqrtPrice);
-
-        // close position
-        uint256 penaltyAmount = _reducePosition(_vaultId, _positionUpdates, debtValue / 200, _swapAnyway);
-
-        require(vaults[_vaultId].getDebtPositionValue(subVaults, ranges, context, sqrtPrice) == 0, "P7");
-
-        sendReward(msg.sender, penaltyAmount);
+        LiquidationLogic.execLiquidation(vaults[_vaultId], subVaults, _positionUpdates, context, ranges);
     }
 
     /**
@@ -261,7 +216,7 @@ contract Controller is IController, Constants, Initializable {
 
             applyPerpFee(vaultId, _positionUpdates);
 
-            _reducePosition(vaultId, _positionUpdates, 0, false);
+            LiquidationLogic.reducePosition(vaults[vaultId], subVaults, context, ranges, _positionUpdates, 0);
         }
     }
 
@@ -273,10 +228,11 @@ contract Controller is IController, Constants, Initializable {
         returns (
             bool,
             uint256,
-            uint256
+            uint256,
+            address
         )
     {
-        return (context.isMarginZero, vaultIdCount, context.nextSubVaultId);
+        return (context.isMarginZero, vaultIdCount, context.nextSubVaultId, context.uniswapPool);
     }
 
     function getRange(bytes32 _rangeId) external view returns (DataType.PerpStatus memory) {
@@ -324,7 +280,7 @@ contract Controller is IController, Constants, Initializable {
     function checkLiquidatable(uint256 _vaultId) external returns (bool) {
         applyPerpFee(_vaultId);
 
-        return _checkLiquidatable(_vaultId);
+        return LiquidationLogic.checkLiquidatable(vaults[_vaultId], subVaults, context, ranges);
     }
 
     /**
@@ -373,23 +329,6 @@ contract Controller is IController, Constants, Initializable {
         return (vaultId, vaults[vaultId]);
     }
 
-    function _checkLiquidatable(uint256 _vaultId) internal view returns (bool) {
-        (uint160 sqrtPrice, ) = LPTMath.callUniswapObserve(IUniswapV3Pool(context.uniswapPool), ORACLE_PERIOD);
-
-        // calculate Min Collateral by using TWAP.
-        int256 minCollateral = PositionCalculator.calculateMinCollateral(
-            PositionLib.concat(_getPosition(_vaultId)),
-            sqrtPrice,
-            context.isMarginZero
-        );
-
-        return minCollateral > int256(vaults[_vaultId].getMarginValue(context));
-    }
-
-    function sendReward(address _liquidator, uint256 _reward) internal {
-        TransferHelper.safeTransfer(context.isMarginZero ? context.token0 : context.token1, _liquidator, _reward);
-    }
-
     /**
      * @notice apply interest, premium and trade fee for ranges that the vault has.
      */
@@ -423,13 +362,6 @@ contract Controller is IController, Constants, Initializable {
      */
     function getSqrtPrice() public view returns (uint160 sqrtPriceX96) {
         (sqrtPriceX96, , , , , , ) = IUniswapV3Pool(context.uniswapPool).slot0();
-    }
-
-    /**
-     * Gets square root of time Wweighted average price.
-     */
-    function getSqrtTWAP() public view returns (uint160 sqrtPriceX96) {
-        (sqrtPriceX96, ) = LPTMath.callUniswapObserve(IUniswapV3Pool(context.uniswapPool), ORACLE_PERIOD);
     }
 
     function getPosition(uint256 _vaultId) public returns (DataType.Position[] memory) {

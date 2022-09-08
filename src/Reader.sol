@@ -9,11 +9,12 @@ import "./libraries/PositionCalculator.sol";
 contract Reader {
     Controller public controller;
     bool public isMarginZero;
+    address public uniswapPool;
 
     constructor(Controller _controller) {
         controller = _controller;
 
-        (isMarginZero, , ) = controller.getContext();
+        (isMarginZero, , , uniswapPool) = controller.getContext();
     }
 
     function getPrice() public view returns (uint256) {
@@ -21,7 +22,9 @@ contract Reader {
     }
 
     function getTWAP() external view returns (uint256) {
-        return LPTMath.decodeSqrtPriceX96(isMarginZero, controller.getSqrtTWAP());
+        uint160 sqrtPrice = LiquidationLogic.getSqrtTWAP(uniswapPool);
+
+        return LPTMath.decodeSqrtPriceX96(isMarginZero, sqrtPrice);
     }
 
     /**
@@ -30,10 +33,7 @@ contract Reader {
      * @param _position position you wanna add to the vault
      * @return minCollateral minimal amount of collateral to keep positions.
      */
-    function calculateMinCollateral(uint256 _vaultId, DataType.Position memory _position)
-        external
-        returns (int256)
-    {
+    function calculateMinCollateral(uint256 _vaultId, DataType.Position memory _position) external returns (int256) {
         return
             PositionCalculator.calculateMinCollateral(
                 PositionLib.concat(controller.getPosition(_vaultId), _position),
