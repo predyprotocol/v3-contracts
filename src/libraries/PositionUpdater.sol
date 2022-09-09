@@ -68,7 +68,12 @@ library PositionUpdater {
                 requiredAmount0 = requiredAmount0.add(int256(positionUpdate.param0));
                 requiredAmount1 = requiredAmount1.add(int256(positionUpdate.param1));
 
-                emit TokenDeposited(_vault.vaultId, positionUpdate.subVaultIndex, positionUpdate.param0, positionUpdate.param1);
+                emit TokenDeposited(
+                    _vault.vaultId,
+                    positionUpdate.subVaultIndex,
+                    positionUpdate.param0,
+                    positionUpdate.param1
+                );
             } else if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.WITHDRAW_TOKEN) {
                 (uint256 amount0, uint256 amount1) = withdrawTokens(
                     subVault,
@@ -88,7 +93,12 @@ library PositionUpdater {
                 requiredAmount0 = requiredAmount0.sub(int256(positionUpdate.param0));
                 requiredAmount1 = requiredAmount1.sub(int256(positionUpdate.param1));
 
-                emit TokenBorrowed(_vault.vaultId, positionUpdate.subVaultIndex, positionUpdate.param0, positionUpdate.param1);
+                emit TokenBorrowed(
+                    _vault.vaultId,
+                    positionUpdate.subVaultIndex,
+                    positionUpdate.param0,
+                    positionUpdate.param1
+                );
             } else if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.REPAY_TOKEN) {
                 (uint256 amount0, uint256 amount1) = repayTokens(
                     subVault,
@@ -409,12 +419,7 @@ library PositionUpdater {
         withdrawAmount0 = withdrawAmount0.add(fee0);
         withdrawAmount1 = withdrawAmount1.add(fee1);
 
-        emit LPTWithdrawn(
-            _vault.vaultId,
-            _positionUpdate.subVaultIndex,
-            rangeId,
-            _positionUpdate.liquidity
-        );
+        emit LPTWithdrawn(_vault.vaultId, _positionUpdate.subVaultIndex, rangeId, _positionUpdate.liquidity);
     }
 
     function borrowLPT(

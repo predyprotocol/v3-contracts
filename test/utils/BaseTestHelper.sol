@@ -222,12 +222,21 @@ abstract contract BaseTestHelper {
     ) public returns (uint256) {
         DataType.Position[] memory positions = getBorrowLPTPosition(_subVaultId, _tick, _lower, _upper, _amount);
 
+        (, int256 requiredAmount1) = PositionLib.getRequiredTokenAmountsToOpen(positions[0], getSqrtPrice());
+
         return
             controller.openPosition(
                 _vaultId,
                 positions[0],
                 DataType.TradeOption(false, false, false, getIsMarginZero(), int256(_margin), -1),
-                DataType.OpenPositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 1e10, 0, emptyMetaData)
+                DataType.OpenPositionOption(
+                    getLowerSqrtPrice(),
+                    getUpperSqrtPrice(),
+                    1e10,
+                    0,
+                    requiredAmount1,
+                    emptyMetaData
+                )
             );
     }
 

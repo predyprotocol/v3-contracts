@@ -257,7 +257,7 @@ contract ControllerTest is TestDeployer, Test {
             positionUpdates,
             (1e18 * 1800) / 1e12,
             margin,
-            DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1),
+            DataType.TradeOption(false, false, false, getIsMarginZero(), int256(margin), -1),
             emptyMetaData
         );
 
@@ -296,7 +296,7 @@ contract ControllerTest is TestDeployer, Test {
             positionUpdates,
             (1e18 * 1800) / 1e12,
             margin,
-            DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1),
+            DataType.TradeOption(false, false, false, getIsMarginZero(), int256(margin), -1),
             emptyMetaData
         );
 

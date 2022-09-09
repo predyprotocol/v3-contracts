@@ -133,7 +133,7 @@ library VaultLib {
                         _subVault.lpts[i].premiumGrowthLast,
                         ranges[_rangeId].premiumGrowthForLender,
                         _liquidityAmount,
-                        1e18
+                        Constants.ONE
                     );
 
                     if (_isMarginZero) {
@@ -149,6 +149,8 @@ library VaultLib {
                     _subVault.lpts[i] = _subVault.lpts[_subVault.lpts.length - 1];
                     _subVault.lpts.pop();
                 }
+
+                return (fee0, fee1);
             }
         }
     }
@@ -192,13 +194,13 @@ library VaultLib {
                         _subVault.lpts[i].premiumGrowthLast,
                         ranges[_rangeId].premiumGrowthForBorrower,
                         _liquidityAmount,
-                        1e18
+                        Constants.ONE
                     );
 
                     if (_isMarginZero) {
-                        fee0 += profit;
+                        fee0 = profit;
                     } else {
-                        fee1 += profit;
+                        fee1 = profit;
                     }
                 }
 
@@ -208,6 +210,8 @@ library VaultLib {
                     _subVault.lpts[i] = _subVault.lpts[_subVault.lpts.length - 1];
                     _subVault.lpts.pop();
                 }
+
+                return (fee0, fee1);
             }
         }
     }
@@ -278,6 +282,27 @@ library VaultLib {
             return _vault.marginAmount0;
         } else {
             return _vault.marginAmount1;
+        }
+    }
+
+    function getMarginValue2(
+        DataType.Vault memory _vault,
+        mapping(uint256 => DataType.SubVault) storage _subVaults,
+        mapping(bytes32 => DataType.PerpStatus) storage _ranges,
+        DataType.Context memory _context,
+        uint160 _sqrtPrice
+    ) public view returns (uint256) {
+        uint256 price = LPTMath.decodeSqrtPriceX96(_context.isMarginZero, _sqrtPrice);
+
+        (int256 fee0, int256 fee1) = getPremiumAndFee(_vault, _subVaults, _ranges, _context);
+
+        uint256 marginAmount0 = PredyMath.addDelta(_vault.marginAmount0, fee0);
+        uint256 marginAmount1 = PredyMath.addDelta(_vault.marginAmount1, fee1);
+
+        if (_context.isMarginZero) {
+            return marginAmount0.add(PredyMath.mulDiv(marginAmount1, price, 1e18).div(2));
+        } else {
+            return marginAmount1.add(PredyMath.mulDiv(marginAmount0, price, 1e18).div(2));
         }
     }
 
@@ -498,6 +523,30 @@ library VaultLib {
         }
     }
 
+    function getPremiumAndFee(
+        DataType.Vault memory _vault,
+        mapping(uint256 => DataType.SubVault) storage _subVaults,
+        mapping(bytes32 => DataType.PerpStatus) storage _ranges,
+        DataType.Context memory _context
+    ) internal view returns (int256 totalFee0, int256 totalFee1) {
+        for (uint256 i = 0; i < _vault.subVaults.length; i++) {
+            DataType.SubVault memory subVault = _subVaults[_vault.subVaults[i]];
+
+            (uint256 fee0, uint256 fee1) = getEarnedTradeFee(subVault, _ranges);
+
+            totalFee0 = totalFee0.add(int256(fee0));
+            totalFee1 = totalFee1.add(int256(fee1));
+
+            if (_context.isMarginZero) {
+                totalFee0 = totalFee0.add(int256(getEarnedDailyPremium(subVault, _ranges)));
+                totalFee0 = totalFee0.sub(int256(getPaidDailyPremium(subVault, _ranges)));
+            } else {
+                totalFee1 = totalFee1.add(int256(getEarnedDailyPremium(subVault, _ranges)));
+                totalFee1 = totalFee1.sub(int256(getPaidDailyPremium(subVault, _ranges)));
+            }
+        }
+    }
+
     function getPositionOfSubVault(
         uint256 _subVaultIndex,
         DataType.SubVault memory _subVault,
@@ -517,26 +566,12 @@ library VaultLib {
             );
         }
 
-        (uint256 fee0, uint256 fee1) = getEarnedTradeFee(_subVault, _ranges);
-        (uint256 debtAmount0, uint256 debtAmount1) = (
-            BaseToken.getDebtValue(_context.tokenState0, _subVault.balance0),
-            BaseToken.getDebtValue(_context.tokenState1, _subVault.balance1)
-        );
-
-        if (_context.isMarginZero) {
-            fee0 = fee0.add(getEarnedDailyPremium(_subVault, _ranges));
-            debtAmount0 = debtAmount0.add(getPaidDailyPremium(_subVault, _ranges));
-        } else {
-            fee1 = fee1.add(getEarnedDailyPremium(_subVault, _ranges));
-            debtAmount1 = debtAmount1.add(getPaidDailyPremium(_subVault, _ranges));
-        }
-
         position = DataType.Position(
             _subVaultIndex,
-            BaseToken.getCollateralValue(_context.tokenState0, _subVault.balance0).add(fee0),
-            BaseToken.getCollateralValue(_context.tokenState1, _subVault.balance1).add(fee1),
-            debtAmount0,
-            debtAmount1,
+            BaseToken.getCollateralValue(_context.tokenState0, _subVault.balance0),
+            BaseToken.getCollateralValue(_context.tokenState1, _subVault.balance1),
+            BaseToken.getDebtValue(_context.tokenState0, _subVault.balance0),
+            BaseToken.getDebtValue(_context.tokenState1, _subVault.balance1),
             lpts
         );
     }

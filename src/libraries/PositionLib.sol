@@ -17,16 +17,14 @@ library PositionLib {
     function getPositionUpdatesToOpen(
         DataType.Position memory _position,
         bool _isQuoteZero,
-        uint160 _sqrtPrice
+        int256 _swapAmount
     ) external pure returns (DataType.PositionUpdate[] memory positionUpdates) {
         uint256 swapIndex;
 
         (positionUpdates, swapIndex) = calculatePositionUpdatesToOpen(_position);
 
-        (int256 requiredAmount0, int256 requiredAmount1) = getRequiredTokenAmountsToOpen(_position, _sqrtPrice);
-
         if (_isQuoteZero) {
-            if (requiredAmount1 > 0) {
+            if (_swapAmount > 0) {
                 positionUpdates[swapIndex] = DataType.PositionUpdate(
                     DataType.PositionUpdateType.SWAP_EXACT_OUT,
                     0,
@@ -34,10 +32,10 @@ library PositionLib {
                     0,
                     0,
                     0,
-                    uint256(requiredAmount1),
+                    uint256(_swapAmount),
                     0
                 );
-            } else if (requiredAmount1 < 0) {
+            } else if (_swapAmount < 0) {
                 positionUpdates[swapIndex] = DataType.PositionUpdate(
                     DataType.PositionUpdateType.SWAP_EXACT_IN,
                     0,
@@ -45,12 +43,12 @@ library PositionLib {
                     0,
                     0,
                     0,
-                    uint256(-requiredAmount1),
+                    uint256(-_swapAmount),
                     0
                 );
             }
         } else {
-            if (requiredAmount0 > 0) {
+            if (_swapAmount > 0) {
                 positionUpdates[swapIndex] = DataType.PositionUpdate(
                     DataType.PositionUpdateType.SWAP_EXACT_OUT,
                     0,
@@ -58,10 +56,10 @@ library PositionLib {
                     0,
                     0,
                     0,
-                    uint256(requiredAmount0),
+                    uint256(_swapAmount),
                     0
                 );
-            } else if (requiredAmount0 < 0) {
+            } else if (_swapAmount < 0) {
                 positionUpdates[swapIndex] = DataType.PositionUpdate(
                     DataType.PositionUpdateType.SWAP_EXACT_IN,
                     0,
@@ -69,7 +67,7 @@ library PositionLib {
                     0,
                     0,
                     0,
-                    uint256(-requiredAmount0),
+                    uint256(-_swapAmount),
                     0
                 );
             }
@@ -78,38 +76,23 @@ library PositionLib {
 
     function getPositionUpdatesToClose(
         DataType.Position[] memory _positions,
-        uint256 _swapRatio,
-        uint160 _sqrtPrice
+        bool _isZeroForOne,
+        uint256 _swapAmount
     ) external pure returns (DataType.PositionUpdate[] memory positionUpdates) {
         uint256 swapIndex;
 
         (positionUpdates, swapIndex) = calculatePositionUpdatesToClose(_positions);
 
-        (int256 requiredAmount0, int256 requiredAmount1) = getRequiredTokenAmountsToClose(_positions, _sqrtPrice);
-
-        if (requiredAmount0 < 0) {
-            positionUpdates[swapIndex] = DataType.PositionUpdate(
-                DataType.PositionUpdateType.SWAP_EXACT_IN,
-                0,
-                true,
-                0,
-                0,
-                0,
-                (uint256(-requiredAmount0) * _swapRatio) / 100,
-                0
-            );
-        } else if (requiredAmount1 < 0) {
-            positionUpdates[swapIndex] = DataType.PositionUpdate(
-                DataType.PositionUpdateType.SWAP_EXACT_IN,
-                0,
-                false,
-                0,
-                0,
-                0,
-                (uint256(-requiredAmount1) * _swapRatio) / 100,
-                0
-            );
-        }
+        positionUpdates[swapIndex] = DataType.PositionUpdate(
+            DataType.PositionUpdateType.SWAP_EXACT_IN,
+            0,
+            _isZeroForOne,
+            0,
+            0,
+            0,
+            _swapAmount,
+            0
+        );
     }
 
     function concat(DataType.Position[] memory _positions, DataType.Position memory _position)

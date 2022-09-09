@@ -64,7 +64,7 @@ library LiquidationLogic {
             _context.isMarginZero
         );
 
-        return minCollateral > int256(VaultLib.getMarginValue(_vault, _context));
+        return minCollateral > int256(VaultLib.getMarginValue2(_vault, _subVaults, _ranges, _context, sqrtPrice));
     }
 
     function reducePosition(

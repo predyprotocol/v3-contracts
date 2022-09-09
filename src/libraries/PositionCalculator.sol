@@ -35,6 +35,10 @@ library PositionCalculator {
 
         (, uint256 debtValue) = calculateCollateralAndDebtValue(_position, _sqrtPrice, _isMarginZero);
 
+        if (minValue > 0) {
+            minValue = 0;
+        }
+
         return int256(debtValue).div(100).sub(minValue);
     }
 

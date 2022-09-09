@@ -27,7 +27,7 @@ contract PositionCalculatorTest is Test {
 
         DataType.Position memory position = DataType.Position(0, 1e18, 0, 0, 1000 * 1e6, lpts);
 
-        assertLt(PositionCalculator.calculateMinCollateral(position, _sqrtPrice, false), 0);
+        assertGt(PositionCalculator.calculateMinCollateral(position, _sqrtPrice, false), 0);
     }
 
     function testcalculateMinCollateralOfBorrowLPT0(uint160 _sqrtPrice) public {
@@ -46,7 +46,7 @@ contract PositionCalculatorTest is Test {
 
         DataType.Position memory position = DataType.Position(0, 1e18, 50 * 1e6, 0, 0, lpts);
 
-        assertLt(PositionCalculator.calculateMinCollateral(position, _sqrtPrice, false), 0);
+        assertGe(PositionCalculator.calculateMinCollateral(position, _sqrtPrice, false), 0);
     }
 
     function testcalculateMinCollateralOfBorrowLPT1(uint160 _sqrtPrice) public {
@@ -65,7 +65,7 @@ contract PositionCalculatorTest is Test {
 
         DataType.Position memory position = DataType.Position(0, 0, 1700 * 1e6, 0, 0, lpts);
 
-        assertLt(PositionCalculator.calculateMinCollateral(position, _sqrtPrice, false), 0);
+        assertGe(PositionCalculator.calculateMinCollateral(position, _sqrtPrice, false), 0);
     }
 
     function getLiquidity(
@@ -95,6 +95,6 @@ contract PositionCalculatorTest is Test {
 
         DataType.Position memory position = DataType.Position(0, 0, 50 * 1e6, 0, 0, lpts);
 
-        assertLt(PositionCalculator.calculateMinCollateral(position, _sqrtPrice, false), 0);
+        assertGe(PositionCalculator.calculateMinCollateral(position, _sqrtPrice, false), 0);
     }
 }
