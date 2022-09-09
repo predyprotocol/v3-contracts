@@ -18,7 +18,7 @@ contract BaseTokenTest is Test {
         tokenState.collateralScaler = 1e18;
         tokenState.debtScaler = 1e18;
 
-        BaseToken.addCollateral(tokenState, accountState, collateralAmount, true);
+        BaseToken.addCollateral(tokenState, accountState, collateralAmount);
         BaseToken.addDebt(tokenState, accountState, debtAmount);
     }
 
@@ -57,7 +57,7 @@ contract BaseTokenTest is Test {
     function testRemoveCollateralAll(uint256 _amount) public {
         vm.assume(collateralAmount < _amount && _amount < type(uint128).max);
 
-        assertEq(BaseToken.removeCollateral(tokenState, accountState, _amount, true), collateralAmount);
+        assertEq(BaseToken.removeCollateral(tokenState, accountState, _amount), collateralAmount);
     }
 
     function testRemoveAllDebt(uint256 _amount) public {
@@ -67,7 +67,7 @@ contract BaseTokenTest is Test {
     }
 
     function testRemoveCollateral() public {
-        BaseToken.removeCollateral(tokenState, accountState, 500 * 1e6, true);
+        BaseToken.removeCollateral(tokenState, accountState, 500 * 1e6);
 
         uint256 value = BaseToken.getCollateralValue(tokenState, accountState);
         assertEq(value, 500 * 1e6);

@@ -16,9 +16,9 @@ library BaseToken {
     }
 
     struct AccountState {
-        uint256 collateralAmountNotInMarket;
         uint256 collateralAmount;
         uint256 debtAmount;
+        uint256 collateralEntryAmount;
     }
 
     function initialize(TokenState storage tokenState) internal {
@@ -29,17 +29,14 @@ library BaseToken {
     function addCollateral(
         TokenState storage tokenState,
         AccountState storage accountState,
-        uint256 _amount,
-        bool _withEnteringMarket
+        uint256 _amount
     ) internal returns (uint256 mintAmount) {
-        if (_withEnteringMarket) {
-            mintAmount = PredyMath.mulDiv(_amount, Constants.ONE, tokenState.collateralScaler);
+        mintAmount = PredyMath.mulDiv(_amount, Constants.ONE, tokenState.collateralScaler);
 
-            accountState.collateralAmount = accountState.collateralAmount.add(mintAmount);
-            tokenState.totalDeposited = tokenState.totalDeposited.add(mintAmount);
-        } else {
-            accountState.collateralAmountNotInMarket = accountState.collateralAmountNotInMarket.add(_amount);
-        }
+        accountState.collateralAmount = accountState.collateralAmount.add(mintAmount);
+        tokenState.totalDeposited = tokenState.totalDeposited.add(mintAmount);
+
+        accountState.collateralEntryAmount = accountState.collateralEntryAmount.add(_amount);
     }
 
     function addDebt(
@@ -58,30 +55,21 @@ library BaseToken {
     function removeCollateral(
         TokenState storage tokenState,
         AccountState storage accountState,
-        uint256 _amount,
-        bool _withEnteringMarket
+        uint256 _amount
     ) internal returns (uint256 finalBurnAmount) {
-        if (_withEnteringMarket) {
-            uint256 burnAmount = PredyMath.mulDiv(_amount, Constants.ONE, tokenState.collateralScaler);
+        uint256 burnAmount = PredyMath.mulDiv(_amount, Constants.ONE, tokenState.collateralScaler);
 
-            if (accountState.collateralAmount < burnAmount) {
-                finalBurnAmount = accountState.collateralAmount;
-                accountState.collateralAmount = 0;
-            } else {
-                finalBurnAmount = burnAmount;
-                accountState.collateralAmount = accountState.collateralAmount.sub(burnAmount);
-            }
-
-            tokenState.totalDeposited = tokenState.totalDeposited.sub(finalBurnAmount);
+        if (accountState.collateralAmount < burnAmount) {
+            finalBurnAmount = accountState.collateralAmount;
+            accountState.collateralAmount = 0;
         } else {
-            if (accountState.collateralAmountNotInMarket < _amount) {
-                finalBurnAmount = accountState.collateralAmountNotInMarket;
-                accountState.collateralAmountNotInMarket = 0;
-            } else {
-                finalBurnAmount = _amount;
-                accountState.collateralAmountNotInMarket = accountState.collateralAmountNotInMarket.sub(_amount);
-            }
+            finalBurnAmount = burnAmount;
+            accountState.collateralAmount = accountState.collateralAmount.sub(burnAmount);
         }
+
+        accountState.collateralEntryAmount = accountState.collateralEntryAmount.add(_amount);
+
+        tokenState.totalDeposited = tokenState.totalDeposited.sub(finalBurnAmount);
     }
 
     function removeDebt(
@@ -111,9 +99,7 @@ library BaseToken {
         pure
         returns (uint256)
     {
-        return
-            PredyMath.mulDiv(accountState.collateralAmount, tokenState.collateralScaler, Constants.ONE) +
-            accountState.collateralAmountNotInMarket;
+        return PredyMath.mulDiv(accountState.collateralAmount, tokenState.collateralScaler, Constants.ONE);
     }
 
     // get debt value

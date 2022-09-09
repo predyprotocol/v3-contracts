@@ -220,10 +220,8 @@ library PositionUpdater {
                 DataType.SubVault memory subVault = _subVaults[_vault.subVaults[index]];
 
                 if (
-                    subVault.balance0.collateralAmountNotInMarket == 0 &&
                     subVault.balance0.collateralAmount == 0 &&
                     subVault.balance0.debtAmount == 0 &&
-                    subVault.balance1.collateralAmountNotInMarket == 0 &&
                     subVault.balance1.collateralAmount == 0 &&
                     subVault.balance1.debtAmount == 0 &&
                     subVault.lpts.length == 0
@@ -295,8 +293,8 @@ library PositionUpdater {
         uint256 amount0,
         uint256 amount1
     ) internal {
-        _context.tokenState0.addCollateral(_subVault.balance0, amount0, true);
-        _context.tokenState1.addCollateral(_subVault.balance1, amount1, true);
+        _context.tokenState0.addCollateral(_subVault.balance0, amount0);
+        _context.tokenState1.addCollateral(_subVault.balance1, amount1);
 
         emit TokenDeposited(_vaultId, amount0, amount1);
     }
@@ -308,8 +306,8 @@ library PositionUpdater {
         uint256 amount0,
         uint256 amount1
     ) internal returns (uint256 withdrawAmount0, uint256 withdrawAmount1) {
-        withdrawAmount0 = _context.tokenState0.removeCollateral(_subVault.balance0, amount0, true);
-        withdrawAmount1 = _context.tokenState1.removeCollateral(_subVault.balance1, amount1, true);
+        withdrawAmount0 = _context.tokenState0.removeCollateral(_subVault.balance0, amount0);
+        withdrawAmount1 = _context.tokenState1.removeCollateral(_subVault.balance1, amount1);
 
         emit TokenWithdrawn(_vaultId, withdrawAmount0, withdrawAmount1);
     }
