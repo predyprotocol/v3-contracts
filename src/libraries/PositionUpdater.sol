@@ -55,6 +55,8 @@ library PositionUpdater {
         DataType.PositionUpdate[] memory _positionUpdates,
         DataType.TradeOption memory _tradeOption
     ) external returns (int256 requiredAmount0, int256 requiredAmount1) {
+        (requiredAmount0, requiredAmount1) = updateFeeEntry(_vault, _subVaults, _ranges, _context);
+
         for (uint256 i = 0; i < _positionUpdates.length; i++) {
             DataType.PositionUpdate memory positionUpdate = _positionUpdates[i];
 
@@ -410,14 +412,7 @@ library PositionUpdater {
             _positionUpdate.param1
         );
 
-        (uint256 fee0, uint256 fee1) = _subVault.withdrawLPT(
-            _context.isMarginZero,
-            _ranges,
-            rangeId,
-            _positionUpdate.liquidity
-        );
-        withdrawAmount0 = withdrawAmount0.add(fee0);
-        withdrawAmount1 = withdrawAmount1.add(fee1);
+        _subVault.withdrawLPT(rangeId, _positionUpdate.liquidity);
 
         emit LPTWithdrawn(_vault.vaultId, _positionUpdate.subVaultIndex, rangeId, _positionUpdate.liquidity);
     }
@@ -484,14 +479,7 @@ library PositionUpdater {
             .sub(_positionUpdate.liquidity)
             .toUint128();
 
-        (uint256 fee0, uint256 fee1) = _subVault.repayLPT(
-            _context.isMarginZero,
-            _ranges,
-            rangeId,
-            _positionUpdate.liquidity
-        );
-        requiredAmount0 = requiredAmount0.add(fee0);
-        requiredAmount1 = requiredAmount1.add(fee1);
+        _subVault.repayLPT(rangeId, _positionUpdate.liquidity);
 
         emit LPTRepaid(_vaultId, _positionUpdate.subVaultIndex, rangeId, _positionUpdate.liquidity);
     }
@@ -580,6 +568,36 @@ library PositionUpdater {
 
             for (uint256 j = 0; j < subVault.lpts.length; j++) {
                 collectTradeFeeFromUni(_context, _ranges[subVault.lpts[j].rangeId]);
+            }
+        }
+    }
+
+    function updateFeeEntry(
+        DataType.Vault memory _vault,
+        mapping(uint256 => DataType.SubVault) storage _subVaults,
+        mapping(bytes32 => DataType.PerpStatus) storage _ranges,
+        DataType.Context memory _context
+    ) internal returns (int256 requiredAmount0, int256 requiredAmount1) {
+        (int256 fee0, int256 fee1) = VaultLib.getPremiumAndFee(_vault, _subVaults, _ranges, _context);
+        requiredAmount0 = -fee0;
+        requiredAmount1 = -fee1;
+
+        // VaultLib.updateMargin(_vault, _subVaults, _ranges, _context);
+
+        for (uint256 i = 0; i < _vault.subVaults.length; i++) {
+            DataType.SubVault storage subVault = _subVaults[_vault.subVaults[i]];
+
+            for (uint256 j = 0; j < subVault.lpts.length; j++) {
+                DataType.LPTState storage lpt = subVault.lpts[j];
+
+                if (lpt.isCollateral) {
+                    lpt.premiumGrowthLast = _ranges[lpt.rangeId].premiumGrowthForLender;
+                } else {
+                    lpt.premiumGrowthLast = _ranges[lpt.rangeId].premiumGrowthForBorrower;
+                }
+
+                lpt.fee0Last = _ranges[lpt.rangeId].fee0Growth;
+                lpt.fee1Last = _ranges[lpt.rangeId].fee1Growth;
             }
         }
     }

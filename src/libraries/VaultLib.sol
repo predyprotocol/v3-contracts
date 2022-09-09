@@ -80,13 +80,6 @@ library VaultLib {
     ) internal {
         for (uint256 i = 0; i < _subVault.lpts.length; i++) {
             if (_subVault.lpts[i].rangeId == _rangeId && _subVault.lpts[i].isCollateral) {
-                _subVault.lpts[i].premiumGrowthLast = updateEntryPrice(
-                    _subVault.lpts[i].premiumGrowthLast,
-                    _subVault.lpts[i].liquidityAmount,
-                    ranges[_rangeId].premiumGrowthForLender,
-                    _liquidityAmount
-                );
-
                 _subVault.lpts[i].liquidityAmount = _subVault.lpts[i].liquidityAmount.add(_liquidityAmount).toUint128();
 
                 return;
@@ -107,42 +100,11 @@ library VaultLib {
 
     function withdrawLPT(
         DataType.SubVault storage _subVault,
-        bool _isMarginZero,
-        mapping(bytes32 => DataType.PerpStatus) storage ranges,
         bytes32 _rangeId,
         uint128 _liquidityAmount
-    ) internal returns (uint256 fee0, uint256 fee1) {
+    ) internal {
         for (uint256 i = 0; i < _subVault.lpts.length; i++) {
             if (_subVault.lpts[i].rangeId == _rangeId && _subVault.lpts[i].isCollateral) {
-                fee0 = calculateProfit(
-                    _subVault.lpts[i].fee0Last,
-                    ranges[_rangeId].fee0Growth,
-                    _liquidityAmount,
-                    Constants.ONE
-                );
-
-                fee1 = calculateProfit(
-                    _subVault.lpts[i].fee1Last,
-                    ranges[_rangeId].fee1Growth,
-                    _liquidityAmount,
-                    Constants.ONE
-                );
-
-                {
-                    uint256 profit = calculateProfit(
-                        _subVault.lpts[i].premiumGrowthLast,
-                        ranges[_rangeId].premiumGrowthForLender,
-                        _liquidityAmount,
-                        Constants.ONE
-                    );
-
-                    if (_isMarginZero) {
-                        fee0 += profit;
-                    } else {
-                        fee1 += profit;
-                    }
-                }
-
                 _subVault.lpts[i].liquidityAmount = _subVault.lpts[i].liquidityAmount.sub(_liquidityAmount).toUint128();
 
                 if (_subVault.lpts[i].liquidityAmount == 0) {
@@ -150,7 +112,7 @@ library VaultLib {
                     _subVault.lpts.pop();
                 }
 
-                return (fee0, fee1);
+                return;
             }
         }
     }
@@ -163,13 +125,6 @@ library VaultLib {
     ) internal {
         for (uint256 i = 0; i < _subVault.lpts.length; i++) {
             if (_subVault.lpts[i].rangeId == _rangeId && !_subVault.lpts[i].isCollateral) {
-                _subVault.lpts[i].premiumGrowthLast = updateEntryPrice(
-                    _subVault.lpts[i].premiumGrowthLast,
-                    _subVault.lpts[i].liquidityAmount,
-                    ranges[_rangeId].premiumGrowthForBorrower,
-                    _liquidityAmount
-                );
-
                 _subVault.lpts[i].liquidityAmount = _subVault.lpts[i].liquidityAmount.add(_liquidityAmount).toUint128();
                 return;
             }
@@ -182,28 +137,11 @@ library VaultLib {
 
     function repayLPT(
         DataType.SubVault storage _subVault,
-        bool _isMarginZero,
-        mapping(bytes32 => DataType.PerpStatus) storage ranges,
         bytes32 _rangeId,
         uint128 _liquidityAmount
-    ) internal returns (uint256 fee0, uint256 fee1) {
+    ) internal {
         for (uint256 i = 0; i < _subVault.lpts.length; i++) {
             if (_subVault.lpts[i].rangeId == _rangeId && !_subVault.lpts[i].isCollateral) {
-                {
-                    uint256 profit = calculateProfit(
-                        _subVault.lpts[i].premiumGrowthLast,
-                        ranges[_rangeId].premiumGrowthForBorrower,
-                        _liquidityAmount,
-                        Constants.ONE
-                    );
-
-                    if (_isMarginZero) {
-                        fee0 = profit;
-                    } else {
-                        fee1 = profit;
-                    }
-                }
-
                 _subVault.lpts[i].liquidityAmount = _subVault.lpts[i].liquidityAmount.sub(_liquidityAmount).toUint128();
 
                 if (_subVault.lpts[i].liquidityAmount == 0) {
@@ -211,7 +149,7 @@ library VaultLib {
                     _subVault.lpts.pop();
                 }
 
-                return (fee0, fee1);
+                return;
             }
         }
     }
@@ -291,7 +229,7 @@ library VaultLib {
         mapping(bytes32 => DataType.PerpStatus) storage _ranges,
         DataType.Context memory _context,
         uint160 _sqrtPrice
-    ) public view returns (uint256) {
+    ) internal view returns (uint256) {
         uint256 price = LPTMath.decodeSqrtPriceX96(_context.isMarginZero, _sqrtPrice);
 
         (int256 fee0, int256 fee1) = getPremiumAndFee(_vault, _subVaults, _ranges, _context);
@@ -304,6 +242,18 @@ library VaultLib {
         } else {
             return marginAmount1.add(PredyMath.mulDiv(marginAmount0, price, 1e18).div(2));
         }
+    }
+
+    function updateMargin(
+        DataType.Vault memory _vault,
+        mapping(uint256 => DataType.SubVault) storage _subVaults,
+        mapping(bytes32 => DataType.PerpStatus) storage _ranges,
+        DataType.Context memory _context
+    ) internal view {
+        (int256 fee0, int256 fee1) = getPremiumAndFee(_vault, _subVaults, _ranges, _context);
+
+        _vault.marginAmount0 = PredyMath.addDelta(_vault.marginAmount0, fee0);
+        _vault.marginAmount1 = PredyMath.addDelta(_vault.marginAmount1, fee1);
     }
 
     function getVaultStatusValue(

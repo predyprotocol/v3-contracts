@@ -35,7 +35,7 @@ contract VaultLibTest is Test {
 
     function testWithdrawLPT1() public {
         VaultLib.depositLPT(subVault, ranges, rangeId, 100);
-        VaultLib.withdrawLPT(subVault, true, ranges, rangeId, 50);
+        VaultLib.withdrawLPT(subVault, rangeId, 50);
 
         assertEq(subVault.lpts.length, 1);
         assertEq(uint256(subVault.lpts[0].liquidityAmount), 50);
@@ -43,7 +43,7 @@ contract VaultLibTest is Test {
 
     function testWithdrawLPTAll() public {
         VaultLib.depositLPT(subVault, ranges, rangeId, 100);
-        VaultLib.withdrawLPT(subVault, true, ranges, rangeId, 100);
+        VaultLib.withdrawLPT(subVault, rangeId, 100);
 
         assertEq(subVault.lpts.length, 0);
     }
@@ -65,7 +65,7 @@ contract VaultLibTest is Test {
 
     function testRepayLPT1() public {
         VaultLib.borrowLPT(subVault, ranges, rangeId, 100);
-        VaultLib.repayLPT(subVault, true, ranges, rangeId, 50);
+        VaultLib.repayLPT(subVault, rangeId, 50);
 
         assertEq(subVault.lpts.length, 1);
         assertEq(uint256(subVault.lpts[0].liquidityAmount), 50);
@@ -73,7 +73,7 @@ contract VaultLibTest is Test {
 
     function testRepayLPTAll() public {
         VaultLib.borrowLPT(subVault, ranges, rangeId, 100);
-        VaultLib.repayLPT(subVault, true, ranges, rangeId, 100);
+        VaultLib.repayLPT(subVault, rangeId, 100);
 
         assertEq(subVault.lpts.length, 0);
     }
