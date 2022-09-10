@@ -13,6 +13,8 @@ import "./DataType.sol";
 import "./PositionCalculator.sol";
 import "./PositionLib.sol";
 
+import "forge-std/console.sol";
+
 /**
  * Error Codes
  * V0: no permission
@@ -499,11 +501,11 @@ library VaultLib {
         }
 
         DataType.Position memory position = PositionLib.concat(getPositions(_vault, _subVaults, _ranges));
-
-        totalFee0 += int256(_context.tokenState0.getCollateralValue(_vault.balance0).sub(position.collateral0));
-        totalFee1 += int256(_context.tokenState1.getCollateralValue(_vault.balance1).sub(position.collateral1));
-        totalFee0 -= int256(_context.tokenState0.getDebtValue(_vault.balance0).sub(position.debt0));
-        totalFee1 -= int256(_context.tokenState1.getDebtValue(_vault.balance1).sub(position.debt1));
+        
+        totalFee0 += int256(_context.tokenState0.getCollateralValue(_vault.balance0)).sub(int256(position.collateral0));
+        totalFee1 += int256(_context.tokenState1.getCollateralValue(_vault.balance1)).sub(int256(position.collateral1));
+        totalFee0 -= int256(_context.tokenState0.getDebtValue(_vault.balance0)).sub(int256(position.debt0));
+        totalFee1 -= int256(_context.tokenState1.getDebtValue(_vault.balance1)).sub(int256(position.debt1));
     }
 
     function getPositionOfSubVault(

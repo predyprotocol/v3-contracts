@@ -85,6 +85,33 @@ contract ControllerHelperTest is TestDeployer, Test {
         );
     }
 
+    function testDepositLPTAndBorrowETH() public {
+        int256 margin = 500 * 1e6;
+
+        swapToSamePrice(owner);
+
+        vm.warp(block.timestamp + 5 minutes);
+
+        (uint128 liquidity, , ) = LPTMath.getLiquidityAndAmountToDeposit(
+            true,
+            1e18,
+            controller.getSqrtPrice(),
+            202500,
+            202600
+        );
+
+        DataType.LPT[] memory lpts = new DataType.LPT[](1);
+        lpts[0] = DataType.LPT(true, liquidity, 202500, 202600);
+        DataType.Position memory position = DataType.Position(0, 0, 0, 0, 1e18, lpts);
+
+        controller.openPosition(
+            0,
+            position,
+            DataType.TradeOption(false, true, false, getIsMarginZero(), margin, -1),
+            DataType.OpenPositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 1e10, 0, emptyMetaData)
+        );
+    }
+
     function testBorrowLPT(uint256 _swapAmount) public {
         vm.assume(1e16 <= _swapAmount && _swapAmount < 10 * 1e18);
 
