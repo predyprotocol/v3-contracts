@@ -21,7 +21,7 @@ library PositionCalculator {
 
     /**
      * @notice Calculates Min. Collateral for a position.
-     * MinCollateral = 0.01 * DebtValue - minValue
+     * MinCollateral = 0.01 * DebtValue - minValue + positionValue
      * @param _position position object
      * @param _sqrtPrice square root price to calculate
      * @param _isMarginZero whether the stable token is token0 or token1
@@ -31,15 +31,13 @@ library PositionCalculator {
         uint160 _sqrtPrice,
         bool _isMarginZero
     ) external pure returns (int256) {
+        int256 positionValue = calculateValue(_position, _sqrtPrice, _isMarginZero);
+
         int256 minValue = calculateMinValue(_position, _sqrtPrice, _isMarginZero);
 
         (, uint256 debtValue) = calculateCollateralAndDebtValue(_position, _sqrtPrice, _isMarginZero);
 
-        if (minValue > 0) {
-            minValue = 0;
-        }
-
-        return int256(debtValue).div(100).sub(minValue);
+        return int256(debtValue).div(100).sub(minValue).add(positionValue);
     }
 
     /**

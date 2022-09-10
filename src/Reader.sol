@@ -33,7 +33,11 @@ contract Reader {
      * @param _position position you wanna add to the vault
      * @return minCollateral minimal amount of collateral to keep positions.
      */
-    function calculateMinCollateral(uint256 _vaultId, DataType.Position memory _position) external returns (int256) {
+    function calculateMinCollateral(uint256 _vaultId, DataType.Position memory _position)
+        external
+        view
+        returns (int256)
+    {
         return
             PositionCalculator.calculateMinCollateral(
                 PositionLib.concat(controller.getPosition(_vaultId), _position),

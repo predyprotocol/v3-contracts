@@ -38,8 +38,8 @@ library DataType {
     struct Vault {
         uint256 vaultId;
         address owner;
-        uint256 marginAmount0;
-        uint256 marginAmount1;
+        int256 marginAmount0;
+        int256 marginAmount1;
         BaseToken.AccountState balance0;
         BaseToken.AccountState balance1;
         uint256[] subVaults;
@@ -131,23 +131,20 @@ library DataType {
         uint256 upperSqrtPrice;
         uint256 bufferAmount0;
         uint256 bufferAmount1;
-        int256 swapAmount;
         MetaData metadata;
     }
 
     struct ClosePositionOption {
         uint256 lowerSqrtPrice;
         uint256 upperSqrtPrice;
-        bool isZeroForOne;
-        uint256 swapAmount;
+        uint256 swapRatio;
         MetaData metadata;
     }
 
     struct LiquidationOption {
         uint256 lowerSqrtPrice;
         uint256 upperSqrtPrice;
-        bool isZeroForOne;
-        uint256 swapAmount;
+        uint256 swapRatio;
         bool swapAnyway;
     }
 
@@ -174,7 +171,8 @@ library DataType {
     }
 
     struct VaultStatus {
-        uint256 marginValue;
+        int256 positionValue;
+        int256 marginValue;
         int256 minCollateral;
         SubVaultStatus[] subVaults;
     }

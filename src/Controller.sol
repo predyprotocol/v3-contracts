@@ -386,16 +386,14 @@ contract Controller is IController, Initializable {
         (sqrtPriceX96, , , , , , ) = IUniswapV3Pool(context.uniswapPool).slot0();
     }
 
-    function getPosition(uint256 _vaultId) public returns (DataType.Position[] memory) {
-        applyPerpFee(_vaultId);
-
+    function getPosition(uint256 _vaultId) public view returns (DataType.Position[] memory) {
         return _getPosition(_vaultId);
     }
 
     function _getPosition(uint256 _vaultId) internal view returns (DataType.Position[] memory) {
         DataType.Vault memory vault = vaults[_vaultId];
 
-        return vault.getPositions(subVaults, ranges, context);
+        return vault.getPositions(subVaults, ranges);
     }
 
     function _getPositionOfSubVault(uint256 _vaultId, uint256 _subVaultIndex)
@@ -405,8 +403,7 @@ contract Controller is IController, Initializable {
     {
         DataType.Vault memory vault = vaults[_vaultId];
 
-        return
-            VaultLib.getPositionOfSubVault(_subVaultIndex, subVaults[vault.subVaults[_subVaultIndex]], ranges, context);
+        return VaultLib.getPositionOfSubVault(_subVaultIndex, subVaults[vault.subVaults[_subVaultIndex]], ranges);
     }
 
     function revertRequiredAmounts(int256 _requiredAmount0, int256 _requiredAmount1) internal pure {

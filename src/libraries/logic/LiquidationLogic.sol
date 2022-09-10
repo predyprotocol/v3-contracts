@@ -26,10 +26,10 @@ library LiquidationLogic {
         DataType.Context storage _context,
         mapping(bytes32 => DataType.PerpStatus) storage _ranges
     ) external {
-        // check liquidation
-        require(checkLiquidatable(_vault, _subVaults, _context, _ranges), "P4");
-
         uint160 sqrtPrice = getSqrtTWAP(_context.uniswapPool);
+
+        // check liquidation
+        require(_checkLiquidatable(_vault, _subVaults, _context, _ranges, sqrtPrice), "L0");
 
         // calculate penalty
         uint256 debtValue = VaultLib.getDebtPositionValue(_vault, _subVaults, _ranges, _context, sqrtPrice);
@@ -44,27 +44,42 @@ library LiquidationLogic {
             debtValue / 200
         );
 
-        require(VaultLib.getDebtPositionValue(_vault, _subVaults, _ranges, _context, sqrtPrice) == 0, "P7");
+        require(VaultLib.getDebtPositionValue(_vault, _subVaults, _ranges, _context, sqrtPrice) == 0, "L1");
 
         sendReward(_context, msg.sender, penaltyAmount);
     }
 
+    /**
+     * @notice Checks the vault is liquidatable or not.
+     * if Min collateral is greater than margin value + position value, then return true.
+     * otherwise return false.
+     */
     function checkLiquidatable(
         DataType.Vault memory _vault,
         mapping(uint256 => DataType.SubVault) storage _subVaults,
         DataType.Context memory _context,
         mapping(bytes32 => DataType.PerpStatus) storage _ranges
     ) public view returns (bool) {
-        (uint160 sqrtPrice, ) = LPTMath.callUniswapObserve(IUniswapV3Pool(_context.uniswapPool), ORACLE_PERIOD);
+        uint160 sqrtPrice = getSqrtTWAP(_context.uniswapPool);
 
-        // calculate Min Collateral by using TWAP.
-        int256 minCollateral = PositionCalculator.calculateMinCollateral(
-            PositionLib.concat(VaultLib.getPositions(_vault, _subVaults, _ranges, _context)),
-            sqrtPrice,
-            _context.isMarginZero
-        );
+        return _checkLiquidatable(_vault, _subVaults, _context, _ranges, sqrtPrice);
+    }
 
-        return minCollateral > int256(VaultLib.getMarginValue2(_vault, _subVaults, _ranges, _context, sqrtPrice));
+    function _checkLiquidatable(
+        DataType.Vault memory _vault,
+        mapping(uint256 => DataType.SubVault) storage _subVaults,
+        DataType.Context memory _context,
+        mapping(bytes32 => DataType.PerpStatus) storage _ranges,
+        uint160 sqrtPrice
+    ) internal view returns (bool) {
+        DataType.Position memory position = VaultLib.getPosition(_vault, _subVaults, _ranges);
+
+        // calculate Min. Collateral by using TWAP.
+        int256 minCollateral = PositionCalculator.calculateMinCollateral(position, sqrtPrice, _context.isMarginZero);
+
+        int256 vaultValue = VaultLib.getVaultValue(_vault, _subVaults, _ranges, _context, position, sqrtPrice);
+
+        return minCollateral > vaultValue;
     }
 
     function reducePosition(
@@ -86,8 +101,8 @@ library LiquidationLogic {
             DataType.TradeOption(true, true, false, _context.isMarginZero, -2, -2)
         );
 
-        require(0 == surplusAmount0, "P5");
-        require(0 == surplusAmount1, "P6");
+        require(0 == surplusAmount0, "L2");
+        require(0 == surplusAmount1, "L3");
 
         {
             uint256 penaltyAmount;

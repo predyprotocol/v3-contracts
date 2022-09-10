@@ -27,7 +27,7 @@ contract ControllerHelper is Controller {
         DataType.PositionUpdate[] memory positionUpdates = PositionLib.getPositionUpdatesToOpen(
             _position,
             _tradeOption.isQuoteZero,
-            _openPositionOptions.swapAmount
+            getSqrtPrice()
         );
 
         vaultId = updatePosition(
@@ -80,8 +80,8 @@ contract ControllerHelper is Controller {
     ) public {
         DataType.PositionUpdate[] memory positionUpdates = PositionLib.getPositionUpdatesToClose(
             _positions,
-            _closePositionOptions.isZeroForOne,
-            _closePositionOptions.swapAmount
+            _closePositionOptions.swapRatio,
+            getSqrtPrice()
         );
 
         updatePosition(_vaultId, positionUpdates, 0, 0, _tradeOption, _closePositionOptions.metadata);
@@ -95,8 +95,8 @@ contract ControllerHelper is Controller {
     function liquidate(uint256 _vaultId, DataType.LiquidationOption memory _liquidationOption) external {
         DataType.PositionUpdate[] memory positionUpdates = PositionLib.getPositionUpdatesToClose(
             getPosition(_vaultId),
-            _liquidationOption.isZeroForOne,
-            _liquidationOption.swapAmount
+            _liquidationOption.swapRatio,
+            getSqrtPrice()
         );
 
         liquidate(_vaultId, positionUpdates);

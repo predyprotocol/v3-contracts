@@ -202,14 +202,14 @@ library PositionUpdater {
                 // update margin amount of token0 to target margin amount
                 deltaMarginAmount0 = _tradeOption.targetMarginAmount0.sub(int256(_vault.marginAmount0));
 
-                _vault.marginAmount0 = uint256(_tradeOption.targetMarginAmount0);
+                _vault.marginAmount0 = _tradeOption.targetMarginAmount0;
 
                 requiredAmount0 = requiredAmount0.add(deltaMarginAmount0);
             } else if (_tradeOption.targetMarginAmount0 == -2) {
                 // use margin of token0 to make required amount 0
                 deltaMarginAmount0 = requiredAmount0.mul(-1);
 
-                _vault.marginAmount0 = PredyMath.addDelta(_vault.marginAmount0, deltaMarginAmount0);
+                _vault.marginAmount0 = _vault.marginAmount0.add(deltaMarginAmount0);
 
                 requiredAmount0 = 0;
             }
@@ -218,14 +218,14 @@ library PositionUpdater {
                 // update margin amount of token1 to target margin amount
                 deltaMarginAmount1 = _tradeOption.targetMarginAmount1.sub(int256(_vault.marginAmount1));
 
-                _vault.marginAmount1 = uint256(_tradeOption.targetMarginAmount1);
+                _vault.marginAmount1 = _tradeOption.targetMarginAmount1;
 
                 requiredAmount1 = requiredAmount1.add(deltaMarginAmount1);
             } else if (_tradeOption.targetMarginAmount1 == -2) {
                 // use margin of token1 to make required amount 0
                 deltaMarginAmount1 = requiredAmount1.mul(-1);
 
-                _vault.marginAmount1 = PredyMath.addDelta(_vault.marginAmount1, deltaMarginAmount1);
+                _vault.marginAmount1 = _vault.marginAmount1.add(deltaMarginAmount1);
 
                 requiredAmount1 = 0;
             }
@@ -620,35 +620,6 @@ library PositionUpdater {
                 lpt.fee1Last = _ranges[lpt.rangeId].fee1Growth;
             }
         }
-
-        DataType.Position memory position = PositionLib.concat(
-            VaultLib.getPositions(_vault, _subVaults, _ranges, _context)
-        );
-
-        requiredAmount0 -= int256(
-            _context.tokenState0.removeCollateral(
-                _vault.balance0,
-                _context.tokenState0.getCollateralValue(_vault.balance0).sub(position.collateral0)
-            )
-        );
-        requiredAmount1 -= int256(
-            _context.tokenState1.removeCollateral(
-                _vault.balance1,
-                _context.tokenState1.getCollateralValue(_vault.balance1).sub(position.collateral1)
-            )
-        );
-        requiredAmount0 += int256(
-            _context.tokenState0.removeDebt(
-                _vault.balance0,
-                _context.tokenState0.getDebtValue(_vault.balance0).sub(position.debt0)
-            )
-        );
-        requiredAmount1 += int256(
-            _context.tokenState1.removeDebt(
-                _vault.balance1,
-                _context.tokenState1.getDebtValue(_vault.balance1).sub(position.debt1)
-            )
-        );
     }
 
     function decreaseLiquidityFromUni(

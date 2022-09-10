@@ -188,7 +188,6 @@ library VaultLib {
             DataType.VaultStatusAmount memory statusAmount = getVaultStatusAmount(
                 _subVaults[_vault.subVaults[i]],
                 _ranges,
-                _context,
                 _sqrtPrice
             );
             DataType.VaultStatusValue memory statusValue = getVaultStatusValue(
@@ -202,9 +201,10 @@ library VaultLib {
 
         return
             DataType.VaultStatus(
-                getMarginValue2(_vault, _subVaults, _ranges, _context, _sqrtPrice),
+                getPositionValue(VaultLib.getPosition(_vault, _subVaults, _ranges), _sqrtPrice, _context.isMarginZero),
+                getMarginValue(_vault, _subVaults, _ranges, _context, _sqrtPrice),
                 PositionCalculator.calculateMinCollateral(
-                    PositionLib.concat(getPositions(_vault, _subVaults, _ranges, _context)),
+                    PositionLib.concat(getPositions(_vault, _subVaults, _ranges)),
                     _sqrtPrice,
                     _context.isMarginZero
                 ),
@@ -212,45 +212,53 @@ library VaultLib {
             );
     }
 
-    function getMarginValue(DataType.Vault memory _vault, DataType.Context memory _context)
-        public
-        pure
-        returns (uint256)
-    {
-        if (_context.isMarginZero) {
-            return _vault.marginAmount0;
-        } else {
-            return _vault.marginAmount1;
-        }
-    }
-
-    function getMarginValue2(
+    function getMarginValue(
         DataType.Vault memory _vault,
         mapping(uint256 => DataType.SubVault) storage _subVaults,
         mapping(bytes32 => DataType.PerpStatus) storage _ranges,
         DataType.Context memory _context,
         uint160 _sqrtPrice
-    ) internal view returns (uint256) {
+    ) internal view returns (int256) {
         uint256 price = LPTMath.decodeSqrtPriceX96(_context.isMarginZero, _sqrtPrice);
 
         (int256 fee0, int256 fee1) = getPremiumAndFee(_vault, _subVaults, _ranges, _context);
 
-        {
-            DataType.Position memory position = PositionLib.concat(getPositions(_vault, _subVaults, _ranges, _context));
-
-            fee0 += int256(_context.tokenState0.getCollateralValue(_vault.balance0).sub(position.collateral0));
-            fee1 += int256(_context.tokenState1.getCollateralValue(_vault.balance1).sub(position.collateral1));
-            fee0 -= int256(_context.tokenState0.getDebtValue(_vault.balance0).sub(position.debt0));
-            fee1 -= int256(_context.tokenState1.getDebtValue(_vault.balance1).sub(position.debt1));
-        }
-
-        uint256 marginAmount0 = PredyMath.addDelta(_vault.marginAmount0, fee0);
-        uint256 marginAmount1 = PredyMath.addDelta(_vault.marginAmount1, fee1);
+        int256 marginAmount0 = _vault.marginAmount0 + fee0;
+        int256 marginAmount1 = _vault.marginAmount1 + fee1;
 
         if (_context.isMarginZero) {
-            return marginAmount0.add(PredyMath.mulDiv(marginAmount1, price, 1e18).div(2));
+            return marginAmount0.add(calculateUnderlyingValue(marginAmount1, price));
         } else {
-            return marginAmount1.add(PredyMath.mulDiv(marginAmount0, price, 1e18).div(2));
+            return marginAmount1.add(calculateUnderlyingValue(marginAmount0, price));
+        }
+    }
+
+    function getPositionValue(
+        DataType.Position memory _position,
+        uint160 _sqrtPrice,
+        bool _isMarginZero
+    ) internal pure returns (int256) {
+        return PositionCalculator.calculateValue(_position, _sqrtPrice, _isMarginZero);
+    }
+
+    function getVaultValue(
+        DataType.Vault memory _vault,
+        mapping(uint256 => DataType.SubVault) storage _subVaults,
+        mapping(bytes32 => DataType.PerpStatus) storage _ranges,
+        DataType.Context memory _context,
+        DataType.Position memory _position,
+        uint160 _sqrtPrice
+    ) internal view returns (int256) {
+        return
+            getMarginValue(_vault, _subVaults, _ranges, _context, _sqrtPrice) +
+            PositionCalculator.calculateValue(_position, _sqrtPrice, _context.isMarginZero);
+    }
+
+    function calculateUnderlyingValue(int256 _amount, uint256 _price) internal pure returns (int256) {
+        if (_amount >= 0) {
+            return _amount.mul(int256(_price)).div(1e18).div(2);
+        } else {
+            return _amount.mul(int256(_price)).div(1e18).mul(2);
         }
     }
 
@@ -291,7 +299,6 @@ library VaultLib {
     function getVaultStatusAmount(
         DataType.SubVault memory _subVault,
         mapping(bytes32 => DataType.PerpStatus) storage _ranges,
-        DataType.Context memory _context,
         uint160 _sqrtPrice
     ) internal view returns (DataType.VaultStatusAmount memory) {
         (uint256 fee0, uint256 fee1) = getEarnedTradeFee(_subVault, _ranges);
@@ -299,10 +306,9 @@ library VaultLib {
         (uint256 collateralAmount0, uint256 collateralAmount1) = getCollateralPositionAmounts(
             _subVault,
             _ranges,
-            _context,
             _sqrtPrice
         );
-        (uint256 debtAmount0, uint256 debtAmount1) = getDebtPositionAmounts(_subVault, _ranges, _context, _sqrtPrice);
+        (uint256 debtAmount0, uint256 debtAmount1) = getDebtPositionAmounts(_subVault, _ranges, _sqrtPrice);
 
         return
             DataType.VaultStatusAmount(
@@ -338,7 +344,7 @@ library VaultLib {
         uint160 _sqrtPrice,
         uint256 _price
     ) internal view returns (uint256) {
-        (uint256 totalAmount0, uint256 totalAmount1) = getDebtPositionAmounts(_subVault, _ranges, _context, _sqrtPrice);
+        (uint256 totalAmount0, uint256 totalAmount1) = getDebtPositionAmounts(_subVault, _ranges, _sqrtPrice);
 
         uint256 paidPremium = getPaidDailyPremium(_subVault, _ranges);
 
@@ -355,7 +361,6 @@ library VaultLib {
     function getCollateralPositionAmounts(
         DataType.SubVault memory _subVault,
         mapping(bytes32 => DataType.PerpStatus) storage _ranges,
-        DataType.Context memory _context,
         uint160 _sqrtPrice
     ) internal view returns (uint256 totalAmount0, uint256 totalAmount1) {
         totalAmount0 = totalAmount0.add(_subVault.collateralAmount0);
@@ -372,7 +377,6 @@ library VaultLib {
     function getDebtPositionAmounts(
         DataType.SubVault memory _subVault,
         mapping(bytes32 => DataType.PerpStatus) storage _ranges,
-        DataType.Context memory _context,
         uint160 _sqrtPrice
     ) internal view returns (uint256 totalAmount0, uint256 totalAmount1) {
         totalAmount0 = totalAmount0.add(_subVault.debtAmount0);
@@ -493,14 +497,20 @@ library VaultLib {
                 totalFee1 = totalFee1.sub(int256(getPaidDailyPremium(subVault, _ranges)));
             }
         }
+
+        DataType.Position memory position = PositionLib.concat(getPositions(_vault, _subVaults, _ranges));
+
+        totalFee0 += int256(_context.tokenState0.getCollateralValue(_vault.balance0).sub(position.collateral0));
+        totalFee1 += int256(_context.tokenState1.getCollateralValue(_vault.balance1).sub(position.collateral1));
+        totalFee0 -= int256(_context.tokenState0.getDebtValue(_vault.balance0).sub(position.debt0));
+        totalFee1 -= int256(_context.tokenState1.getDebtValue(_vault.balance1).sub(position.debt1));
     }
 
     function getPositionOfSubVault(
         uint256 _subVaultIndex,
         DataType.SubVault memory _subVault,
-        mapping(bytes32 => DataType.PerpStatus) storage _ranges,
-        DataType.Context memory _context
-    ) public view returns (DataType.Position memory position) {
+        mapping(bytes32 => DataType.PerpStatus) storage _ranges
+    ) internal view returns (DataType.Position memory position) {
         DataType.LPT[] memory lpts = new DataType.LPT[](_subVault.lpts.length);
 
         for (uint256 i = 0; i < _subVault.lpts.length; i++) {
@@ -527,13 +537,20 @@ library VaultLib {
     function getPositions(
         DataType.Vault memory _vault,
         mapping(uint256 => DataType.SubVault) storage _subVaults,
-        mapping(bytes32 => DataType.PerpStatus) storage _ranges,
-        DataType.Context memory _context
-    ) public view returns (DataType.Position[] memory positions) {
+        mapping(bytes32 => DataType.PerpStatus) storage _ranges
+    ) internal view returns (DataType.Position[] memory positions) {
         positions = new DataType.Position[](_vault.subVaults.length);
 
         for (uint256 i = 0; i < _vault.subVaults.length; i++) {
-            positions[i] = getPositionOfSubVault(i, _subVaults[_vault.subVaults[i]], _ranges, _context);
+            positions[i] = getPositionOfSubVault(i, _subVaults[_vault.subVaults[i]], _ranges);
         }
+    }
+
+    function getPosition(
+        DataType.Vault memory _vault,
+        mapping(uint256 => DataType.SubVault) storage _subVaults,
+        mapping(bytes32 => DataType.PerpStatus) storage _ranges
+    ) internal view returns (DataType.Position memory position) {
+        return PositionLib.concat(VaultLib.getPositions(_vault, _subVaults, _ranges));
     }
 }
