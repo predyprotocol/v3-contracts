@@ -31,15 +31,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const VaultLib = await ethers.getContract('VaultLib', deployer)
 
   await deploy('LiquidationLogic', {
-    from: deployer, log: true,
+    from: deployer,
+    log: true,
     libraries: {
       PositionUpdater: PositionUpdater.address,
       PositionCalculator: PositionCalculator.address,
-      VaultLib: VaultLib.address
+      VaultLib: VaultLib.address,
     },
-
   })
-
 }
 
 export default func

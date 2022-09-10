@@ -22,6 +22,7 @@ library VaultLib {
     using SafeMath for uint128;
     using SignedSafeMath for int256;
     using SafeCast for uint256;
+    using BaseToken for BaseToken.TokenState;
 
     event SubVaultCreated(uint256 indexed vaultId, uint256 subVaultIndex, uint256 subVaultId);
     event SubVaultRemoved(uint256 indexed vaultId, uint256 subVaultIndex, uint256 subVaultId);
@@ -201,7 +202,7 @@ library VaultLib {
 
         return
             DataType.VaultStatus(
-                getMarginValue(_vault, _context),
+                getMarginValue2(_vault, _subVaults, _ranges, _context, _sqrtPrice),
                 PositionCalculator.calculateMinCollateral(
                     PositionLib.concat(getPositions(_vault, _subVaults, _ranges, _context)),
                     _sqrtPrice,
@@ -234,6 +235,15 @@ library VaultLib {
 
         (int256 fee0, int256 fee1) = getPremiumAndFee(_vault, _subVaults, _ranges, _context);
 
+        {
+            DataType.Position memory position = PositionLib.concat(getPositions(_vault, _subVaults, _ranges, _context));
+
+            fee0 += int256(_context.tokenState0.getCollateralValue(_vault.balance0).sub(position.collateral0));
+            fee1 += int256(_context.tokenState1.getCollateralValue(_vault.balance1).sub(position.collateral1));
+            fee0 -= int256(_context.tokenState0.getDebtValue(_vault.balance0).sub(position.debt0));
+            fee1 -= int256(_context.tokenState1.getDebtValue(_vault.balance1).sub(position.debt1));
+        }
+
         uint256 marginAmount0 = PredyMath.addDelta(_vault.marginAmount0, fee0);
         uint256 marginAmount1 = PredyMath.addDelta(_vault.marginAmount1, fee1);
 
@@ -242,18 +252,6 @@ library VaultLib {
         } else {
             return marginAmount1.add(PredyMath.mulDiv(marginAmount0, price, 1e18).div(2));
         }
-    }
-
-    function updateMargin(
-        DataType.Vault memory _vault,
-        mapping(uint256 => DataType.SubVault) storage _subVaults,
-        mapping(bytes32 => DataType.PerpStatus) storage _ranges,
-        DataType.Context memory _context
-    ) internal view {
-        (int256 fee0, int256 fee1) = getPremiumAndFee(_vault, _subVaults, _ranges, _context);
-
-        _vault.marginAmount0 = PredyMath.addDelta(_vault.marginAmount0, fee0);
-        _vault.marginAmount1 = PredyMath.addDelta(_vault.marginAmount1, fee1);
     }
 
     function getVaultStatusValue(
@@ -360,8 +358,8 @@ library VaultLib {
         DataType.Context memory _context,
         uint160 _sqrtPrice
     ) internal view returns (uint256 totalAmount0, uint256 totalAmount1) {
-        totalAmount0 = totalAmount0.add(BaseToken.getCollateralValue(_context.tokenState0, _subVault.balance0));
-        totalAmount1 = totalAmount1.add(BaseToken.getCollateralValue(_context.tokenState1, _subVault.balance1));
+        totalAmount0 = totalAmount0.add(_subVault.collateralAmount0);
+        totalAmount1 = totalAmount1.add(_subVault.collateralAmount1);
 
         {
             (uint256 amount0, uint256 amount1) = getLPTPositionAmounts(_subVault, _ranges, _sqrtPrice, true);
@@ -377,8 +375,8 @@ library VaultLib {
         DataType.Context memory _context,
         uint160 _sqrtPrice
     ) internal view returns (uint256 totalAmount0, uint256 totalAmount1) {
-        totalAmount0 = totalAmount0.add(BaseToken.getDebtValue(_context.tokenState0, _subVault.balance0));
-        totalAmount1 = totalAmount1.add(BaseToken.getDebtValue(_context.tokenState1, _subVault.balance1));
+        totalAmount0 = totalAmount0.add(_subVault.debtAmount0);
+        totalAmount1 = totalAmount1.add(_subVault.debtAmount1);
 
         {
             (uint256 amount0, uint256 amount1) = getLPTPositionAmounts(_subVault, _ranges, _sqrtPrice, false);
@@ -518,10 +516,10 @@ library VaultLib {
 
         position = DataType.Position(
             _subVaultIndex,
-            BaseToken.getCollateralValue(_context.tokenState0, _subVault.balance0),
-            BaseToken.getCollateralValue(_context.tokenState1, _subVault.balance1),
-            BaseToken.getDebtValue(_context.tokenState0, _subVault.balance0),
-            BaseToken.getDebtValue(_context.tokenState1, _subVault.balance1),
+            _subVault.collateralAmount0,
+            _subVault.collateralAmount1,
+            _subVault.debtAmount0,
+            _subVault.debtAmount1,
             lpts
         );
     }

@@ -15,6 +15,8 @@ import "./VaultLib.sol";
 import "./LPTStateLib.sol";
 import "./UniHelper.sol";
 
+import "forge-std/console.sol";
+
 /*
  * Error Codes
  * PU1: reduce only
@@ -60,12 +62,14 @@ library PositionUpdater {
         for (uint256 i = 0; i < _positionUpdates.length; i++) {
             DataType.PositionUpdate memory positionUpdate = _positionUpdates[i];
 
+            console.log(uint256(positionUpdate.positionUpdateType));
+
             // create new sub-vault if needed
             DataType.SubVault storage subVault = _vault.addSubVault(_subVaults, _context, positionUpdate.subVaultIndex);
 
             if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.DEPOSIT_TOKEN) {
                 require(!_tradeOption.reduceOnly, "PU1");
-                depositTokens(subVault, _context, positionUpdate.param0, positionUpdate.param1);
+                depositTokens(_vault, subVault, _context, positionUpdate.param0, positionUpdate.param1);
 
                 requiredAmount0 = requiredAmount0.add(int256(positionUpdate.param0));
                 requiredAmount1 = requiredAmount1.add(int256(positionUpdate.param1));
@@ -78,6 +82,7 @@ library PositionUpdater {
                 );
             } else if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.WITHDRAW_TOKEN) {
                 (uint256 amount0, uint256 amount1) = withdrawTokens(
+                    _vault,
                     subVault,
                     _context,
                     positionUpdate.param0,
@@ -90,7 +95,7 @@ library PositionUpdater {
                 emit TokenWithdrawn(_vault.vaultId, positionUpdate.subVaultIndex, amount0, amount1);
             } else if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.BORROW_TOKEN) {
                 require(!_tradeOption.reduceOnly, "PU1");
-                borrowTokens(subVault, _context, positionUpdate.param0, positionUpdate.param1);
+                borrowTokens(_vault, subVault, _context, positionUpdate.param0, positionUpdate.param1);
 
                 requiredAmount0 = requiredAmount0.sub(int256(positionUpdate.param0));
                 requiredAmount1 = requiredAmount1.sub(int256(positionUpdate.param1));
@@ -103,6 +108,7 @@ library PositionUpdater {
                 );
             } else if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.REPAY_TOKEN) {
                 (uint256 amount0, uint256 amount1) = repayTokens(
+                    _vault,
                     subVault,
                     _context,
                     positionUpdate.param0,
@@ -238,10 +244,10 @@ library PositionUpdater {
                 DataType.SubVault memory subVault = _subVaults[_vault.subVaults[index]];
 
                 if (
-                    subVault.balance0.collateralAmount == 0 &&
-                    subVault.balance0.debtAmount == 0 &&
-                    subVault.balance1.collateralAmount == 0 &&
-                    subVault.balance1.debtAmount == 0 &&
+                    subVault.collateralAmount0 == 0 &&
+                    subVault.debtAmount0 == 0 &&
+                    subVault.collateralAmount1 == 0 &&
+                    subVault.debtAmount1 == 0 &&
                     subVault.lpts.length == 0
                 ) {
                     _vault.removeSubVault(index);
@@ -305,43 +311,59 @@ library PositionUpdater {
     }
 
     function depositTokens(
+        DataType.Vault storage _vault,
         DataType.SubVault storage _subVault,
         DataType.Context storage _context,
         uint256 amount0,
         uint256 amount1
     ) internal {
-        _context.tokenState0.addCollateral(_subVault.balance0, amount0);
-        _context.tokenState1.addCollateral(_subVault.balance1, amount1);
+        _subVault.collateralAmount0 = _subVault.collateralAmount0.add(amount0);
+        _subVault.collateralAmount1 = _subVault.collateralAmount1.add(amount1);
+
+        _context.tokenState0.addCollateral(_vault.balance0, amount0);
+        _context.tokenState1.addCollateral(_vault.balance1, amount1);
     }
 
     function withdrawTokens(
+        DataType.Vault storage _vault,
         DataType.SubVault storage _subVault,
         DataType.Context storage _context,
         uint256 amount0,
         uint256 amount1
     ) internal returns (uint256 withdrawAmount0, uint256 withdrawAmount1) {
-        withdrawAmount0 = _context.tokenState0.removeCollateral(_subVault.balance0, amount0);
-        withdrawAmount1 = _context.tokenState1.removeCollateral(_subVault.balance1, amount1);
+        _subVault.collateralAmount0 = _subVault.collateralAmount0.sub(amount0);
+        _subVault.collateralAmount1 = _subVault.collateralAmount1.sub(amount1);
+
+        withdrawAmount0 = _context.tokenState0.removeCollateral(_vault.balance0, amount0);
+        withdrawAmount1 = _context.tokenState1.removeCollateral(_vault.balance1, amount1);
     }
 
     function borrowTokens(
+        DataType.Vault storage _vault,
         DataType.SubVault storage _subVault,
         DataType.Context storage _context,
         uint256 amount0,
         uint256 amount1
     ) internal {
-        _context.tokenState0.addDebt(_subVault.balance0, amount0);
-        _context.tokenState1.addDebt(_subVault.balance1, amount1);
+        _subVault.debtAmount0 = _subVault.debtAmount0.add(amount0);
+        _subVault.debtAmount1 = _subVault.debtAmount1.add(amount1);
+
+        _context.tokenState0.addDebt(_vault.balance0, amount0);
+        _context.tokenState1.addDebt(_vault.balance1, amount1);
     }
 
     function repayTokens(
+        DataType.Vault storage _vault,
         DataType.SubVault storage _subVault,
         DataType.Context storage _context,
         uint256 amount0,
         uint256 amount1
     ) internal returns (uint256 requiredAmount0, uint256 requiredAmount1) {
-        requiredAmount0 = _context.tokenState0.removeDebt(_subVault.balance0, amount0);
-        requiredAmount1 = _context.tokenState1.removeDebt(_subVault.balance1, amount1);
+        _subVault.debtAmount0 = _subVault.debtAmount0.sub(amount0);
+        _subVault.debtAmount1 = _subVault.debtAmount1.sub(amount1);
+
+        requiredAmount0 = _context.tokenState0.removeDebt(_vault.balance0, amount0);
+        requiredAmount1 = _context.tokenState1.removeDebt(_vault.balance1, amount1);
     }
 
     function depositLPT(
@@ -573,16 +595,14 @@ library PositionUpdater {
     }
 
     function updateFeeEntry(
-        DataType.Vault memory _vault,
+        DataType.Vault storage _vault,
         mapping(uint256 => DataType.SubVault) storage _subVaults,
         mapping(bytes32 => DataType.PerpStatus) storage _ranges,
-        DataType.Context memory _context
+        DataType.Context storage _context
     ) internal returns (int256 requiredAmount0, int256 requiredAmount1) {
         (int256 fee0, int256 fee1) = VaultLib.getPremiumAndFee(_vault, _subVaults, _ranges, _context);
         requiredAmount0 = -fee0;
         requiredAmount1 = -fee1;
-
-        // VaultLib.updateMargin(_vault, _subVaults, _ranges, _context);
 
         for (uint256 i = 0; i < _vault.subVaults.length; i++) {
             DataType.SubVault storage subVault = _subVaults[_vault.subVaults[i]];
@@ -600,6 +620,35 @@ library PositionUpdater {
                 lpt.fee1Last = _ranges[lpt.rangeId].fee1Growth;
             }
         }
+
+        DataType.Position memory position = PositionLib.concat(
+            VaultLib.getPositions(_vault, _subVaults, _ranges, _context)
+        );
+
+        requiredAmount0 -= int256(
+            _context.tokenState0.removeCollateral(
+                _vault.balance0,
+                _context.tokenState0.getCollateralValue(_vault.balance0).sub(position.collateral0)
+            )
+        );
+        requiredAmount1 -= int256(
+            _context.tokenState1.removeCollateral(
+                _vault.balance1,
+                _context.tokenState1.getCollateralValue(_vault.balance1).sub(position.collateral1)
+            )
+        );
+        requiredAmount0 += int256(
+            _context.tokenState0.removeDebt(
+                _vault.balance0,
+                _context.tokenState0.getDebtValue(_vault.balance0).sub(position.debt0)
+            )
+        );
+        requiredAmount1 += int256(
+            _context.tokenState1.removeDebt(
+                _vault.balance1,
+                _context.tokenState1.getDebtValue(_vault.balance1).sub(position.debt1)
+            )
+        );
     }
 
     function decreaseLiquidityFromUni(

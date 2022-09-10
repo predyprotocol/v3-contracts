@@ -28,8 +28,10 @@ library DataType {
     }
 
     struct SubVault {
-        BaseToken.AccountState balance0;
-        BaseToken.AccountState balance1;
+        uint256 collateralAmount0;
+        uint256 collateralAmount1;
+        uint256 debtAmount0;
+        uint256 debtAmount1;
         LPTState[] lpts;
     }
 
@@ -38,6 +40,8 @@ library DataType {
         address owner;
         uint256 marginAmount0;
         uint256 marginAmount1;
+        BaseToken.AccountState balance0;
+        BaseToken.AccountState balance1;
         uint256[] subVaults;
     }
 

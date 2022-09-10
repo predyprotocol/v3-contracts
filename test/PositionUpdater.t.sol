@@ -61,8 +61,8 @@ contract PositionUpdaterTest is TestDeployer, Test {
 
         PositionUpdater.updatePosition(vault1, subVaults, context, ranges, positionUpdates, tradeOption);
 
-        assertEq(BaseToken.getCollateralValue(context.tokenState0, subVaults[vault1.subVaults[0]].balance0), 1e6);
-        assertEq(BaseToken.getCollateralValue(context.tokenState1, subVaults[vault1.subVaults[0]].balance1), 1e18);
+        assertEq(subVaults[vault1.subVaults[0]].collateralAmount0, 1e6);
+        assertEq(subVaults[vault1.subVaults[0]].collateralAmount1, 1e18);
     }
 
     function testUpdatePositionWithdrawToken() public {
@@ -100,8 +100,8 @@ contract PositionUpdaterTest is TestDeployer, Test {
 
         PositionUpdater.updatePosition(vault1, subVaults, context, ranges, positionUpdates, tradeOption);
 
-        assertEq(BaseToken.getDebtValue(context.tokenState0, subVaults[vault1.subVaults[0]].balance0), 0);
-        assertEq(BaseToken.getDebtValue(context.tokenState1, subVaults[vault1.subVaults[0]].balance1), 1e18);
+        assertEq(subVaults[vault1.subVaults[0]].debtAmount0, 0);
+        assertEq(subVaults[vault1.subVaults[0]].debtAmount1, 1e18);
     }
 
     function testUpdatePositionRepayToken() public {

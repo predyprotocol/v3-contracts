@@ -12,8 +12,6 @@ library PositionLib {
     using SafeMath for uint256;
     using SignedSafeMath for int256;
 
-    uint256 private constant CLOSE_MARGIN = 120;
-
     function getPositionUpdatesToOpen(
         DataType.Position memory _position,
         bool _isQuoteZero,
@@ -398,8 +396,8 @@ library PositionLib {
                     0,
                     0,
                     0,
-                    (_positions[i].collateral0 * CLOSE_MARGIN) / 100,
-                    (_positions[i].collateral1 * CLOSE_MARGIN) / 100
+                    _positions[i].collateral0,
+                    _positions[i].collateral1
                 );
                 index++;
             }
@@ -414,8 +412,8 @@ library PositionLib {
                     0,
                     0,
                     0,
-                    (_positions[i].debt0 * CLOSE_MARGIN) / 100,
-                    (_positions[i].debt1 * CLOSE_MARGIN) / 100
+                    _positions[i].debt0,
+                    _positions[i].debt1
                 );
             }
         }
