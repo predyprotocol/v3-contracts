@@ -225,8 +225,8 @@ library VaultLib {
 
         (int256 fee0, int256 fee1) = getPremiumAndFee(_vault, _subVaults, _ranges, _context);
 
-        int256 marginAmount0 = _vault.marginAmount0 + fee0;
-        int256 marginAmount1 = _vault.marginAmount1 + fee1;
+        int256 marginAmount0 = int256(_vault.marginAmount0) + fee0;
+        int256 marginAmount1 = int256(_vault.marginAmount1) + fee1;
 
         if (_context.isMarginZero) {
             return marginAmount0.add(calculateUnderlyingValue(marginAmount1, price));
@@ -501,7 +501,7 @@ library VaultLib {
         }
 
         DataType.Position memory position = PositionLib.concat(getPositions(_vault, _subVaults, _ranges));
-        
+
         totalFee0 += int256(_context.tokenState0.getCollateralValue(_vault.balance0)).sub(int256(position.collateral0));
         totalFee1 += int256(_context.tokenState1.getCollateralValue(_vault.balance1)).sub(int256(position.collateral1));
         totalFee0 -= int256(_context.tokenState0.getDebtValue(_vault.balance0)).sub(int256(position.debt0));

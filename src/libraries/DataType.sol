@@ -38,8 +38,8 @@ library DataType {
     struct Vault {
         uint256 vaultId;
         address owner;
-        int256 marginAmount0;
-        int256 marginAmount1;
+        uint256 marginAmount0;
+        uint256 marginAmount1;
         BaseToken.AccountState balance0;
         BaseToken.AccountState balance1;
         uint256[] subVaults;

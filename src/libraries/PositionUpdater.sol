@@ -202,14 +202,14 @@ library PositionUpdater {
                 // update margin amount of token0 to target margin amount
                 deltaMarginAmount0 = _tradeOption.targetMarginAmount0.sub(int256(_vault.marginAmount0));
 
-                _vault.marginAmount0 = _tradeOption.targetMarginAmount0;
+                _vault.marginAmount0 = uint256(_tradeOption.targetMarginAmount0);
 
                 requiredAmount0 = requiredAmount0.add(deltaMarginAmount0);
             } else if (_tradeOption.targetMarginAmount0 == -2) {
                 // use margin of token0 to make required amount 0
                 deltaMarginAmount0 = requiredAmount0.mul(-1);
 
-                _vault.marginAmount0 = _vault.marginAmount0.add(deltaMarginAmount0);
+                _vault.marginAmount0 = PredyMath.addDelta(_vault.marginAmount0, deltaMarginAmount0);
 
                 requiredAmount0 = 0;
             }
@@ -218,14 +218,14 @@ library PositionUpdater {
                 // update margin amount of token1 to target margin amount
                 deltaMarginAmount1 = _tradeOption.targetMarginAmount1.sub(int256(_vault.marginAmount1));
 
-                _vault.marginAmount1 = _tradeOption.targetMarginAmount1;
+                _vault.marginAmount1 = uint256(_tradeOption.targetMarginAmount1);
 
                 requiredAmount1 = requiredAmount1.add(deltaMarginAmount1);
             } else if (_tradeOption.targetMarginAmount1 == -2) {
                 // use margin of token1 to make required amount 0
                 deltaMarginAmount1 = requiredAmount1.mul(-1);
 
-                _vault.marginAmount1 = _vault.marginAmount1.add(deltaMarginAmount1);
+                _vault.marginAmount1 = PredyMath.addDelta(_vault.marginAmount1, deltaMarginAmount1);
 
                 requiredAmount1 = 0;
             }
