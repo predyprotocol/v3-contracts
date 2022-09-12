@@ -17,6 +17,8 @@ contract PositionUpdaterTest is TestDeployer, Test {
     DataType.Vault private vault1;
     DataType.Vault private vault2;
     DataType.Vault private vault3;
+    DataType.Vault private vault4;
+    DataType.Vault private vault5;
 
     mapping(bytes32 => DataType.PerpStatus) private ranges;
 
@@ -36,8 +38,12 @@ contract PositionUpdaterTest is TestDeployer, Test {
         // vault1 is empty
         // vault2 has deposited token
         // vault3 has borrowed token
-        depositToken(vault2, context, ranges, 2 * 1e6, 2 * 1e18);
-        borrowToken(vault3, context, ranges, 1e6, 1e18);
+        // vault4 has deposited token with compound option
+        // vault5 has borrowed token with compound option
+        depositToken(vault2, context, ranges, 2 * 1e6, 2 * 1e18, false);
+        borrowToken(vault3, context, ranges, 1e6, 1e18, false);
+        depositToken(vault4, context, ranges, 2 * 1e6, 2 * 1e18, true);
+        borrowToken(vault5, context, ranges, 1e6, 1e18, true);
     }
 
     function testUpdatePosition() public {
@@ -65,6 +71,28 @@ contract PositionUpdaterTest is TestDeployer, Test {
         assertEq(subVaults[vault1.subVaults[0]].collateralAmount1, 1e18);
     }
 
+    function testUpdatePositionDepositTokenWithCompound() public {
+        DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](1);
+
+        positionUpdates[0] = DataType.PositionUpdate(
+            DataType.PositionUpdateType.DEPOSIT_TOKEN,
+            0,
+            true,
+            0,
+            0,
+            0,
+            1e6,
+            1e18
+        );
+
+        PositionUpdater.updatePosition(vault1, subVaults, context, ranges, positionUpdates, tradeOption);
+
+        assertEq(subVaults[vault1.subVaults[0]].collateralAmount0, 0);
+        assertEq(subVaults[vault1.subVaults[0]].collateralAmount1, 0);
+        assertEq(BaseToken.getCollateralValue(context.tokenState0, subVaults[vault1.subVaults[0]].balance0), 1e6);
+        assertEq(BaseToken.getCollateralValue(context.tokenState1, subVaults[vault1.subVaults[0]].balance1), 1e18);
+    }
+
     function testUpdatePositionWithdrawToken() public {
         DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](1);
 
@@ -82,6 +110,25 @@ contract PositionUpdaterTest is TestDeployer, Test {
         PositionUpdater.updatePosition(vault2, subVaults, context, ranges, positionUpdates, tradeOption);
 
         assertEq(vault2.subVaults.length, 0);
+    }
+
+    function testUpdatePositionWithdrawTokenWithCompound() public {
+        DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](1);
+
+        positionUpdates[0] = DataType.PositionUpdate(
+            DataType.PositionUpdateType.WITHDRAW_TOKEN,
+            0,
+            false,
+            0,
+            0,
+            0,
+            2 * 1e6,
+            2 * 1e18
+        );
+
+        PositionUpdater.updatePosition(vault4, subVaults, context, ranges, positionUpdates, tradeOption);
+
+        assertEq(vault4.subVaults.length, 0);
     }
 
     function testUpdatePositionBorrowToken() public {
@@ -104,6 +151,27 @@ contract PositionUpdaterTest is TestDeployer, Test {
         assertEq(subVaults[vault1.subVaults[0]].debtAmount1, 1e18);
     }
 
+    function testUpdatePositionBorrowTokenWithCompound() public {
+        DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](1);
+
+        positionUpdates[0] = DataType.PositionUpdate(
+            DataType.PositionUpdateType.BORROW_TOKEN,
+            0,
+            true,
+            0,
+            0,
+            0,
+            0,
+            1e18
+        );
+
+        PositionUpdater.updatePosition(vault1, subVaults, context, ranges, positionUpdates, tradeOption);
+
+        assertEq(subVaults[vault1.subVaults[0]].debtAmount0, 0);
+        assertEq(subVaults[vault1.subVaults[0]].debtAmount1, 0);
+        assertEq(BaseToken.getDebtValue(context.tokenState1, subVaults[vault1.subVaults[0]].balance1), 1e18);
+    }
+
     function testUpdatePositionRepayToken() public {
         DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](1);
 
@@ -121,6 +189,25 @@ contract PositionUpdaterTest is TestDeployer, Test {
         PositionUpdater.updatePosition(vault3, subVaults, context, ranges, positionUpdates, tradeOption);
 
         assertEq(vault3.subVaults.length, 0);
+    }
+
+    function testUpdatePositionRepayTokenWithCompound() public {
+        DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](1);
+
+        positionUpdates[0] = DataType.PositionUpdate(
+            DataType.PositionUpdateType.REPAY_TOKEN,
+            0,
+            false,
+            0,
+            0,
+            0,
+            1e6 * 2,
+            1e18 * 2
+        );
+
+        PositionUpdater.updatePosition(vault5, subVaults, context, ranges, positionUpdates, tradeOption);
+
+        assertEq(vault5.subVaults.length, 0);
     }
 
     function testUpdatePositionDepositLPT() public {

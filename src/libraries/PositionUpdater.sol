@@ -54,9 +54,7 @@ library PositionUpdater {
         DataType.PositionUpdate[] memory _positionUpdates,
         DataType.TradeOption memory _tradeOption
     ) external returns (int256 requiredAmount0, int256 requiredAmount1) {
-        if (_tradeOption.targetMarginAmount0 == -2 || _tradeOption.targetMarginAmount1 == -2) {
-            (requiredAmount0, requiredAmount1) = updateFeeEntry(_vault, _subVaults, _ranges, _context);
-        }
+        (requiredAmount0, requiredAmount1) = updateFeeEntry(_vault, _subVaults, _ranges, _context);
 
         for (uint256 i = 0; i < _positionUpdates.length; i++) {
             DataType.PositionUpdate memory positionUpdate = _positionUpdates[i];
@@ -621,9 +619,10 @@ library PositionUpdater {
                 lpt.fee1Last = _ranges[lpt.rangeId].fee1Growth;
             }
 
-            {
+            if (!subVault.isCompound) {
                 (int256 collateralFee0, int256 collateralFee1, int256 debtFee0, int256 debtFee1) = VaultLib
                     .getTokenInterestOfSubVault(subVault, _context);
+
                 _context.tokenState0.removeCollateral(subVault.balance0, collateralFee0.toUint256());
                 _context.tokenState1.removeCollateral(subVault.balance1, collateralFee1.toUint256());
                 _context.tokenState0.removeDebt(subVault.balance0, debtFee0.toUint256());

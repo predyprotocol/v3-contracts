@@ -71,9 +71,18 @@ abstract contract BaseTestHelper {
         DataType.Context storage _context,
         mapping(bytes32 => DataType.PerpStatus) storage _ranges,
         uint256 _amount0,
-        uint256 _amount1
+        uint256 _amount1,
+        bool _isCompound
     ) internal {
-        _updateTokenPosition(_vault, _context, _ranges, DataType.PositionUpdateType.DEPOSIT_TOKEN, _amount0, _amount1);
+        _updateTokenPosition(
+            _vault,
+            _context,
+            _ranges,
+            DataType.PositionUpdateType.DEPOSIT_TOKEN,
+            _amount0,
+            _amount1,
+            _isCompound
+        );
     }
 
     function withdrawToken(
@@ -83,7 +92,15 @@ abstract contract BaseTestHelper {
         uint256 _amount0,
         uint256 _amount1
     ) internal {
-        _updateTokenPosition(_vault, _context, _ranges, DataType.PositionUpdateType.WITHDRAW_TOKEN, _amount0, _amount1);
+        _updateTokenPosition(
+            _vault,
+            _context,
+            _ranges,
+            DataType.PositionUpdateType.WITHDRAW_TOKEN,
+            _amount0,
+            _amount1,
+            false
+        );
     }
 
     function borrowToken(
@@ -91,9 +108,18 @@ abstract contract BaseTestHelper {
         DataType.Context storage _context,
         mapping(bytes32 => DataType.PerpStatus) storage _ranges,
         uint256 _amount0,
-        uint256 _amount1
+        uint256 _amount1,
+        bool _isCompound
     ) internal {
-        _updateTokenPosition(_vault, _context, _ranges, DataType.PositionUpdateType.BORROW_TOKEN, _amount0, _amount1);
+        _updateTokenPosition(
+            _vault,
+            _context,
+            _ranges,
+            DataType.PositionUpdateType.BORROW_TOKEN,
+            _amount0,
+            _amount1,
+            _isCompound
+        );
     }
 
     function repayToken(
@@ -103,7 +129,15 @@ abstract contract BaseTestHelper {
         uint256 _amount0,
         uint256 _amount1
     ) internal {
-        _updateTokenPosition(_vault, _context, _ranges, DataType.PositionUpdateType.REPAY_TOKEN, _amount0, _amount1);
+        _updateTokenPosition(
+            _vault,
+            _context,
+            _ranges,
+            DataType.PositionUpdateType.REPAY_TOKEN,
+            _amount0,
+            _amount1,
+            false
+        );
     }
 
     function _updateTokenPosition(
@@ -112,11 +146,12 @@ abstract contract BaseTestHelper {
         mapping(bytes32 => DataType.PerpStatus) storage _ranges,
         DataType.PositionUpdateType _positionUpdateType,
         uint256 _amount0,
-        uint256 _amount1
+        uint256 _amount1,
+        bool _isCompound
     ) internal {
         DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](1);
 
-        positionUpdates[0] = DataType.PositionUpdate(_positionUpdateType, 0, false, 0, 0, 0, _amount0, _amount1);
+        positionUpdates[0] = DataType.PositionUpdate(_positionUpdateType, 0, _isCompound, 0, 0, 0, _amount0, _amount1);
 
         PositionUpdater.updatePosition(
             _vault,
