@@ -159,14 +159,14 @@ contract Controller is IController, Initializable {
         DataType.TradeOption memory _tradeOption,
         DataType.MetaData memory _metadata
     ) public override returns (uint256 vaultId) {
+        applyPerpFee(_vaultId, _positionUpdates);
+
         if (_buffer0 > 0) {
             TransferHelper.safeTransferFrom(context.token0, msg.sender, address(this), uint256(_buffer0));
         }
         if (_buffer1 > 0) {
             TransferHelper.safeTransferFrom(context.token1, msg.sender, address(this), uint256(_buffer1));
         }
-
-        applyPerpFee(_vaultId, _positionUpdates);
 
         DataType.Vault storage vault;
         (vaultId, vault) = createOrGetVault(_vaultId, _tradeOption.quoterMode);
@@ -379,6 +379,10 @@ contract Controller is IController, Initializable {
         PositionUpdater.updateFeeGrowth(context, vault, subVaults, ranges);
     }
 
+    function applyInterest() internal {
+        lastTouchedTimestamp = InterestCalculator.applyInterest(context, irmParams, lastTouchedTimestamp);
+    }
+
     /**
      * Gets square root of current underlying token price by quote token.
      */
@@ -393,7 +397,7 @@ contract Controller is IController, Initializable {
     function _getPosition(uint256 _vaultId) internal view returns (DataType.Position[] memory) {
         DataType.Vault memory vault = vaults[_vaultId];
 
-        return vault.getPositions(subVaults, ranges);
+        return vault.getPositions(subVaults, ranges, context);
     }
 
     function _getPositionOfSubVault(uint256 _vaultId, uint256 _subVaultIndex)
@@ -403,7 +407,8 @@ contract Controller is IController, Initializable {
     {
         DataType.Vault memory vault = vaults[_vaultId];
 
-        return VaultLib.getPositionOfSubVault(_subVaultIndex, subVaults[vault.subVaults[_subVaultIndex]], ranges);
+        return
+            VaultLib.getPositionOfSubVault(_subVaultIndex, subVaults[vault.subVaults[_subVaultIndex]], ranges, context);
     }
 
     function revertRequiredAmounts(int256 _requiredAmount0, int256 _requiredAmount1) internal pure {

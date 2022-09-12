@@ -50,6 +50,8 @@ contract ControllerHelper is Controller {
         DataType.TradeOption memory _tradeOption,
         DataType.ClosePositionOption memory _closePositionOptions
     ) external {
+        applyInterest();
+
         closePosition(_vaultId, _getPosition(_vaultId), _tradeOption, _closePositionOptions);
     }
 
@@ -62,6 +64,8 @@ contract ControllerHelper is Controller {
         DataType.TradeOption memory _tradeOption,
         DataType.ClosePositionOption memory _closePositionOptions
     ) external {
+        applyInterest();
+
         DataType.Position[] memory positions = new DataType.Position[](1);
 
         positions[0] = _getPositionOfSubVault(_vaultId, _subVaultIndex);
@@ -80,6 +84,7 @@ contract ControllerHelper is Controller {
     ) public {
         DataType.PositionUpdate[] memory positionUpdates = PositionLib.getPositionUpdatesToClose(
             _positions,
+            _tradeOption.isQuoteZero,
             _closePositionOptions.swapRatio,
             getSqrtPrice()
         );
@@ -93,8 +98,11 @@ contract ControllerHelper is Controller {
      * @notice Liquidates a vault.
      */
     function liquidate(uint256 _vaultId, DataType.LiquidationOption memory _liquidationOption) external {
+        applyInterest();
+
         DataType.PositionUpdate[] memory positionUpdates = PositionLib.getPositionUpdatesToClose(
             getPosition(_vaultId),
+            context.isMarginZero,
             _liquidationOption.swapRatio,
             getSqrtPrice()
         );

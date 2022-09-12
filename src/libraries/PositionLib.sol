@@ -76,6 +76,7 @@ library PositionLib {
 
     function getPositionUpdatesToClose(
         DataType.Position[] memory _positions,
+        bool _isQuoteZero,
         uint256 _swapRatio,
         uint160 _sqrtPrice
     ) external pure returns (DataType.PositionUpdate[] memory positionUpdates) {
@@ -85,7 +86,7 @@ library PositionLib {
 
         (int256 requiredAmount0, int256 requiredAmount1) = getRequiredTokenAmountsToClose(_positions, _sqrtPrice);
 
-        if (requiredAmount0 < 0) {
+        if (!_isQuoteZero && requiredAmount0 < 0) {
             positionUpdates[swapIndex] = DataType.PositionUpdate(
                 DataType.PositionUpdateType.SWAP_EXACT_IN,
                 0,
@@ -96,7 +97,7 @@ library PositionLib {
                 (uint256(-requiredAmount0) * _swapRatio) / 100,
                 0
             );
-        } else if (requiredAmount1 < 0) {
+        } else if (_isQuoteZero && requiredAmount1 < 0) {
             positionUpdates[swapIndex] = DataType.PositionUpdate(
                 DataType.PositionUpdateType.SWAP_EXACT_IN,
                 0,

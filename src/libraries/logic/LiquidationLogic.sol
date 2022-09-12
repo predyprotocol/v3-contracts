@@ -72,7 +72,7 @@ library LiquidationLogic {
         mapping(bytes32 => DataType.PerpStatus) storage _ranges,
         uint160 sqrtPrice
     ) internal view returns (bool) {
-        DataType.Position memory position = VaultLib.getPosition(_vault, _subVaults, _ranges);
+        DataType.Position memory position = VaultLib.getPosition(_vault, _subVaults, _ranges, _context);
 
         // calculate Min. Collateral by using TWAP.
         int256 minCollateral = PositionCalculator.calculateMinCollateral(position, sqrtPrice, _context.isMarginZero);

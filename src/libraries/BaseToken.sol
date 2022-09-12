@@ -18,7 +18,6 @@ library BaseToken {
     struct AccountState {
         uint256 collateralAmount;
         uint256 debtAmount;
-        uint256 collateralEntryAmount;
     }
 
     function initialize(TokenState storage tokenState) internal {
@@ -35,8 +34,6 @@ library BaseToken {
 
         accountState.collateralAmount = accountState.collateralAmount.add(mintAmount);
         tokenState.totalDeposited = tokenState.totalDeposited.add(mintAmount);
-
-        accountState.collateralEntryAmount = accountState.collateralEntryAmount.add(_amount);
     }
 
     function addDebt(
@@ -66,8 +63,6 @@ library BaseToken {
             finalBurnAmount = burnAmount;
             accountState.collateralAmount = accountState.collateralAmount.sub(burnAmount);
         }
-
-        accountState.collateralEntryAmount = accountState.collateralEntryAmount.add(_amount);
 
         tokenState.totalDeposited = tokenState.totalDeposited.sub(finalBurnAmount);
     }
