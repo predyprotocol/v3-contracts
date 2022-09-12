@@ -209,7 +209,7 @@ library LPTMath {
         return TickMath.getSqrtRatioAtTick(_tick);
     }
 
-    function callUniswapObserve(IUniswapV3Pool uniswapPool, uint256 ago) external view returns (uint160, uint256) {
+    function callUniswapObserve(IUniswapV3Pool uniswapPool, uint256 ago) internal view returns (uint160, uint256) {
         uint32[] memory secondsAgos = new uint32[](2);
 
         secondsAgos[0] = uint32(ago);

@@ -28,6 +28,11 @@ library DataType {
     }
 
     struct SubVault {
+        bool isCompound;
+        uint256 collateralAmount0;
+        uint256 collateralAmount1;
+        uint256 debtAmount0;
+        uint256 debtAmount1;
         BaseToken.AccountState balance0;
         BaseToken.AccountState balance1;
         LPTState[] lpts;
@@ -52,6 +57,8 @@ library DataType {
         uint256 nextSubVaultId;
         BaseToken.TokenState tokenState0;
         BaseToken.TokenState tokenState1;
+        uint256 accumuratedProtocolFee0;
+        uint256 accumuratedProtocolFee1;
     }
 
     // Parameters
@@ -121,23 +128,23 @@ library DataType {
     }
 
     struct OpenPositionOption {
-        uint256 price;
-        uint256 slippageTorelance;
+        uint256 lowerSqrtPrice;
+        uint256 upperSqrtPrice;
         uint256 bufferAmount0;
         uint256 bufferAmount1;
         MetaData metadata;
     }
 
     struct ClosePositionOption {
-        uint256 price;
-        uint256 slippageTorelance;
+        uint256 lowerSqrtPrice;
+        uint256 upperSqrtPrice;
         uint256 swapRatio;
         MetaData metadata;
     }
 
     struct LiquidationOption {
-        uint256 price;
-        uint256 slippageTorelance;
+        uint256 lowerSqrtPrice;
+        uint256 upperSqrtPrice;
         uint256 swapRatio;
         bool swapAnyway;
     }
@@ -165,7 +172,8 @@ library DataType {
     }
 
     struct VaultStatus {
-        uint256 marginValue;
+        int256 positionValue;
+        int256 marginValue;
         int256 minCollateral;
         SubVaultStatus[] subVaults;
     }

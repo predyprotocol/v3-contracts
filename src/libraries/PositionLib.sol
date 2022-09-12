@@ -12,8 +12,6 @@ library PositionLib {
     using SafeMath for uint256;
     using SignedSafeMath for int256;
 
-    uint256 private constant CLOSE_MARGIN = 120;
-
     function getPositionUpdatesToOpen(
         DataType.Position memory _position,
         bool _isQuoteZero,
@@ -78,6 +76,7 @@ library PositionLib {
 
     function getPositionUpdatesToClose(
         DataType.Position[] memory _positions,
+        bool _isQuoteZero,
         uint256 _swapRatio,
         uint160 _sqrtPrice
     ) external pure returns (DataType.PositionUpdate[] memory positionUpdates) {
@@ -87,7 +86,7 @@ library PositionLib {
 
         (int256 requiredAmount0, int256 requiredAmount1) = getRequiredTokenAmountsToClose(_positions, _sqrtPrice);
 
-        if (requiredAmount0 < 0) {
+        if (!_isQuoteZero && requiredAmount0 < 0) {
             positionUpdates[swapIndex] = DataType.PositionUpdate(
                 DataType.PositionUpdateType.SWAP_EXACT_IN,
                 0,
@@ -98,7 +97,7 @@ library PositionLib {
                 (uint256(-requiredAmount0) * _swapRatio) / 100,
                 0
             );
-        } else if (requiredAmount1 < 0) {
+        } else if (_isQuoteZero && requiredAmount1 < 0) {
             positionUpdates[swapIndex] = DataType.PositionUpdate(
                 DataType.PositionUpdateType.SWAP_EXACT_IN,
                 0,
@@ -415,8 +414,8 @@ library PositionLib {
                     0,
                     0,
                     0,
-                    (_positions[i].collateral0 * CLOSE_MARGIN) / 100,
-                    (_positions[i].collateral1 * CLOSE_MARGIN) / 100
+                    _positions[i].collateral0,
+                    _positions[i].collateral1
                 );
                 index++;
             }
@@ -431,8 +430,8 @@ library PositionLib {
                     0,
                     0,
                     0,
-                    (_positions[i].debt0 * CLOSE_MARGIN) / 100,
-                    (_positions[i].debt1 * CLOSE_MARGIN) / 100
+                    _positions[i].debt0,
+                    _positions[i].debt1
                 );
             }
         }
