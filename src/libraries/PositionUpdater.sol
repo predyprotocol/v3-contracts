@@ -216,6 +216,10 @@ library PositionUpdater {
                     subVault.debtAmount0 == 0 &&
                     subVault.collateralAmount1 == 0 &&
                     subVault.debtAmount1 == 0 &&
+                    subVault.balance0.collateralAmount == 0 &&
+                    subVault.balance0.debtAmount == 0 &&
+                    subVault.balance1.collateralAmount == 0 &&
+                    subVault.balance1.debtAmount == 0 &&
                     subVault.lpts.length == 0
                 ) {
                     _vault.removeSubVault(index);
