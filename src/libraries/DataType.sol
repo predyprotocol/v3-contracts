@@ -114,7 +114,7 @@ library DataType {
     }
 
     struct MetaData {
-        uint256 subVaultIndex;
+        int256 subVaultIndex;
         bytes metadata;
     }
 
