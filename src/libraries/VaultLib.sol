@@ -340,7 +340,9 @@ library VaultLib {
         uint256 price = LPTMath.decodeSqrtPriceX96(_context.isMarginZero, _sqrtPrice);
 
         for (uint256 i = 0; i < _vault.subVaults.length; i++) {
-            debtValue += getDebtPositionValue(_subVaults[_vault.subVaults[i]], _ranges, _context, _sqrtPrice, price);
+            debtValue = debtValue.add(
+                getDebtPositionValue(_subVaults[_vault.subVaults[i]], _ranges, _context, _sqrtPrice, price)
+            );
         }
     }
 
@@ -440,16 +442,22 @@ library VaultLib {
             if (!_subVault.lpts[i].isCollateral) {
                 continue;
             }
+
             bytes32 rangeId = _subVault.lpts[i].rangeId;
-            totalAmount0 += PredyMath.mulDiv(
-                (ranges[rangeId].fee0Growth.sub(_subVault.lpts[i].fee0Last)),
-                _subVault.lpts[i].liquidityAmount,
-                Constants.ONE
+
+            totalAmount0 = totalAmount0.add(
+                PredyMath.mulDiv(
+                    (ranges[rangeId].fee0Growth.sub(_subVault.lpts[i].fee0Last)),
+                    _subVault.lpts[i].liquidityAmount,
+                    Constants.ONE
+                )
             );
-            totalAmount1 += PredyMath.mulDiv(
-                (ranges[rangeId].fee1Growth.sub(_subVault.lpts[i].fee1Last)),
-                _subVault.lpts[i].liquidityAmount,
-                Constants.ONE
+            totalAmount1 = totalAmount1.add(
+                PredyMath.mulDiv(
+                    (ranges[rangeId].fee1Growth.sub(_subVault.lpts[i].fee1Last)),
+                    _subVault.lpts[i].liquidityAmount,
+                    Constants.ONE
+                )
             );
         }
     }
@@ -511,13 +519,8 @@ library VaultLib {
                 int256 debtFee1
             ) = getTokenInterestOfSubVault(subVault, _context);
 
-            totalFee0 += fee0;
-            totalFee1 += fee1;
-
-            totalFee0 += collateralFee0;
-            totalFee1 += collateralFee1;
-            totalFee0 -= debtFee0;
-            totalFee1 -= debtFee1;
+            totalFee0 = totalFee0.add(fee0.add(collateralFee0).sub(debtFee0));
+            totalFee1 = totalFee1.add(fee1.add(collateralFee1).sub(debtFee1));
         }
     }
 

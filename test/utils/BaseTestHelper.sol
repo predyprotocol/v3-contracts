@@ -81,7 +81,8 @@ abstract contract BaseTestHelper {
             DataType.PositionUpdateType.DEPOSIT_TOKEN,
             _amount0,
             _amount1,
-            _isCompound
+            _isCompound,
+            -1
         );
     }
 
@@ -99,7 +100,8 @@ abstract contract BaseTestHelper {
             DataType.PositionUpdateType.WITHDRAW_TOKEN,
             _amount0,
             _amount1,
-            false
+            false,
+            -1
         );
     }
 
@@ -109,7 +111,8 @@ abstract contract BaseTestHelper {
         mapping(bytes32 => DataType.PerpStatus) storage _ranges,
         uint256 _amount0,
         uint256 _amount1,
-        bool _isCompound
+        bool _isCompound,
+        int256 _margin
     ) internal {
         _updateTokenPosition(
             _vault,
@@ -118,7 +121,8 @@ abstract contract BaseTestHelper {
             DataType.PositionUpdateType.BORROW_TOKEN,
             _amount0,
             _amount1,
-            _isCompound
+            _isCompound,
+            _margin
         );
     }
 
@@ -136,7 +140,8 @@ abstract contract BaseTestHelper {
             DataType.PositionUpdateType.REPAY_TOKEN,
             _amount0,
             _amount1,
-            false
+            false,
+            -1
         );
     }
 
@@ -147,20 +152,23 @@ abstract contract BaseTestHelper {
         DataType.PositionUpdateType _positionUpdateType,
         uint256 _amount0,
         uint256 _amount1,
-        bool _isCompound
+        bool _isCompound,
+        int256 _margin
     ) internal {
         DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](1);
 
         positionUpdates[0] = DataType.PositionUpdate(_positionUpdateType, 0, _isCompound, 0, 0, 0, _amount0, _amount1);
 
-        PositionUpdater.updatePosition(
-            _vault,
-            subVaults,
-            _context,
-            _ranges,
-            positionUpdates,
-            DataType.TradeOption(false, false, false, _context.isMarginZero, -1, -1)
+        DataType.TradeOption memory tradeOption = DataType.TradeOption(
+            false,
+            false,
+            false,
+            _context.isMarginZero,
+            _margin,
+            -1
         );
+
+        PositionUpdater.updatePosition(_vault, subVaults, _context, _ranges, positionUpdates, tradeOption);
     }
 
     function depositToken(
