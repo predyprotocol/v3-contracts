@@ -99,8 +99,12 @@ library InterestCalculator {
         uint256 interest1 = ((block.timestamp - lastTouchedTimestamp) *
             calculateInterestRate(_irmParams, BaseToken.getUtilizationRatio(_context.tokenState0))) / 365 days;
 
-        _context.accumuratedProtocolFee0 += _context.tokenState0.updateScaler(interest0);
-        _context.accumuratedProtocolFee1 += _context.tokenState1.updateScaler(interest1);
+        _context.accumuratedProtocolFee0 = _context.accumuratedProtocolFee0.add(
+            _context.tokenState0.updateScaler(interest0)
+        );
+        _context.accumuratedProtocolFee1 = _context.accumuratedProtocolFee1.add(
+            _context.tokenState1.updateScaler(interest1)
+        );
 
         return block.timestamp;
     }

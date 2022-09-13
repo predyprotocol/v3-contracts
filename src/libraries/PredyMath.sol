@@ -6,12 +6,26 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 library PredyMath {
     using SafeMath for uint256;
 
+    /**
+     * @dev https://github.com/transmissions11/solmate/blob/main/src/utils/FixedPointMathLib.sol
+     */
     function mulDiv(
-        uint256 a,
-        uint256 b,
+        uint256 x,
+        uint256 y,
         uint256 denominator
-    ) internal pure returns (uint256 result) {
-        return a.mul(b).div(denominator);
+    ) internal pure returns (uint256 z) {
+        assembly {
+            // Store x * y in z for now.
+            z := mul(x, y)
+
+            // Equivalent to require(denominator != 0 && (x == 0 || (x * y) / x == y))
+            if iszero(and(iszero(iszero(denominator)), or(iszero(x), eq(div(z, x), y)))) {
+                revert(0, 0)
+            }
+
+            // Divide z by the denominator.
+            z := div(z, denominator)
+        }
     }
 
     function max(uint256 a, uint256 b) internal pure returns (uint256) {

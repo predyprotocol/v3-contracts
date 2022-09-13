@@ -23,6 +23,7 @@ import "./UniHelper.sol";
  */
 library PositionUpdater {
     using SafeMath for uint256;
+    using SafeMath for uint128;
     using SignedSafeMath for int256;
     using SafeCast for uint256;
     using SafeCast for uint128;
@@ -161,6 +162,7 @@ library PositionUpdater {
             // Deposits or withdraw margin
             // targetMarginAmount0 and targetMarginAmount1 determine the margin target.
             // -1 means that the margin is no changed.
+            // -2 means that make requiredAmounts 0 by using margin amount.
             int256 deltaMarginAmount0;
             int256 deltaMarginAmount1;
 
@@ -457,7 +459,10 @@ library PositionUpdater {
             _positionUpdate.param1
         );
 
-        _ranges[rangeId].borrowedLiquidity += _positionUpdate.liquidity;
+        _ranges[rangeId].borrowedLiquidity = _ranges[rangeId]
+            .borrowedLiquidity
+            .add(_positionUpdate.liquidity)
+            .toUint128();
 
         _subVault.borrowLPT(_ranges, rangeId, _positionUpdate.liquidity);
 
@@ -683,8 +688,8 @@ library PositionUpdater {
         (uint256 a0, uint256 a1) = INonfungiblePositionManager(_context.positionManager).collect(params);
 
         // Update cumulative trade fee
-        _range.fee0Growth += (a0 * Constants.ONE) / liquidityAmount;
-        _range.fee1Growth += (a1 * Constants.ONE) / liquidityAmount;
+        _range.fee0Growth = _range.fee0Growth.add(PredyMath.mulDiv(a0, Constants.ONE, liquidityAmount));
+        _range.fee1Growth = _range.fee1Growth.add(PredyMath.mulDiv(a1, Constants.ONE, liquidityAmount));
     }
 
     function getTotalLiquidityAmount(INonfungiblePositionManager _positionManager, uint256 _tokenId)
