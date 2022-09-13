@@ -9,13 +9,60 @@ import "../src/libraries/LPTStateLib.sol";
 import "../src/libraries/VaultLib.sol";
 
 contract VaultLibTest is Test {
+    DataType.Context private context;
+
+    DataType.Vault private vault;
+
     DataType.SubVault private subVault;
+
+    mapping(uint256 => DataType.SubVault) private subVaults;
+
     mapping(bytes32 => DataType.PerpStatus) private ranges;
 
     bytes32 private rangeId;
 
     function setUp() public {
+        context = DataType.Context(
+            address(0),
+            address(0),
+            500,
+            address(0),
+            address(0),
+            address(0),
+            true,
+            1,
+            BaseToken.TokenState(0, 0, 0, 0),
+            BaseToken.TokenState(0, 0, 0, 0),
+            0,
+            0
+        );
+
         rangeId = LPTStateLib.getRangeKey(0, 10);
+    }
+
+    function testAddSubVault() public {
+        VaultLib.addSubVault(vault, subVaults, context, 0);
+
+        assertEq(vault.subVaults.length, 1);
+    }
+
+    function testCannotAddSubVault() public {
+        vm.expectRevert(bytes("V0"));
+        VaultLib.addSubVault(vault, subVaults, context, 1);
+    }
+
+    function testRemoveSubVault() public {
+        VaultLib.addSubVault(vault, subVaults, context, 0);
+        VaultLib.removeSubVault(vault, 0);
+
+        assertEq(vault.subVaults.length, 0);
+    }
+
+    function testCannotRemoveSubVault() public {
+        VaultLib.addSubVault(vault, subVaults, context, 0);
+
+        vm.expectRevert();
+        VaultLib.removeSubVault(vault, 1);
     }
 
     function testDepositLPT() public {
