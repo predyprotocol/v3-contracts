@@ -3,3 +3,4 @@ ds-test/=lib/forge-std/lib/ds-test/src/
 openzeppelin/=lib/openzeppelin-contracts/
 uniswap/v3-core/=lib/v3-core/
 uniswap/v3-periphery/=lib/v3-periphery/contracts/
+solmate/=lib/solmate/src/
