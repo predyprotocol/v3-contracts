@@ -183,7 +183,7 @@ contract ControllerTest is TestDeployer, Test {
             0,
             amount1 * 2,
             DataType.TradeOption(false, false, false, isQuoteZero, -1, -1),
-            emptyMetaData
+            EMPTY_METADATA
         );
     }
 
@@ -197,7 +197,7 @@ contract ControllerTest is TestDeployer, Test {
             amount0 * 2,
             0,
             DataType.TradeOption(false, false, false, isQuoteZero, -1, -1),
-            emptyMetaData
+            EMPTY_METADATA
         );
     }
 
@@ -214,7 +214,7 @@ contract ControllerTest is TestDeployer, Test {
             amount0 * 2,
             amount1 * 2,
             DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1),
-            emptyMetaData
+            EMPTY_METADATA
         );
     }
 
@@ -239,7 +239,7 @@ contract ControllerTest is TestDeployer, Test {
             0,
             0,
             DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1),
-            emptyMetaData
+            EMPTY_METADATA
         );
 
         DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(lpVaultId);
@@ -258,7 +258,7 @@ contract ControllerTest is TestDeployer, Test {
             (1e18 * 1800) / 1e12,
             margin,
             DataType.TradeOption(false, false, false, getIsMarginZero(), int256(margin), -1),
-            emptyMetaData
+            EMPTY_METADATA
         );
 
         vm.warp(block.timestamp + 1 minutes);
@@ -282,7 +282,7 @@ contract ControllerTest is TestDeployer, Test {
             (1e18 * 1800) / 1e12,
             margin,
             DataType.TradeOption(false, false, false, isQuoteZero, -1, -1),
-            emptyMetaData
+            EMPTY_METADATA
         );
     }
 
@@ -297,7 +297,7 @@ contract ControllerTest is TestDeployer, Test {
             (1e18 * 1800) / 1e12,
             margin,
             DataType.TradeOption(false, false, false, getIsMarginZero(), int256(margin), -1),
-            emptyMetaData
+            EMPTY_METADATA
         );
 
         DataType.Vault memory vault = controller.getVault(vaultId);
@@ -315,7 +315,7 @@ contract ControllerTest is TestDeployer, Test {
             0,
             0,
             DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1),
-            emptyMetaData
+            EMPTY_METADATA
         );
 
         DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);

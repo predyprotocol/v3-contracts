@@ -32,9 +32,9 @@ abstract contract BaseTestHelper {
 
     bytes32[] internal rangeIds;
 
-    DataType.MetaData internal emptyMetaData;
-
     mapping(uint256 => DataType.SubVault) internal subVaults;
+
+    bytes internal constant EMPTY_METADATA = bytes("");
 
     function getContext() internal view returns (DataType.Context memory) {
         BaseToken.TokenState memory tokenState = BaseToken.TokenState(0, 0, 1e18, 1e18);
@@ -195,7 +195,7 @@ abstract contract BaseTestHelper {
             _amount0,
             _amount1,
             DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1),
-            emptyMetaData
+            EMPTY_METADATA
         );
     }
 
@@ -233,7 +233,7 @@ abstract contract BaseTestHelper {
                 (amount0 * 105) / 100,
                 (amount1 * 105) / 100,
                 DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1),
-                emptyMetaData
+                EMPTY_METADATA
             );
     }
 
@@ -270,7 +270,7 @@ abstract contract BaseTestHelper {
                 _vaultId,
                 positions[0],
                 DataType.TradeOption(false, false, false, getIsMarginZero(), int256(_margin), -1),
-                DataType.OpenPositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 1e10, 0, emptyMetaData)
+                DataType.OpenPositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 1e10, 0, EMPTY_METADATA)
             );
     }
 

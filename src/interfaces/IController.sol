@@ -11,6 +11,6 @@ interface IController {
         uint256 _buffer0,
         uint256 _buffer1,
         DataType.TradeOption memory _tradeOption,
-        DataType.MetaData memory _metadata
+        bytes memory _metadata
     ) external returns (uint256 vaultId);
 }

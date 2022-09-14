@@ -60,7 +60,7 @@ contract Controller is IController, Initializable {
     address public operator;
 
     event VaultCreated(uint256 vaultId, address owner);
-    event PositionUpdated(uint256 vaultId, int256 a0, int256 a1, uint160 sqrtPrice, DataType.MetaData metadata);
+    event PositionUpdated(uint256 vaultId, int256 a0, int256 a1, uint160 sqrtPrice, bytes metadata);
 
     modifier onlyOperator() {
         require(operator == msg.sender, "caller must be operator");
@@ -157,7 +157,7 @@ contract Controller is IController, Initializable {
         uint256 _buffer0,
         uint256 _buffer1,
         DataType.TradeOption memory _tradeOption,
-        DataType.MetaData memory _metadata
+        bytes memory _metadata
     ) public override returns (uint256 vaultId) {
         applyPerpFee(_vaultId, _positionUpdates);
 

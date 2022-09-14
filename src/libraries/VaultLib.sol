@@ -49,6 +49,8 @@ library VaultLib {
 
             emit SubVaultCreated(_vault.vaultId, _subVaultIndex, subVaultId);
 
+            _subVaults[subVaultId].id = subVaultId;
+
             return _subVaults[subVaultId];
         } else if (_subVaultIndex < _vault.subVaults.length) {
             uint256 subVaultId = _vault.subVaults[_subVaultIndex];

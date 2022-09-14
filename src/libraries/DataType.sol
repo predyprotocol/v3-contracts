@@ -28,6 +28,7 @@ library DataType {
     }
 
     struct SubVault {
+        uint256 id;
         bool isCompound;
         uint256 collateralAmount0;
         uint256 collateralAmount1;
@@ -113,11 +114,6 @@ library DataType {
         uint256 param1;
     }
 
-    struct MetaData {
-        int256 subVaultIndex;
-        bytes metadata;
-    }
-
     struct TradeOption {
         bool reduceOnly;
         bool swapAnyway;
@@ -132,14 +128,14 @@ library DataType {
         uint256 upperSqrtPrice;
         uint256 bufferAmount0;
         uint256 bufferAmount1;
-        MetaData metadata;
+        bytes metadata;
     }
 
     struct ClosePositionOption {
         uint256 lowerSqrtPrice;
         uint256 upperSqrtPrice;
         uint256 swapRatio;
-        MetaData metadata;
+        bytes metadata;
     }
 
     struct LiquidationOption {
