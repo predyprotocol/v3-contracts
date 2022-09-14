@@ -49,6 +49,28 @@ library BaseToken {
         tokenState.totalBorrowed = tokenState.totalBorrowed.add(mintAmount);
     }
 
+    function clearCollateral(TokenState storage tokenState, AccountState storage accountState)
+        internal
+        returns (uint256 finalRemoveAmount)
+    {
+        finalRemoveAmount = accountState.collateralAmount;
+        tokenState.totalDeposited = tokenState.totalDeposited.sub(finalRemoveAmount);
+        accountState.collateralAmount = 0;
+
+        finalRemoveAmount = PredyMath.mulDiv(finalRemoveAmount, tokenState.collateralScaler, Constants.ONE);
+    }
+
+    function clearDebt(TokenState storage tokenState, AccountState storage accountState)
+        internal
+        returns (uint256 finalRemoveAmount)
+    {
+        finalRemoveAmount = accountState.debtAmount;
+        tokenState.totalBorrowed = tokenState.totalBorrowed.sub(finalRemoveAmount);
+        accountState.debtAmount = 0;
+
+        finalRemoveAmount = PredyMath.mulDiv(finalRemoveAmount, tokenState.debtScaler, Constants.ONE);
+    }
+
     function removeCollateral(
         TokenState storage tokenState,
         AccountState storage accountState,
@@ -65,6 +87,9 @@ library BaseToken {
         }
 
         tokenState.totalDeposited = tokenState.totalDeposited.sub(finalBurnAmount);
+
+        // TODO: roundUp
+        finalBurnAmount = PredyMath.mulDiv(finalBurnAmount, tokenState.collateralScaler, Constants.ONE);
     }
 
     function removeDebt(

@@ -432,12 +432,12 @@ contract ControllerHelperTest is TestDeployer, Test {
         controller.closeSubVault(
             vaultId,
             0,
-            DataType.TradeOption(false, true, false, true, -1, -1),
+            DataType.TradeOption(false, true, false, true, -2, -1),
             DataType.ClosePositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 100, EMPTY_METADATA)
         );
 
         DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);
-        assertEq(vaultStatus.subVaults.length, 2);
+        assertEq(vaultStatus.subVaults.length, 1);
     }
 
     function testWithdrawProtocolFee() public {
