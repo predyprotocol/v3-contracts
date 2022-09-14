@@ -620,14 +620,29 @@ library PositionUpdater {
                 (int256 collateralFee0, int256 collateralFee1, int256 debtFee0, int256 debtFee1) = VaultLib
                     .getTokenInterestOfSubVault(subVault, _context);
 
-                collateralFee0 = int256(
-                    _context.tokenState0.removeCollateral(subVault.balance0, collateralFee0.toUint256())
-                );
-                collateralFee1 = int256(
-                    _context.tokenState1.removeCollateral(subVault.balance1, collateralFee1.toUint256())
-                );
-                debtFee0 = int256(_context.tokenState0.removeDebt(subVault.balance0, debtFee0.toUint256()));
-                debtFee1 = int256(_context.tokenState1.removeDebt(subVault.balance1, debtFee1.toUint256()));
+                if (subVault.collateralAmount0 == 0) {
+                    collateralFee0 = int256(_context.tokenState0.clearCollateral(subVault.balance0));
+                } else {
+                    _context.tokenState0.removeCollateral(subVault.balance0, collateralFee0.toUint256());
+                }
+
+                if (subVault.collateralAmount1 == 0) {
+                    collateralFee1 = int256(_context.tokenState1.clearCollateral(subVault.balance1));
+                } else {
+                    _context.tokenState1.removeCollateral(subVault.balance1, collateralFee1.toUint256());
+                }
+
+                if (subVault.debtAmount0 == 0) {
+                    debtFee0 = int256(_context.tokenState0.clearDebt(subVault.balance0));
+                } else {
+                    _context.tokenState0.removeDebt(subVault.balance0, debtFee0.toUint256());
+                }
+
+                if (subVault.debtAmount1 == 0) {
+                    debtFee1 = int256(_context.tokenState1.clearDebt(subVault.balance1));
+                } else {
+                    _context.tokenState1.removeDebt(subVault.balance1, debtFee1.toUint256());
+                }
 
                 fee0 = fee0.add(collateralFee0).sub(debtFee0);
                 fee1 = fee1.add(collateralFee1).sub(debtFee1);

@@ -252,16 +252,21 @@ contract PositionUpdaterTest is TestDeployer, Test {
             1e18
         );
 
+        // test interest rate
+        BaseToken.updateScaler(context.tokenState0, 1e15);
+        BaseToken.updateScaler(context.tokenState1, 1e15);
+
         PositionUpdater.updatePosition(
             vault3,
             subVaults,
             context,
             ranges,
             positionUpdates,
-            DataType.TradeOption(false, false, false, context.isMarginZero, -2, -1)
+            DataType.TradeOption(false, true, false, context.isMarginZero, -2, -1)
         );
 
         assertEq(vault3.subVaults.length, 0);
+        // margin must be less than 1e8 because vault paid interest.
         assertLt(vault3.marginAmount0, 1e8);
     }
 
