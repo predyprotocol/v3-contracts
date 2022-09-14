@@ -32,7 +32,7 @@ library InterestCalculator {
         uint256 feeGrowthOutside1X128;
     }
 
-    struct DPMParams {
+    struct YearlyPremiumParams {
         IRMParams premiumParams;
         IRMParams irmParams;
         mapping(bytes32 => TickSnapshot) snapshots;
@@ -52,7 +52,7 @@ library InterestCalculator {
         mapping(bytes32 => DataType.PerpStatus) storage _ranges,
         DataType.Context storage _context,
         DataType.PositionUpdate[] memory _positionUpdates,
-        DPMParams storage _dpmParams,
+        YearlyPremiumParams storage _dpmParams,
         uint160 _sqrtPrice
     ) external {
         // calculate fee for ranges that the vault has.
@@ -110,7 +110,7 @@ library InterestCalculator {
     }
 
     function updatePremiumGrowth(
-        DPMParams storage _params,
+        YearlyPremiumParams storage _params,
         DataType.Context storage _context,
         DataType.PerpStatus storage _perpState,
         uint160 _sqrtPrice
@@ -153,7 +153,7 @@ library InterestCalculator {
     }
 
     function calculateYearlyPremium(
-        DPMParams storage _params,
+        YearlyPremiumParams storage _params,
         DataType.Context memory _context,
         DataType.PerpStatus storage _perpState,
         uint160 _sqrtPrice
@@ -221,7 +221,7 @@ library InterestCalculator {
     }
 
     function calculatePremium(
-        DPMParams storage _params,
+        YearlyPremiumParams storage _params,
         IUniswapV3Pool uniPool,
         int24 _lowerTick,
         int24 _upperTick,
@@ -299,7 +299,7 @@ library InterestCalculator {
     }
 
     function takeSnapshotForRange(
-        DPMParams storage _params,
+        YearlyPremiumParams storage _params,
         IUniswapV3Pool uniPool,
         int24 _lowerTick,
         int24 _upperTick

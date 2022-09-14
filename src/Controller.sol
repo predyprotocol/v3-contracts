@@ -4,15 +4,9 @@ pragma abicoder v2;
 
 import {Initializable} from "@openzeppelin/contracts/proxy/Initializable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/math/SignedSafeMath.sol";
-import "@openzeppelin/contracts/utils/SafeCast.sol";
-import "@uniswap/v3-periphery/interfaces/INonfungiblePositionManager.sol";
 import {TransferHelper} from "@uniswap/v3-periphery/libraries/TransferHelper.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
-import "@uniswap/v3-periphery/interfaces/ISwapRouter.sol";
-
 import "./interfaces/IController.sol";
 import {BaseToken} from "./libraries/BaseToken.sol";
 import "./libraries/DataType.sol";
@@ -37,11 +31,7 @@ import "./libraries/Constants.sol";
  */
 contract Controller is IController, Initializable {
     using BaseToken for BaseToken.TokenState;
-    using SafeMath for uint256;
-    using SafeMath for uint128;
     using SignedSafeMath for int256;
-    using SafeCast for uint256;
-    using SafeCast for int256;
     using VaultLib for DataType.Vault;
 
     uint256 public lastTouchedTimestamp;
@@ -55,7 +45,7 @@ contract Controller is IController, Initializable {
 
     DataType.Context internal context;
     InterestCalculator.IRMParams public irmParams;
-    InterestCalculator.DPMParams public dpmParams;
+    InterestCalculator.YearlyPremiumParams public ypParams;
 
     address public operator;
 
@@ -120,12 +110,12 @@ contract Controller is IController, Initializable {
         irmParams = _irmParams;
     }
 
-    function updateDRMParams(
+    function updateYearlyPremiumParams(
         InterestCalculator.IRMParams memory _irmParams,
         InterestCalculator.IRMParams memory _premiumParams
     ) external onlyOperator {
-        dpmParams.irmParams = _irmParams;
-        dpmParams.premiumParams = _premiumParams;
+        ypParams.irmParams = _irmParams;
+        ypParams.premiumParams = _premiumParams;
     }
 
     function withdrawProtocolFee(uint256 _amount0, uint256 _amount1) external onlyOperator {
@@ -326,7 +316,7 @@ contract Controller is IController, Initializable {
     }
 
     function calculateYearlyPremium(bytes32 _rangeId) external view returns (uint256) {
-        return InterestCalculator.calculateYearlyPremium(dpmParams, context, ranges[_rangeId], getSqrtPrice());
+        return InterestCalculator.calculateYearlyPremium(ypParams, context, ranges[_rangeId], getSqrtPrice());
     }
 
     // Private Functions
@@ -370,7 +360,7 @@ contract Controller is IController, Initializable {
             ranges,
             context,
             _positionUpdates,
-            dpmParams,
+            ypParams,
             getSqrtPrice()
         );
 

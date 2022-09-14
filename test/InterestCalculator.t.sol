@@ -15,7 +15,7 @@ contract InterestCalculatorTest is TestDeployer, Test {
 
     DataType.Context private context;
     DataType.PerpStatus private perpStatus;
-    InterestCalculator.DPMParams private dpmParams;
+    InterestCalculator.YearlyPremiumParams private ypParams;
     BaseToken.AccountState private balance0;
 
     uint128 private liquidity;
@@ -37,8 +37,8 @@ contract InterestCalculatorTest is TestDeployer, Test {
         perpStatus.upperTick = 202800;
         perpStatus.lastTouchedTimestamp = block.timestamp;
 
-        dpmParams.irmParams = InterestCalculator.IRMParams(1e12, 30 * 1e16, 20 * 1e16, 50 * 1e16);
-        dpmParams.premiumParams = InterestCalculator.IRMParams(8000 * 1e6, 30 * 1e16, 10000 * 1e6, 20000 * 1e6);
+        ypParams.irmParams = InterestCalculator.IRMParams(1e12, 30 * 1e16, 20 * 1e16, 50 * 1e16);
+        ypParams.premiumParams = InterestCalculator.IRMParams(8000 * 1e6, 30 * 1e16, 10000 * 1e6, 20000 * 1e6);
 
         INonfungiblePositionManager.MintParams memory params = INonfungiblePositionManager.MintParams(
             address(token0),
@@ -127,7 +127,7 @@ contract InterestCalculatorTest is TestDeployer, Test {
             })
         );
 
-        InterestCalculator.updatePremiumGrowth(dpmParams, context, perpStatus, getSqrtPrice());
+        InterestCalculator.updatePremiumGrowth(ypParams, context, perpStatus, getSqrtPrice());
 
         assertGt(perpStatus.premiumGrowthForLender, 0);
         assertGt(perpStatus.premiumGrowthForBorrower, 0);
@@ -162,10 +162,10 @@ contract InterestCalculatorTest is TestDeployer, Test {
 
         swapToSamePrice(owner);
 
-        assertEq(InterestCalculator.calculateInterestRate(dpmParams.premiumParams, 50 * 1e16), 15000000000);
+        assertEq(InterestCalculator.calculateInterestRate(ypParams.premiumParams, 50 * 1e16), 15000000000);
 
         uint256 dailyPremium = InterestCalculator.calculatePremium(
-            dpmParams,
+            ypParams,
             uniPool,
             perpStatus.lowerTick,
             perpStatus.upperTick,
