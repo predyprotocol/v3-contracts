@@ -31,11 +31,11 @@ library PositionCalculator {
         uint160 _sqrtPrice,
         bool _isMarginZero
     ) external pure returns (int256) {
-        int256 positionValue = calculateValue(_position, _sqrtPrice, _isMarginZero);
+        int256 positionValue = calculateValue(_position, _sqrtPrice, _isMarginZero, false);
 
         int256 minValue = calculateMinValue(_position, _sqrtPrice, _isMarginZero);
 
-        (, uint256 debtValue) = calculateCollateralAndDebtValue(_position, _sqrtPrice, _isMarginZero);
+        (, uint256 debtValue) = calculateCollateralAndDebtValue(_position, _sqrtPrice, _isMarginZero, false);
 
         return int256(debtValue).div(100).sub(minValue).add(positionValue);
     }
@@ -76,7 +76,7 @@ library PositionCalculator {
 
         {
             // 1. check value of at P*1.24
-            int256 value = calculateValue(_position, sqrtPriceUpper, _isMarginZero);
+            int256 value = calculateValue(_position, sqrtPriceUpper, _isMarginZero, false);
             if (minValue > value) {
                 minValue = value;
             }
@@ -84,7 +84,7 @@ library PositionCalculator {
 
         {
             // 2. check value of at P/1.24
-            int256 value = calculateValue(_position, sqrtPriceLower, _isMarginZero);
+            int256 value = calculateValue(_position, sqrtPriceLower, _isMarginZero, false);
             if (minValue > value) {
                 minValue = value;
             }
@@ -95,13 +95,13 @@ library PositionCalculator {
             DataType.LPT memory lpt = _position.lpts[i];
 
             if (!lpt.isCollateral) {
-                uint160 sqrtPrice = calculateMinSqrtPrice(lpt.upperTick, lpt.lowerTick);
+                uint160 minSqrtPrice = calculateMinSqrtPrice(lpt.upperTick, lpt.lowerTick);
 
-                if (sqrtPrice < sqrtPriceLower || sqrtPriceUpper < sqrtPrice) {
+                if (minSqrtPrice < sqrtPriceLower || sqrtPriceUpper < minSqrtPrice) {
                     continue;
                 }
 
-                int256 value = calculateValue(_position, sqrtPrice, _isMarginZero);
+                int256 value = calculateValue(_position, minSqrtPrice, _isMarginZero, true);
 
                 if (minValue > value) {
                     minValue = value;
@@ -113,12 +113,14 @@ library PositionCalculator {
     function calculateValue(
         DataType.Position memory _position,
         uint160 _sqrtPrice,
-        bool isMarginZero
+        bool isMarginZero,
+        bool _isMinPrice
     ) internal pure returns (int256 value) {
         (uint256 collateralValue, uint256 debtValue) = calculateCollateralAndDebtValue(
             _position,
             _sqrtPrice,
-            isMarginZero
+            isMarginZero,
+            _isMinPrice
         );
 
         return int256(collateralValue) - int256(debtValue);
@@ -127,7 +129,8 @@ library PositionCalculator {
     function calculateCollateralAndDebtValue(
         DataType.Position memory _position,
         uint160 _sqrtPrice,
-        bool isMarginZero
+        bool _isMarginZero,
+        bool _isMinPrice
     ) internal pure returns (uint256 collateralValue, uint256 debtValue) {
         uint256 collateralAmount0 = _position.collateral0;
         uint256 collateralAmount1 = _position.collateral1;
@@ -140,7 +143,7 @@ library PositionCalculator {
             uint160 sqrtLowerPrice = TickMath.getSqrtRatioAtTick(lpt.lowerTick);
             uint160 sqrtUpperPrice = TickMath.getSqrtRatioAtTick(lpt.upperTick);
 
-            if (!lpt.isCollateral && sqrtLowerPrice <= _sqrtPrice && _sqrtPrice <= sqrtUpperPrice) {
+            if (_isMinPrice && !lpt.isCollateral && sqrtLowerPrice <= _sqrtPrice && _sqrtPrice <= sqrtUpperPrice) {
                 debtAmount1 = debtAmount1.add(
                     (
                         uint256(lpt.liquidity).mul(
@@ -167,9 +170,9 @@ library PositionCalculator {
             }
         }
 
-        uint256 price = LPTMath.decodeSqrtPriceX96(isMarginZero, _sqrtPrice);
+        uint256 price = LPTMath.decodeSqrtPriceX96(_isMarginZero, _sqrtPrice);
 
-        if (isMarginZero) {
+        if (_isMarginZero) {
             collateralValue = collateralAmount0.add(collateralAmount1.mul(price).div(1e18));
             debtValue = debtAmount0.add(debtAmount1.mul(price).div(1e18));
         } else {

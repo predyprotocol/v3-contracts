@@ -245,7 +245,7 @@ library VaultLib {
         uint160 _sqrtPrice,
         bool _isMarginZero
     ) internal pure returns (int256) {
-        return PositionCalculator.calculateValue(_position, _sqrtPrice, _isMarginZero);
+        return PositionCalculator.calculateValue(_position, _sqrtPrice, _isMarginZero, false);
     }
 
     function getVaultValue(
@@ -258,7 +258,7 @@ library VaultLib {
     ) internal view returns (int256) {
         return
             getMarginValue(_vault, _subVaults, _ranges, _context, _sqrtPrice) +
-            PositionCalculator.calculateValue(_position, _sqrtPrice, _context.isMarginZero);
+            PositionCalculator.calculateValue(_position, _sqrtPrice, _context.isMarginZero, false);
     }
 
     function calculateUnderlyingValue(int256 _amount, uint256 _price) internal pure returns (int256) {
