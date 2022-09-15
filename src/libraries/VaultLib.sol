@@ -332,38 +332,39 @@ library VaultLib {
             );
     }
 
-    function getDebtPositionValue(
+    function isDebtZero(
         DataType.Vault memory _vault,
         mapping(uint256 => DataType.SubVault) storage _subVaults,
-        mapping(bytes32 => DataType.PerpStatus) storage _ranges,
-        DataType.Context memory _context,
-        uint160 _sqrtPrice
-    ) external view returns (uint256 debtValue) {
-        uint256 price = LPTMath.decodeSqrtPriceX96(_context.isMarginZero, _sqrtPrice);
-
+        DataType.Context memory _context
+    ) external view returns (bool) {
         for (uint256 i = 0; i < _vault.subVaults.length; i++) {
-            debtValue = debtValue.add(
-                getDebtPositionValue(_subVaults[_vault.subVaults[i]], _ranges, _context, _sqrtPrice, price)
-            );
+            if(!isDebtZeroInSubVault(_subVaults[_vault.subVaults[i]], _context)) {
+                return false;
+            }
         }
+
+        return true;
     }
 
-    function getDebtPositionValue(
+    function isDebtZeroInSubVault(
         DataType.SubVault memory _subVault,
-        mapping(bytes32 => DataType.PerpStatus) storage _ranges,
-        DataType.Context memory _context,
-        uint160 _sqrtPrice,
-        uint256 _price
-    ) internal view returns (uint256) {
-        (uint256 totalAmount0, uint256 totalAmount1) = getDebtPositionAmounts(_subVault, _ranges, _context, _sqrtPrice);
-
-        uint256 paidPremium = getPaidDailyPremium(_subVault, _ranges);
-
-        if (_context.isMarginZero) {
-            return (PredyMath.mulDiv(totalAmount1, _price, 1e18).add(totalAmount0).sub(paidPremium));
+        DataType.Context memory _context
+    ) internal pure returns (bool) {
+        if (_subVault.isCompound) {
+            if(_context.tokenState0.getDebtValue(_subVault.balance0) != 0 || _context.tokenState1.getDebtValue(_subVault.balance1) != 0) {
+                return false;
+            }
         } else {
-            return (PredyMath.mulDiv(totalAmount0, _price, 1e18).add(totalAmount1).sub(paidPremium));
+            if(_subVault.debtAmount0 != 0 || _subVault.debtAmount1 != 0) {
+                return false;
+            }
         }
+
+        if(_subVault.lpts.length > 0) {
+            return false;
+        }
+
+        return true;
     }
 
     /**
