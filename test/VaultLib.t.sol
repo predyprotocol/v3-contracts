@@ -19,7 +19,7 @@ contract VaultLibTest is Test {
 
     mapping(bytes32 => DataType.PerpStatus) private ranges;
 
-    bytes32 private rangeId;
+    bytes32 private rangeId2;
 
     function setUp() public {
         context = DataType.Context(
@@ -37,7 +37,7 @@ contract VaultLibTest is Test {
             0
         );
 
-        rangeId = LPTStateLib.getRangeKey(0, 10);
+        rangeId2 = LPTStateLib.getRangeKey(0, 10);
     }
 
     function testAddSubVault() public {
@@ -66,61 +66,65 @@ contract VaultLibTest is Test {
     }
 
     function testDepositLPT() public {
-        VaultLib.depositLPT(subVault, ranges, LPTStateLib.getRangeKey(0, 0), 0);
+        bytes32 rangeId = LPTStateLib.getRangeKey(0, 0);
+
+        VaultLib.depositLPT(subVault, ranges[rangeId], rangeId, 0);
 
         assertEq(subVault.lpts.length, 1);
     }
 
     function testDepositLPT2() public {
-        VaultLib.depositLPT(subVault, ranges, rangeId, 100);
-        ranges[rangeId].premiumGrowthForLender += 100;
-        VaultLib.depositLPT(subVault, ranges, rangeId, 200);
+        VaultLib.depositLPT(subVault, ranges[rangeId2], rangeId2, 100);
+        ranges[rangeId2].premiumGrowthForLender += 100;
+        VaultLib.depositLPT(subVault, ranges[rangeId2], rangeId2, 200);
 
         assertEq(subVault.lpts.length, 1);
         assertTrue(subVault.lpts[0].isCollateral);
     }
 
     function testWithdrawLPT1() public {
-        VaultLib.depositLPT(subVault, ranges, rangeId, 100);
-        VaultLib.withdrawLPT(subVault, rangeId, 50);
+        VaultLib.depositLPT(subVault, ranges[rangeId2], rangeId2, 100);
+        VaultLib.withdrawLPT(subVault, ranges[rangeId2], rangeId2, 50, true);
 
         assertEq(subVault.lpts.length, 1);
         assertEq(uint256(subVault.lpts[0].liquidityAmount), 50);
     }
 
     function testWithdrawLPTAll() public {
-        VaultLib.depositLPT(subVault, ranges, rangeId, 100);
-        VaultLib.withdrawLPT(subVault, rangeId, 100);
+        VaultLib.depositLPT(subVault, ranges[rangeId2], rangeId2, 100);
+        VaultLib.withdrawLPT(subVault, ranges[rangeId2], rangeId2, 100, true);
 
         assertEq(subVault.lpts.length, 0);
     }
 
     function testBorrowLPT() public {
-        VaultLib.borrowLPT(subVault, ranges, LPTStateLib.getRangeKey(0, 0), 0);
+        bytes32 rangeId = LPTStateLib.getRangeKey(0, 0);
+
+        VaultLib.borrowLPT(subVault, ranges[rangeId], rangeId, 0);
 
         assertEq(subVault.lpts.length, 1);
     }
 
     function testBorrowLPT2() public {
-        VaultLib.borrowLPT(subVault, ranges, rangeId, 100);
-        ranges[rangeId].premiumGrowthForBorrower += 100;
-        VaultLib.borrowLPT(subVault, ranges, rangeId, 200);
+        VaultLib.borrowLPT(subVault, ranges[rangeId2], rangeId2, 100);
+        ranges[rangeId2].premiumGrowthForBorrower += 100;
+        VaultLib.borrowLPT(subVault, ranges[rangeId2], rangeId2, 200);
 
         assertEq(subVault.lpts.length, 1);
         assertFalse(subVault.lpts[0].isCollateral);
     }
 
     function testRepayLPT1() public {
-        VaultLib.borrowLPT(subVault, ranges, rangeId, 100);
-        VaultLib.repayLPT(subVault, rangeId, 50);
+        VaultLib.borrowLPT(subVault, ranges[rangeId2], rangeId2, 100);
+        VaultLib.repayLPT(subVault, ranges[rangeId2], rangeId2, 50, true);
 
         assertEq(subVault.lpts.length, 1);
         assertEq(uint256(subVault.lpts[0].liquidityAmount), 50);
     }
 
     function testRepayLPTAll() public {
-        VaultLib.borrowLPT(subVault, ranges, rangeId, 100);
-        VaultLib.repayLPT(subVault, rangeId, 100);
+        VaultLib.borrowLPT(subVault, ranges[rangeId2], rangeId2, 100);
+        VaultLib.repayLPT(subVault, ranges[rangeId2], rangeId2, 100, true);
 
         assertEq(subVault.lpts.length, 0);
     }
