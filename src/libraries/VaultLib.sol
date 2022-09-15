@@ -338,7 +338,7 @@ library VaultLib {
         DataType.Context memory _context
     ) external view returns (bool) {
         for (uint256 i = 0; i < _vault.subVaults.length; i++) {
-            if(!isDebtZeroInSubVault(_subVaults[_vault.subVaults[i]], _context)) {
+            if (!isDebtZeroInSubVault(_subVaults[_vault.subVaults[i]], _context)) {
                 return false;
             }
         }
@@ -346,21 +346,25 @@ library VaultLib {
         return true;
     }
 
-    function isDebtZeroInSubVault(
-        DataType.SubVault memory _subVault,
-        DataType.Context memory _context
-    ) internal pure returns (bool) {
+    function isDebtZeroInSubVault(DataType.SubVault memory _subVault, DataType.Context memory _context)
+        internal
+        pure
+        returns (bool)
+    {
         if (_subVault.isCompound) {
-            if(_context.tokenState0.getDebtValue(_subVault.balance0) != 0 || _context.tokenState1.getDebtValue(_subVault.balance1) != 0) {
+            if (
+                _context.tokenState0.getDebtValue(_subVault.balance0) != 0 ||
+                _context.tokenState1.getDebtValue(_subVault.balance1) != 0
+            ) {
                 return false;
             }
         } else {
-            if(_subVault.debtAmount0 != 0 || _subVault.debtAmount1 != 0) {
+            if (_subVault.debtAmount0 != 0 || _subVault.debtAmount1 != 0) {
                 return false;
             }
         }
 
-        if(_subVault.lpts.length > 0) {
+        if (_subVault.lpts.length > 0) {
             return false;
         }
 

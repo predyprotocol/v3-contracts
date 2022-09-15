@@ -34,7 +34,12 @@ library LiquidationLogic {
         require(_checkLiquidatable(_vault, _subVaults, _context, _ranges, position, sqrtPrice), "L0");
 
         // calculate penalty
-        (, uint256 debtValue) = PositionCalculator.calculateCollateralAndDebtValue(position, sqrtPrice, _context.isMarginZero, false);
+        (, uint256 debtValue) = PositionCalculator.calculateCollateralAndDebtValue(
+            position,
+            sqrtPrice,
+            _context.isMarginZero,
+            false
+        );
 
         // close position
         uint256 penaltyAmount = reducePosition(

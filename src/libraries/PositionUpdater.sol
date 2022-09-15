@@ -308,15 +308,18 @@ library PositionUpdater {
         DataType.Context storage _context,
         DataType.PositionUpdate memory _positionUpdate
     ) internal returns (uint256 withdrawAmount0, uint256 withdrawAmount1) {
-        if (!_subVault.isCompound) {
-            _subVault.collateralAmount0 = _subVault.collateralAmount0.sub(_positionUpdate.param0);
-            _subVault.collateralAmount1 = _subVault.collateralAmount1.sub(_positionUpdate.param1);
-        }
-
         withdrawAmount0 = _context.tokenState0.removeCollateral(_subVault.balance0, _positionUpdate.param0);
         withdrawAmount1 = _context.tokenState1.removeCollateral(_subVault.balance1, _positionUpdate.param1);
 
-        emit TokenWithdrawn(_subVault.id, _positionUpdate.param0, _positionUpdate.param1);
+        if (!_subVault.isCompound) {
+            _subVault.collateralAmount0 = _subVault.collateralAmount0.sub(_positionUpdate.param0);
+            _subVault.collateralAmount1 = _subVault.collateralAmount1.sub(_positionUpdate.param1);
+
+            withdrawAmount0 = _positionUpdate.param0;
+            withdrawAmount1 = _positionUpdate.param1;
+        }
+
+        emit TokenWithdrawn(_subVault.id, withdrawAmount0, withdrawAmount1);
     }
 
     function borrowTokens(
@@ -342,15 +345,18 @@ library PositionUpdater {
         DataType.Context storage _context,
         DataType.PositionUpdate memory _positionUpdate
     ) internal returns (uint256 requiredAmount0, uint256 requiredAmount1) {
-        if (!_subVault.isCompound) {
-            _subVault.debtAmount0 = _subVault.debtAmount0.sub(_positionUpdate.param0);
-            _subVault.debtAmount1 = _subVault.debtAmount1.sub(_positionUpdate.param1);
-        }
-
         requiredAmount0 = _context.tokenState0.removeDebt(_subVault.balance0, _positionUpdate.param0);
         requiredAmount1 = _context.tokenState1.removeDebt(_subVault.balance1, _positionUpdate.param1);
 
-        emit TokenRepaid(_subVault.id, _positionUpdate.param0, _positionUpdate.param1);
+        if (!_subVault.isCompound) {
+            _subVault.debtAmount0 = _subVault.debtAmount0.sub(_positionUpdate.param0);
+            _subVault.debtAmount1 = _subVault.debtAmount1.sub(_positionUpdate.param1);
+
+            requiredAmount0 = _positionUpdate.param0;
+            requiredAmount1 = _positionUpdate.param1;
+        }
+
+        emit TokenRepaid(_subVault.id, requiredAmount0, requiredAmount1);
     }
 
     function depositLPT(
