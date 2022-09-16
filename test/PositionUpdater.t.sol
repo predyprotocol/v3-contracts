@@ -239,9 +239,22 @@ contract PositionUpdaterTest is TestDeployer, Test {
     }
 
     function testUpdatePositionRepayTokenWithMargin() public {
-        DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](1);
+        depositToken(vault3, context, ranges, 1e6, 1e18, false);
+
+        DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](2);
 
         positionUpdates[0] = DataType.PositionUpdate(
+            DataType.PositionUpdateType.WITHDRAW_TOKEN,
+            0,
+            false,
+            0,
+            0,
+            0,
+            1e6,
+            1e18
+        );
+
+        positionUpdates[1] = DataType.PositionUpdate(
             DataType.PositionUpdateType.REPAY_TOKEN,
             0,
             false,

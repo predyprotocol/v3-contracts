@@ -13,7 +13,6 @@ import "./libraries/DataType.sol";
 import "./libraries/VaultLib.sol";
 import "./libraries/PredyMath.sol";
 import "./libraries/PositionUpdater.sol";
-import "./libraries/PositionCalculator.sol";
 import "./libraries/InterestCalculator.sol";
 import "./libraries/PositionLib.sol";
 import "./libraries/logic/LiquidationLogic.sol";

@@ -17,7 +17,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const isMarginZero = false
 
   const InterestCalculator = await ethers.getContract('InterestCalculator', deployer)
-  const PositionCalculator = await ethers.getContract('PositionCalculator', deployer)
   const LiquidationLogic = await ethers.getContract('LiquidationLogic', deployer)
   const PositionUpdater = await ethers.getContract('PositionUpdater', deployer)
   const VaultLib = await ethers.getContract('VaultLib', deployer)
@@ -31,7 +30,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       PositionUpdater: PositionUpdater.address,
       VaultLib: VaultLib.address,
       PositionLib: PositionLib.address,
-      PositionCalculator: PositionCalculator.address,
       InterestCalculator: InterestCalculator.address,
     },
     log: true,

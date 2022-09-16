@@ -30,8 +30,8 @@ library PositionCalculator {
         DataType.Position memory _position,
         uint160 _sqrtPrice,
         bool _isMarginZero
-    ) external pure returns (int256) {
-        int256 positionValue = calculateValue(_position, _sqrtPrice, _isMarginZero, false);
+    ) internal pure returns (int256) {
+        int256 positionValue = calculateValue(_position, _sqrtPrice, _isMarginZero);
 
         int256 minValue = calculateMinValue(_position, _sqrtPrice, _isMarginZero);
 
@@ -76,7 +76,7 @@ library PositionCalculator {
 
         {
             // 1. check value of at P*1.24
-            int256 value = calculateValue(_position, sqrtPriceUpper, _isMarginZero, false);
+            int256 value = calculateValue(_position, sqrtPriceUpper, _isMarginZero);
             if (minValue > value) {
                 minValue = value;
             }
@@ -84,7 +84,7 @@ library PositionCalculator {
 
         {
             // 2. check value of at P/1.24
-            int256 value = calculateValue(_position, sqrtPriceLower, _isMarginZero, false);
+            int256 value = calculateValue(_position, sqrtPriceLower, _isMarginZero);
             if (minValue > value) {
                 minValue = value;
             }
@@ -108,6 +108,14 @@ library PositionCalculator {
                 }
             }
         }
+    }
+
+    function calculateValue(
+        DataType.Position memory _position,
+        uint160 _sqrtPrice,
+        bool _isMarginZero
+    ) internal pure returns (int256 value) {
+        return calculateValue(_position, _sqrtPrice, _isMarginZero, false);
     }
 
     function calculateValue(
