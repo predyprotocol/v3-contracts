@@ -106,7 +106,7 @@ library LiquidationLogic {
             _ranges,
             _positionUpdates,
             // reduce only
-            DataType.TradeOption(true, true, false, _context.isMarginZero, -2, -2)
+            DataType.TradeOption(true, true, false, _context.isMarginZero, -2, -2, bytes(""))
         );
 
         require(0 == surplusAmount0, "L2");

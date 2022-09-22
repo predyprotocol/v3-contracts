@@ -33,7 +33,7 @@ contract PositionUpdaterTest is TestDeployer, Test {
         vm.warp(block.timestamp + 1 minutes);
 
         context = getContext();
-        tradeOption = DataType.TradeOption(false, false, false, context.isMarginZero, -1, -1);
+        tradeOption = DataType.TradeOption(false, false, false, context.isMarginZero, -1, -1, EMPTY_METADATA);
 
         // vault1 is empty
         // vault2 has deposited token
@@ -192,7 +192,7 @@ contract PositionUpdaterTest is TestDeployer, Test {
             context,
             ranges,
             positionUpdates,
-            DataType.TradeOption(false, false, false, context.isMarginZero, 1e8, -1)
+            DataType.TradeOption(false, false, false, context.isMarginZero, 1e8, -1, EMPTY_METADATA)
         );
 
         assertEq(subVaults[vault1.subVaults[0]].debtAmount0, 0);
@@ -275,7 +275,7 @@ contract PositionUpdaterTest is TestDeployer, Test {
             context,
             ranges,
             positionUpdates,
-            DataType.TradeOption(false, true, false, context.isMarginZero, -2, -1)
+            DataType.TradeOption(false, true, false, context.isMarginZero, -2, -1, EMPTY_METADATA)
         );
 
         assertEq(vault3.subVaults.length, 0);

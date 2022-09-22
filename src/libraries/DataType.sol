@@ -121,6 +121,7 @@ library DataType {
         bool isQuoteZero;
         int256 targetMarginAmount0;
         int256 targetMarginAmount1;
+        bytes metadata;
     }
 
     struct OpenPositionOption {
@@ -128,14 +129,12 @@ library DataType {
         uint256 upperSqrtPrice;
         uint256 bufferAmount0;
         uint256 bufferAmount1;
-        bytes metadata;
     }
 
     struct ClosePositionOption {
         uint256 lowerSqrtPrice;
         uint256 upperSqrtPrice;
         uint256 swapRatio;
-        bytes metadata;
     }
 
     struct LiquidationOption {

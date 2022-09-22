@@ -172,7 +172,7 @@ library PositionUpdater {
                 _vault.marginAmount0 = uint256(_tradeOption.targetMarginAmount0);
 
                 requiredAmount0 = requiredAmount0.add(deltaMarginAmount0);
-            } else if (_tradeOption.targetMarginAmount0 == -2) {
+            } else if (_tradeOption.targetMarginAmount0 == Constants.MARGIN_USE) {
                 // use margin of token0 to make required amount 0
                 deltaMarginAmount0 = requiredAmount0.mul(-1);
 
@@ -188,7 +188,7 @@ library PositionUpdater {
                 _vault.marginAmount1 = uint256(_tradeOption.targetMarginAmount1);
 
                 requiredAmount1 = requiredAmount1.add(deltaMarginAmount1);
-            } else if (_tradeOption.targetMarginAmount1 == -2) {
+            } else if (_tradeOption.targetMarginAmount1 == Constants.MARGIN_USE) {
                 // use margin of token1 to make required amount 0
                 deltaMarginAmount1 = requiredAmount1.mul(-1);
 
@@ -328,19 +328,13 @@ library PositionUpdater {
             if (_subVault.collateralAmount0 == 0) {
                 collateralFee0 = _context.tokenState0.clearCollateral(_subVault.balance0).sub(_positionUpdate.param0);
             } else {
-                _context.tokenState0.removeCollateral(
-                    _subVault.balance0,
-                    _positionUpdate.param0.add(collateralFee0)
-                );
+                _context.tokenState0.removeCollateral(_subVault.balance0, _positionUpdate.param0.add(collateralFee0));
             }
 
             if (_subVault.collateralAmount1 == 0) {
                 collateralFee1 = _context.tokenState1.clearCollateral(_subVault.balance1).sub(_positionUpdate.param1);
             } else {
-                _context.tokenState1.removeCollateral(
-                    _subVault.balance1,
-                    _positionUpdate.param1.add(collateralFee1)
-                );
+                _context.tokenState1.removeCollateral(_subVault.balance1, _positionUpdate.param1.add(collateralFee1));
             }
 
             withdrawAmount0 = _positionUpdate.param0.add(collateralFee0);

@@ -145,9 +145,16 @@ contract Controller is IController, Initializable {
         DataType.PositionUpdate[] memory _positionUpdates,
         uint256 _buffer0,
         uint256 _buffer1,
-        DataType.TradeOption memory _tradeOption,
-        bytes memory _metadata
-    ) public override returns (uint256 vaultId) {
+        DataType.TradeOption memory _tradeOption
+    )
+        public
+        override
+        returns (
+            uint256 vaultId,
+            int256 requiredAmount0,
+            int256 requiredAmount1
+        )
+    {
         applyPerpFee(_vaultId, _positionUpdates);
 
         if (_buffer0 > 0) {
@@ -161,7 +168,7 @@ contract Controller is IController, Initializable {
         (vaultId, vault) = createOrGetVault(_vaultId, _tradeOption.quoterMode);
 
         // update position in the vault
-        (int256 requiredAmount0, int256 requiredAmount1) = PositionUpdater.updatePosition(
+        (requiredAmount0, requiredAmount1) = PositionUpdater.updatePosition(
             vault,
             subVaults,
             context,
@@ -191,7 +198,7 @@ contract Controller is IController, Initializable {
             TransferHelper.safeTransfer(context.token1, msg.sender, amount1);
         }
 
-        emit PositionUpdated(vaultId, requiredAmount0, requiredAmount1, getSqrtPrice(), _metadata);
+        emit PositionUpdated(vaultId, requiredAmount0, requiredAmount1, getSqrtPrice(), _tradeOption.metadata);
     }
 
     /**
