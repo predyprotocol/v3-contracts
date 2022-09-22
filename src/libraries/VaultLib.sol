@@ -12,6 +12,7 @@ import "./BaseToken.sol";
 import "./DataType.sol";
 import "./PositionCalculator.sol";
 import "./PositionLib.sol";
+import "forge-std/console.sol";
 
 /**
  * Error Codes
@@ -91,12 +92,12 @@ library VaultLib {
                     _range.premiumGrowthForLender,
                     _liquidityAmount
                 );
+
                 lpt.fee0Last = updateEntryPrice(lpt.fee0Last, lpt.liquidityAmount, _range.fee0Growth, _liquidityAmount);
                 lpt.fee1Last = updateEntryPrice(lpt.fee1Last, lpt.liquidityAmount, _range.fee1Growth, _liquidityAmount);
 
                 lpt.liquidityAmount = lpt.liquidityAmount.add(_liquidityAmount).toUint128();
 
-                lpt.premiumGrowthLast = _range.premiumGrowthForLender;
                 lpt.fee0Last = _range.fee0Growth;
                 lpt.fee1Last = _range.fee1Growth;
 
