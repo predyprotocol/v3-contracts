@@ -11,23 +11,22 @@ import "../src/Controller.sol";
 import "../src/mocks/MockERC20.sol";
 
 contract ControllerTest is TestDeployer, Test {
-    address owner;
+    address private user = vm.addr(uint256(1));
 
     uint256 private lpVaultId;
-    bool isQuoteZero;
+    bool private isQuoteZero;
 
     // expected events
     event FeeCollected(uint256 vaultId, int256 feeAmount0, int256 feeAmount1);
 
     function setUp() public {
-        owner = 0x503828976D22510aad0201ac7EC88293211D23Da;
-        vm.startPrank(owner);
+        vm.startPrank(user);
 
         address factory = deployCode(
             "../node_modules/@uniswap/v3-core/artifacts/contracts/UniswapV3Factory.sol:UniswapV3Factory"
         );
 
-        deployContracts(owner, factory);
+        deployContracts(user, factory);
         vm.warp(block.timestamp + 1 minutes);
 
         depositToken(0, 2000 * 1e6, 1e18);
@@ -171,7 +170,9 @@ contract ControllerTest is TestDeployer, Test {
         );
     }
 
-    // Tests
+    /**************************
+     *  Test: updatePosition  *
+     **************************/
 
     function testCannotDepositLPTByNoEnoughAmount0() public {
         (DataType.PositionUpdate[] memory positionUpdates, , uint256 amount1) = createPositionUpdatesForDepositLPT();
@@ -216,7 +217,7 @@ contract ControllerTest is TestDeployer, Test {
     }
 
     function testWithdrawLPT() public {
-        swapToSamePrice(owner);
+        swapToSamePrice(user);
 
         DataType.Vault memory vault = controller.getVault(lpVaultId);
         DataType.SubVault memory subVault = controller.getSubVault(vault.subVaults[0]);

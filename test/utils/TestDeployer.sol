@@ -20,26 +20,23 @@ import "forge-std/Test.sol";
 abstract contract TestDeployer is BaseTestHelper {
     function deployContracts(address owner, address factory) public {
         // deploy contracts
-        MockERC20 tokenA = new MockERC20("WETH", "WETH", 18);
-        MockERC20 tokenB = new MockERC20("USDC", "USDC", 6);
+        weth.mint(owner, 1e25);
+        usdc.mint(owner, 1e25);
+        weth.mint(address(this), 1e25);
+        usdc.mint(address(this), 1e25);
 
-        tokenA.mint(owner, 1e25);
-        tokenB.mint(owner, 1e25);
-        tokenA.mint(address(this), 1e25);
-        tokenB.mint(address(this), 1e25);
-
-        bool isTokenAToken0 = uint160(address(tokenA)) < uint160(address(tokenB));
+        bool isTokenAToken0 = uint160(address(weth)) < uint160(address(usdc));
 
         if (isTokenAToken0) {
-            token0 = tokenA;
-            token1 = tokenB;
+            token0 = weth;
+            token1 = usdc;
         } else {
-            token0 = tokenB;
-            token1 = tokenA;
+            token0 = usdc;
+            token1 = weth;
         }
 
-        positionManager = new NonfungiblePositionManager(factory, address(tokenA), address(0));
-        swapRouter = new SwapRouter(factory, address(tokenA));
+        positionManager = new NonfungiblePositionManager(factory, address(weth), address(0));
+        swapRouter = new SwapRouter(factory, address(weth));
 
         uint160 sqrtPrice = 1982611457661667117153625747031458;
 

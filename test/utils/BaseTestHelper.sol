@@ -28,6 +28,9 @@ abstract contract BaseTestHelper {
     SwapRouter internal swapRouter;
     IUniswapV3Pool internal uniPool;
 
+    MockERC20 internal weth = new MockERC20("WETH", "WETH", 18);
+    MockERC20 internal usdc = new MockERC20("USDC", "USDC", 6);
+
     address internal constant otherAccount = address(1500);
 
     bytes32[] internal rangeIds;
