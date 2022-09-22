@@ -23,20 +23,26 @@ contract ControllerHelper is Controller {
         DataType.Position memory _position,
         DataType.TradeOption memory _tradeOption,
         DataType.OpenPositionOption memory _openPositionOptions
-    ) external returns (uint256 vaultId) {
+    )
+        external
+        returns (
+            uint256 vaultId,
+            int256 requiredAmount0,
+            int256 requiredAmount1
+        )
+    {
         DataType.PositionUpdate[] memory positionUpdates = PositionLib.getPositionUpdatesToOpen(
             _position,
             _tradeOption.isQuoteZero,
             getSqrtPrice()
         );
 
-        vaultId = updatePosition(
+        (vaultId, requiredAmount0, requiredAmount1) = updatePosition(
             _vaultId,
             positionUpdates,
             _openPositionOptions.bufferAmount0,
             _openPositionOptions.bufferAmount1,
-            _tradeOption,
-            _openPositionOptions.metadata
+            _tradeOption
         );
 
         _checkPrice(_openPositionOptions.lowerSqrtPrice, _openPositionOptions.upperSqrtPrice);
@@ -49,10 +55,10 @@ contract ControllerHelper is Controller {
         uint256 _vaultId,
         DataType.TradeOption memory _tradeOption,
         DataType.ClosePositionOption memory _closePositionOptions
-    ) external {
+    ) external returns (int256, int256) {
         applyInterest();
 
-        closePosition(_vaultId, _getPosition(_vaultId), _tradeOption, _closePositionOptions);
+        return closePosition(_vaultId, _getPosition(_vaultId), _tradeOption, _closePositionOptions);
     }
 
     /**
@@ -63,14 +69,14 @@ contract ControllerHelper is Controller {
         uint256 _subVaultIndex,
         DataType.TradeOption memory _tradeOption,
         DataType.ClosePositionOption memory _closePositionOptions
-    ) external {
+    ) external returns (int256, int256) {
         applyInterest();
 
         DataType.Position[] memory positions = new DataType.Position[](1);
 
         positions[0] = _getPositionOfSubVault(_vaultId, _subVaultIndex);
 
-        closePosition(_vaultId, positions, _tradeOption, _closePositionOptions);
+        return closePosition(_vaultId, positions, _tradeOption, _closePositionOptions);
     }
 
     /**
@@ -81,7 +87,7 @@ contract ControllerHelper is Controller {
         DataType.Position[] memory _positions,
         DataType.TradeOption memory _tradeOption,
         DataType.ClosePositionOption memory _closePositionOptions
-    ) public {
+    ) public returns (int256 requiredAmount0, int256 requiredAmount1) {
         DataType.PositionUpdate[] memory positionUpdates = PositionLib.getPositionUpdatesToClose(
             _positions,
             _tradeOption.isQuoteZero,
@@ -89,7 +95,7 @@ contract ControllerHelper is Controller {
             getSqrtPrice()
         );
 
-        updatePosition(_vaultId, positionUpdates, 0, 0, _tradeOption, _closePositionOptions.metadata);
+        (, requiredAmount0, requiredAmount1) = updatePosition(_vaultId, positionUpdates, 0, 0, _tradeOption);
 
         _checkPrice(_closePositionOptions.lowerSqrtPrice, _closePositionOptions.upperSqrtPrice);
     }

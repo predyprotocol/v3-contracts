@@ -182,8 +182,7 @@ contract ControllerTest is TestDeployer, Test {
             positionUpdates,
             0,
             amount1 * 2,
-            DataType.TradeOption(false, false, false, isQuoteZero, -1, -1),
-            EMPTY_METADATA
+            DataType.TradeOption(false, false, false, isQuoteZero, -1, -1, EMPTY_METADATA)
         );
     }
 
@@ -196,8 +195,7 @@ contract ControllerTest is TestDeployer, Test {
             positionUpdates,
             amount0 * 2,
             0,
-            DataType.TradeOption(false, false, false, isQuoteZero, -1, -1),
-            EMPTY_METADATA
+            DataType.TradeOption(false, false, false, isQuoteZero, -1, -1, EMPTY_METADATA)
         );
     }
 
@@ -213,8 +211,7 @@ contract ControllerTest is TestDeployer, Test {
             positionUpdates,
             amount0 * 2,
             amount1 * 2,
-            DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1),
-            EMPTY_METADATA
+            DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1, EMPTY_METADATA)
         );
     }
 
@@ -238,8 +235,7 @@ contract ControllerTest is TestDeployer, Test {
             positionUpdates,
             0,
             0,
-            DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1),
-            EMPTY_METADATA
+            DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1, EMPTY_METADATA)
         );
 
         DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(lpVaultId);
@@ -252,13 +248,12 @@ contract ControllerTest is TestDeployer, Test {
 
         DataType.PositionUpdate[] memory positionUpdates = createPositionUpdatesForBorrowLPT(margin);
 
-        uint256 vaultId = controller.updatePosition(
+        (uint256 vaultId, , ) = controller.updatePosition(
             0,
             positionUpdates,
             (1e18 * 1800) / 1e12,
             margin,
-            DataType.TradeOption(false, false, false, getIsMarginZero(), int256(margin), -1),
-            EMPTY_METADATA
+            DataType.TradeOption(false, false, false, getIsMarginZero(), int256(margin), -1, EMPTY_METADATA)
         );
 
         vm.warp(block.timestamp + 1 minutes);
@@ -281,8 +276,7 @@ contract ControllerTest is TestDeployer, Test {
             positionUpdates,
             (1e18 * 1800) / 1e12,
             margin,
-            DataType.TradeOption(false, false, false, isQuoteZero, -1, -1),
-            EMPTY_METADATA
+            DataType.TradeOption(false, false, false, isQuoteZero, -1, -1, EMPTY_METADATA)
         );
     }
 
@@ -291,13 +285,12 @@ contract ControllerTest is TestDeployer, Test {
 
         DataType.PositionUpdate[] memory positionUpdates = createPositionUpdatesForBorrowLPT(margin);
 
-        uint256 vaultId = controller.updatePosition(
+        (uint256 vaultId, , ) = controller.updatePosition(
             0,
             positionUpdates,
             (1e18 * 1800) / 1e12,
             margin,
-            DataType.TradeOption(false, false, false, getIsMarginZero(), int256(margin), -1),
-            EMPTY_METADATA
+            DataType.TradeOption(false, false, false, getIsMarginZero(), int256(margin), -1, EMPTY_METADATA)
         );
 
         DataType.Vault memory vault = controller.getVault(vaultId);
@@ -314,8 +307,7 @@ contract ControllerTest is TestDeployer, Test {
             positionUpdates2,
             0,
             0,
-            DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1),
-            EMPTY_METADATA
+            DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1, EMPTY_METADATA)
         );
 
         DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);
