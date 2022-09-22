@@ -12,7 +12,6 @@ import "./BaseToken.sol";
 import "./DataType.sol";
 import "./PositionCalculator.sol";
 import "./PositionLib.sol";
-import "forge-std/console.sol";
 
 /**
  * Error Codes
