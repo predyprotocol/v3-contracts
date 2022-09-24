@@ -46,6 +46,10 @@ contract PositionUpdaterTest is TestDeployer, Test {
         borrowToken(vault5, context, ranges, 1e6, 1e18, true, -1);
     }
 
+    /**************************
+     *  Test: updatePosition  *
+     **************************/
+
     function testUpdatePosition() public {
         DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](0);
         PositionUpdater.updatePosition(vault1, subVaults, context, ranges, positionUpdates, tradeOption);
@@ -302,6 +306,133 @@ contract PositionUpdaterTest is TestDeployer, Test {
         assertEq(vault1.subVaults.length, 1);
         assertEq(subVaults[vault1.subVaults[0]].lpts.length, 1);
     }
+
+    function testUpdatePositionMarginNotChanged() public {
+        DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](0);
+
+        PositionUpdater.updatePosition(
+            vault1,
+            subVaults,
+            context,
+            ranges,
+            positionUpdates,
+            DataType.TradeOption(false, true, false, context.isMarginZero, -1, -1, EMPTY_METADATA)
+        );
+
+        assertEq(vault1.marginAmount0, 0);
+        assertEq(vault1.marginAmount1, 0);
+    }
+
+    function testUpdatePositionDepositMargin(uint256 _marginAmount0, uint256 _marginAmount1) public {
+        vm.assume(_marginAmount0 <= Constants.MAX_MARGIN_AMOUNT);
+        vm.assume(_marginAmount1 <= Constants.MAX_MARGIN_AMOUNT);
+
+        DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](0);
+
+        PositionUpdater.updatePosition(
+            vault1,
+            subVaults,
+            context,
+            ranges,
+            positionUpdates,
+            DataType.TradeOption(
+                false,
+                true,
+                false,
+                context.isMarginZero,
+                int256(_marginAmount0),
+                int256(_marginAmount1),
+                EMPTY_METADATA
+            )
+        );
+
+        assertEq(vault1.marginAmount0, _marginAmount0);
+        assertEq(vault1.marginAmount1, _marginAmount1);
+    }
+
+    function testUpdatePositionWithdrawMargin() public {
+        DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](0);
+
+        assertEq(vault3.marginAmount0, 100 * 1e6);
+        assertEq(vault3.marginAmount1, 0);
+
+        PositionUpdater.updatePosition(
+            vault3,
+            subVaults,
+            context,
+            ranges,
+            positionUpdates,
+            DataType.TradeOption(false, true, false, context.isMarginZero, 90 * 1e6, -1, EMPTY_METADATA)
+        );
+
+        assertEq(vault3.marginAmount0, 90 * 1e6);
+        assertEq(vault3.marginAmount1, 0);
+    }
+
+    function testDepositTokenFromMargin(uint256 _marginAmount0, uint256 _marginAmount1) public {
+        vm.assume(_marginAmount0 <= Constants.MAX_MARGIN_AMOUNT);
+        vm.assume(_marginAmount1 <= Constants.MAX_MARGIN_AMOUNT);
+
+        {
+            DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](0);
+
+            PositionUpdater.updatePosition(
+                vault1,
+                subVaults,
+                context,
+                ranges,
+                positionUpdates,
+                DataType.TradeOption(
+                    false,
+                    false,
+                    false,
+                    context.isMarginZero,
+                    int256(_marginAmount0),
+                    int256(_marginAmount1),
+                    EMPTY_METADATA
+                )
+            );
+        }
+
+        {
+            DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](1);
+
+            positionUpdates[0] = DataType.PositionUpdate(
+                DataType.PositionUpdateType.DEPOSIT_TOKEN,
+                0,
+                false,
+                0,
+                0,
+                0,
+                _marginAmount0,
+                _marginAmount1
+            );
+
+            PositionUpdater.updatePosition(
+                vault1,
+                subVaults,
+                context,
+                ranges,
+                positionUpdates,
+                DataType.TradeOption(
+                    false,
+                    false,
+                    false,
+                    context.isMarginZero,
+                    Constants.MARGIN_USE,
+                    Constants.MARGIN_USE,
+                    EMPTY_METADATA
+                )
+            );
+        }
+
+        assertEq(vault1.marginAmount0, 0);
+        assertEq(vault1.marginAmount1, 0);
+    }
+
+    /**************************
+     *   Test: swapAnyway     *
+     **************************/
 
     function testSwapAnywayETHRequired(int256 requiredAmount0, int256 requiredAmount1) public {
         vm.assume(requiredAmount0 < 0);

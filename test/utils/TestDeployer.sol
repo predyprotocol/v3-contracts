@@ -20,10 +20,10 @@ import "forge-std/Test.sol";
 abstract contract TestDeployer is BaseTestHelper {
     function deployContracts(address owner, address factory) public {
         // deploy contracts
-        weth.mint(owner, 1e25);
-        usdc.mint(owner, 1e25);
-        weth.mint(address(this), 1e25);
-        usdc.mint(address(this), 1e25);
+        weth.mint(owner, 1e32);
+        usdc.mint(owner, 1e32);
+        weth.mint(address(this), 1e32);
+        usdc.mint(address(this), 1e32);
 
         bool isTokenAToken0 = uint160(address(weth)) < uint160(address(usdc));
 
