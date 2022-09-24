@@ -137,7 +137,11 @@ library InterestCalculator {
 
             // accumurate protocol fee
             {
-                uint256 protocolFee = PredyMath.mulDiv(protocolFeePerLiquidity, _perpState.borrowedLiquidity, 1e18);
+                uint256 protocolFee = PredyMath.mulDiv(
+                    protocolFeePerLiquidity,
+                    _perpState.borrowedLiquidity,
+                    Constants.ONE
+                );
 
                 if (_context.isMarginZero) {
                     _context.accumuratedProtocolFee0 = _context.accumuratedProtocolFee0.add(protocolFee);
