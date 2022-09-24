@@ -125,7 +125,7 @@ library InterestCalculator {
 
             _perpState.premiumGrowthForBorrower = _perpState.premiumGrowthForBorrower.add(premium);
 
-            uint256 protocolFeePerLiquidity = PredyMath.mulDiv(premium, Constants.RESERVE_FACTOR, Constants.ONE);
+            uint256 protocolFeePerLiquidity = PredyMath.mulDiv(premium, Constants.LPT_RESERVE_FACTOR, Constants.ONE);
 
             _perpState.premiumGrowthForLender = _perpState.premiumGrowthForLender.add(
                 PredyMath.mulDiv(

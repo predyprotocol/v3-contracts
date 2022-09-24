@@ -12,7 +12,7 @@ import "../PositionCalculator.sol";
 import "../PositionUpdater.sol";
 
 library LiquidationLogic {
-    uint256 internal constant ORACLE_PERIOD = 1 minutes;
+    uint256 internal constant ORACLE_PERIOD = 10 minutes;
 
     /**
      * @notice Anyone can liquidates the vault if its required collateral value is positive.
@@ -48,6 +48,7 @@ library LiquidationLogic {
             _context,
             _ranges,
             _positionUpdates,
+            // penalty amount is 0.5% of debt value
             debtValue / 200
         );
 
