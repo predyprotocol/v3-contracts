@@ -56,7 +56,7 @@ contract InterestCalculatorTest is TestDeployer, Test {
 
         (perpStatus.tokenId, liquidity, , ) = positionManager.mint(params);
 
-        perpStatus.borrowedLiquidity = liquidity / 2;
+        perpStatus.borrowedLiquidity = liquidity;
     }
 
     function testApplyInterest() public {
@@ -98,8 +98,11 @@ contract InterestCalculatorTest is TestDeployer, Test {
         assertEq(ir60, 210001000000000000);
     }
 
-    function testupdatePremiumGrowth() public {
-        vm.warp(block.timestamp + 5 minutes);
+    function testUpdatePremiumGrowth(uint256 amountIn) public {
+        vm.assume(amountIn > 0);
+        vm.assume(amountIn <= 1e14);
+
+        vm.warp(block.timestamp + 30 minutes);
 
         swapRouter.exactInputSingle(
             ISwapRouter.ExactInputSingleParams({
@@ -108,7 +111,7 @@ contract InterestCalculatorTest is TestDeployer, Test {
                 fee: 500,
                 recipient: owner,
                 deadline: block.timestamp,
-                amountIn: 500000 * 1e6,
+                amountIn: amountIn,
                 amountOutMinimum: 0,
                 sqrtPriceLimitX96: 0
             })
@@ -131,6 +134,13 @@ contract InterestCalculatorTest is TestDeployer, Test {
 
         assertGt(perpStatus.premiumGrowthForLender, 0);
         assertGt(perpStatus.premiumGrowthForBorrower, 0);
+
+        uint256 paidPremium = (perpStatus.premiumGrowthForBorrower * perpStatus.borrowedLiquidity) / 1e18;
+        uint256 receivedPremium = (perpStatus.premiumGrowthForLender * (liquidity + perpStatus.borrowedLiquidity)) /
+            1e18;
+
+        assertLe(paidPremium, receivedPremium + context.accumuratedProtocolFee0 + 2);
+        assertGe(paidPremium, receivedPremium + context.accumuratedProtocolFee0);
     }
 
     function testCalculateDailyPremium() public {
@@ -174,12 +184,9 @@ contract InterestCalculatorTest is TestDeployer, Test {
 
         assertEq(dailyPremium, 15000000000);
 
-        uint256 premium = InterestCalculator.calculateStableValueFromTotalPremiumValue(
-            dailyPremium,
-            liquidity - perpStatus.borrowedLiquidity
-        );
+        uint256 premium = InterestCalculator.calculateStableValueFromTotalPremiumValue(dailyPremium, liquidity);
 
-        assertEq(premium, 141104560991);
+        assertEq(premium, 70552280495);
         uint128 liquidityForOne = LiquidityAmounts.getLiquidityForAmounts(
             TickMath.getSqrtRatioAtTick(perpStatus.upperTick),
             TickMath.getSqrtRatioAtTick(perpStatus.lowerTick),
@@ -188,6 +195,6 @@ contract InterestCalculatorTest is TestDeployer, Test {
             1e18
         );
 
-        assertEq((liquidityForOne * premium) / 1e18, 374281712);
+        assertEq((liquidityForOne * premium) / 1e18, 187140856);
     }
 }
