@@ -8,4 +8,6 @@ library Constants {
     // margin option
     int256 internal constant MARGIN_STAY = -1;
     int256 internal constant MARGIN_USE = -2;
+
+    uint256 internal constant MAX_MARGIN_AMOUNT = 1e32;
 }
