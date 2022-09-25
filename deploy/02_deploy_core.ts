@@ -57,17 +57,17 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const controller = await ethers.getContract('ControllerHelper', deployer)
 
     await controller.updateIRMParams({
-      baseRate: '1000000000000',
-      kinkRate: '300000000000000000',
-      slope1: '200000000000000000',
-      slope2: '500000000000000000',
+      baseRate: '5000000000000000',
+      kinkRate: '500000000000000000',
+      slope1: '50000000000000000',
+      slope2: '600000000000000000',
     })
     await controller.updateYearlyPremiumParams(
       {
-        baseRate: '1000000000000',
+        baseRate: '10000000000000000',
         kinkRate: '300000000000000000',
-        slope1: '200000000000000000',
-        slope2: '500000000000000000',
+        slope1: '60000000000000000',
+        slope2: '750000000000000000',
       },
       {
         baseRate: '7000000000',
