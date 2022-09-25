@@ -14,6 +14,8 @@ import "../PositionUpdater.sol";
 library LiquidationLogic {
     uint256 internal constant ORACLE_PERIOD = 10 minutes;
 
+    event Liquidated(uint256 indexed vaultId, address liquidator, uint256 debtValue, uint256 penaltyAmount);
+
     /**
      * @notice Anyone can liquidates the vault if its required collateral value is positive.
      * @param _vault vault
@@ -28,7 +30,7 @@ library LiquidationLogic {
     ) external {
         uint160 sqrtPrice = getSqrtTWAP(_context.uniswapPool);
 
-        DataType.Position memory position = VaultLib.getPosition(_vault, _subVaults, _ranges, _context);
+        DataType.Position memory position = VaultLib.getPositionWithMargin(_vault, _subVaults, _ranges, _context);
 
         // check liquidation
         require(_checkLiquidatable(_vault, _subVaults, _context, _ranges, position, sqrtPrice), "L0");
@@ -55,6 +57,8 @@ library LiquidationLogic {
         require(VaultLib.isDebtZero(_vault, _subVaults, _context), "L1");
 
         sendReward(_context, msg.sender, penaltyAmount);
+
+        emit Liquidated(_vault.vaultId, msg.sender, debtValue, penaltyAmount);
     }
 
     /**
@@ -70,7 +74,7 @@ library LiquidationLogic {
     ) public view returns (bool) {
         uint160 sqrtPrice = getSqrtTWAP(_context.uniswapPool);
 
-        DataType.Position memory position = VaultLib.getPosition(_vault, _subVaults, _ranges, _context);
+        DataType.Position memory position = VaultLib.getPositionWithMargin(_vault, _subVaults, _ranges, _context);
 
         return _checkLiquidatable(_vault, _subVaults, _context, _ranges, position, sqrtPrice);
     }

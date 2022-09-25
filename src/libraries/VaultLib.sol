@@ -286,6 +286,18 @@ library VaultLib {
             );
     }
 
+    function getMarginAmount(
+        DataType.Vault memory _vault,
+        mapping(uint256 => DataType.SubVault) storage _subVaults,
+        mapping(bytes32 => DataType.PerpStatus) storage _ranges,
+        DataType.Context memory _context
+    ) internal view returns (int256 marginAmount0, int256 marginAmount1) {
+        (int256 fee0, int256 fee1) = getPremiumAndFee(_vault, _subVaults, _ranges, _context);
+
+        marginAmount0 = int256(_vault.marginAmount0) + fee0;
+        marginAmount1 = int256(_vault.marginAmount1) + fee1;
+    }
+
     function getMarginValue(
         DataType.Vault memory _vault,
         mapping(uint256 => DataType.SubVault) storage _subVaults,
@@ -295,15 +307,12 @@ library VaultLib {
     ) internal view returns (int256) {
         uint256 price = LPTMath.decodeSqrtPriceX96(_context.isMarginZero, _sqrtPrice);
 
-        (int256 fee0, int256 fee1) = getPremiumAndFee(_vault, _subVaults, _ranges, _context);
-
-        int256 marginAmount0 = int256(_vault.marginAmount0) + fee0;
-        int256 marginAmount1 = int256(_vault.marginAmount1) + fee1;
+        (int256 marginAmount0, int256 marginAmount1) = getMarginAmount(_vault, _subVaults, _ranges, _context);
 
         if (_context.isMarginZero) {
-            return marginAmount0.add(calculateUnderlyingValue(marginAmount1, price));
+            return marginAmount0.add(marginAmount1.mul(int256(price)).div(1e18));
         } else {
-            return marginAmount1.add(calculateUnderlyingValue(marginAmount0, price));
+            return marginAmount1.add(marginAmount0.mul(int256(price)).div(1e18));
         }
     }
 
@@ -700,5 +709,28 @@ library VaultLib {
         DataType.Context memory _context
     ) internal view returns (DataType.Position memory position) {
         return PositionLib.concat(VaultLib.getPositions(_vault, _subVaults, _ranges, _context));
+    }
+
+    function getPositionWithMargin(
+        DataType.Vault memory _vault,
+        mapping(uint256 => DataType.SubVault) storage _subVaults,
+        mapping(bytes32 => DataType.PerpStatus) storage _ranges,
+        DataType.Context memory _context
+    ) internal view returns (DataType.Position memory position) {
+        position = getPosition(_vault, _subVaults, _ranges, _context);
+
+        (int256 marginAmount0, int256 marginAmount1) = getMarginAmount(_vault, _subVaults, _ranges, _context);
+
+        if (marginAmount0 > 0) {
+            position.collateral0 += uint256(marginAmount0);
+        } else {
+            position.debt0 += uint256(-marginAmount0);
+        }
+
+        if (marginAmount1 > 0) {
+            position.collateral1 += uint256(marginAmount1);
+        } else {
+            position.debt1 += uint256(-marginAmount1);
+        }
     }
 }
