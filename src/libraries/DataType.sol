@@ -144,26 +144,38 @@ library DataType {
         bool swapAnyway;
     }
 
-    struct VaultStatusValue {
+    struct SubVaultValue {
         uint256 collateralValue;
         uint256 debtValue;
         int256 premiumValue;
     }
 
-    struct VaultStatusAmount {
+    struct SubVaultAmount {
         uint256 collateralAmount0;
         uint256 collateralAmount1;
         uint256 debtAmount0;
         uint256 debtAmount1;
+    }
+
+    struct SubVaultInterest {
+        int256 collateralFee0;
+        int256 collateralFee1;
+        int256 debtFee0;
+        int256 debtFee1;
+    }
+
+    struct SubVaultPremium {
         uint256 receivedTradeAmount0;
         uint256 receivedTradeAmount1;
         uint256 receivedPremium;
-        uint256 paidpremium;
+        uint256 paidPremium;
     }
 
     struct SubVaultStatus {
-        VaultStatusValue values;
-        VaultStatusAmount amount;
+        SubVaultValue values;
+        SubVaultAmount amount;
+        SubVaultInterest interest;
+        SubVaultPremium premium;
     }
 
     struct VaultStatus {

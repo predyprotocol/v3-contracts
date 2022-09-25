@@ -254,19 +254,29 @@ library VaultLib {
         DataType.SubVaultStatus[] memory subVaultsStatus = new DataType.SubVaultStatus[](_vault.subVaults.length);
 
         for (uint256 i = 0; i < _vault.subVaults.length; i++) {
-            DataType.VaultStatusAmount memory statusAmount = getVaultStatusAmount(
+            DataType.SubVaultAmount memory statusAmount = getVaultStatusAmount(
                 _subVaults[_vault.subVaults[i]],
                 _ranges,
                 _context,
                 _sqrtPrice
             );
-            DataType.VaultStatusValue memory statusValue = getVaultStatusValue(
-                statusAmount,
-                _sqrtPrice,
-                _context.isMarginZero
+
+            DataType.SubVaultPremium memory subVaultPremium = getVaultStatusPremium(
+                _subVaults[_vault.subVaults[i]],
+                _ranges
             );
 
-            subVaultsStatus[i] = DataType.SubVaultStatus(statusValue, statusAmount);
+            DataType.SubVaultInterest memory statusInterest = getVaultStatusInterest(
+                _subVaults[_vault.subVaults[i]],
+                _context
+            );
+
+            subVaultsStatus[i] = DataType.SubVaultStatus(
+                getVaultStatusValue(statusAmount, statusInterest, subVaultPremium, _sqrtPrice, _context.isMarginZero),
+                statusAmount,
+                statusInterest,
+                subVaultPremium
+            );
         }
 
         PositionCalculator.PositionCalculatorParams memory params = getPositionCalculatorParams(
@@ -307,37 +317,37 @@ library VaultLib {
     ) internal pure returns (int256) {
         return PositionCalculator.calculateValue(_params, _sqrtPrice, _context.isMarginZero, false);
     }
-    
+
     function getVaultStatusValue(
-        DataType.VaultStatusAmount memory statusAmount,
+        DataType.SubVaultAmount memory statusAmount,
+        DataType.SubVaultInterest memory statusInterest,
+        DataType.SubVaultPremium memory statusPremium,
         uint160 _sqrtPrice,
         bool _isMarginZero
-    ) internal pure returns (DataType.VaultStatusValue memory) {
+    ) internal pure returns (DataType.SubVaultValue memory) {
         uint256 price = LPTMath.decodeSqrtPriceX96(_isMarginZero, _sqrtPrice);
 
-        int256 premium = int256(statusAmount.receivedPremium).sub(int256(statusAmount.paidpremium));
+        int256 fee0 = statusInterest.collateralFee0 - statusInterest.debtFee0;
+        int256 fee1 = statusInterest.collateralFee1 - statusInterest.debtFee1;
+
+        fee0 += int256(statusPremium.receivedTradeAmount0);
+        fee1 += int256(statusPremium.receivedTradeAmount1);
+
+        int256 premium = int256(statusPremium.receivedPremium).sub(int256(statusPremium.paidPremium));
 
         if (_isMarginZero) {
             return
-                DataType.VaultStatusValue(
+                DataType.SubVaultValue(
                     PredyMath.mulDiv(statusAmount.collateralAmount1, price, 1e18).add(statusAmount.collateralAmount0),
                     PredyMath.mulDiv(statusAmount.debtAmount1, price, 1e18).add(statusAmount.debtAmount0),
-                    int256(
-                        PredyMath.mulDiv(statusAmount.receivedTradeAmount1, price, 1e18).add(
-                            statusAmount.receivedTradeAmount0
-                        )
-                    ).add(premium)
+                    (fee1.mul(int256(price)).div(1e18).add(fee0)).add(premium)
                 );
         } else {
             return
-                DataType.VaultStatusValue(
+                DataType.SubVaultValue(
                     PredyMath.mulDiv(statusAmount.collateralAmount0, price, 1e18).add(statusAmount.collateralAmount1),
                     PredyMath.mulDiv(statusAmount.debtAmount0, price, 1e18).add(statusAmount.debtAmount1),
-                    int256(
-                        PredyMath.mulDiv(statusAmount.receivedTradeAmount0, price, 1e18).add(
-                            statusAmount.receivedTradeAmount1
-                        )
-                    ).add(premium)
+                    (fee0.mul(int256(price)).div(1e18).add(fee1)).add(premium)
                 );
         }
     }
@@ -347,9 +357,7 @@ library VaultLib {
         mapping(bytes32 => DataType.PerpStatus) storage _ranges,
         DataType.Context memory _context,
         uint160 _sqrtPrice
-    ) internal view returns (DataType.VaultStatusAmount memory) {
-        (uint256 fee0, uint256 fee1) = getEarnedTradeFee(_subVault, _ranges);
-
+    ) internal view returns (DataType.SubVaultAmount memory) {
         (uint256 collateralAmount0, uint256 collateralAmount1) = getCollateralPositionAmounts(
             _subVault,
             _ranges,
@@ -358,17 +366,35 @@ library VaultLib {
         );
         (uint256 debtAmount0, uint256 debtAmount1) = getDebtPositionAmounts(_subVault, _ranges, _context, _sqrtPrice);
 
+        return DataType.SubVaultAmount(collateralAmount0, collateralAmount1, debtAmount0, debtAmount1);
+    }
+
+    function getVaultStatusPremium(
+        DataType.SubVault memory _subVault,
+        mapping(bytes32 => DataType.PerpStatus) storage _ranges
+    ) internal view returns (DataType.SubVaultPremium memory) {
+        (uint256 fee0, uint256 fee1) = getEarnedTradeFee(_subVault, _ranges);
+
         return
-            DataType.VaultStatusAmount(
-                collateralAmount0,
-                collateralAmount1,
-                debtAmount0,
-                debtAmount1,
+            DataType.SubVaultPremium(
                 fee0,
                 fee1,
                 getEarnedDailyPremium(_subVault, _ranges),
                 getPaidDailyPremium(_subVault, _ranges)
             );
+    }
+
+    function getVaultStatusInterest(DataType.SubVault memory _subVault, DataType.Context memory _context)
+        internal
+        pure
+        returns (DataType.SubVaultInterest memory)
+    {
+        (int256 collateralFee0, int256 collateralFee1, int256 debtFee0, int256 debtFee1) = getTokenInterestOfSubVault(
+            _subVault,
+            _context
+        );
+
+        return DataType.SubVaultInterest(collateralFee0, collateralFee1, debtFee0, debtFee1);
     }
 
     function isDebtZero(
