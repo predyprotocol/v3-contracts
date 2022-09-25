@@ -396,6 +396,16 @@ contract Controller is IController, Initializable {
         return vault.getPositions(subVaults, ranges, context);
     }
 
+    function getPositionCalculatorParams(uint256 _vaultId)
+        public
+        view
+        returns (PositionCalculator.PositionCalculatorParams memory)
+    {
+        DataType.Vault memory vault = vaults[_vaultId];
+
+        return vault.getPositionCalculatorParams(subVaults, ranges, context);
+    }
+
     function _getPositionOfSubVault(uint256 _vaultId, uint256 _subVaultIndex)
         internal
         view

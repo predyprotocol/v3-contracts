@@ -30,14 +30,19 @@ library LiquidationLogic {
     ) external {
         uint160 sqrtPrice = getSqrtTWAP(_context.uniswapPool);
 
-        DataType.Position memory position = VaultLib.getPositionWithMargin(_vault, _subVaults, _ranges, _context);
+        PositionCalculator.PositionCalculatorParams memory _params = VaultLib.getPositionCalculatorParams(
+            _vault,
+            _subVaults,
+            _ranges,
+            _context
+        );
 
         // check liquidation
-        require(_checkLiquidatable(_vault, _subVaults, _context, _ranges, position, sqrtPrice), "L0");
+        require(_checkLiquidatable(_context, _params, sqrtPrice), "L0");
 
         // calculate penalty
-        (, uint256 debtValue) = PositionCalculator.calculateCollateralAndDebtValue(
-            position,
+        (, , uint256 debtValue) = PositionCalculator.calculateCollateralAndDebtValue(
+            _params,
             sqrtPrice,
             _context.isMarginZero,
             false
@@ -74,23 +79,25 @@ library LiquidationLogic {
     ) public view returns (bool) {
         uint160 sqrtPrice = getSqrtTWAP(_context.uniswapPool);
 
-        DataType.Position memory position = VaultLib.getPositionWithMargin(_vault, _subVaults, _ranges, _context);
+        PositionCalculator.PositionCalculatorParams memory _params = VaultLib.getPositionCalculatorParams(
+            _vault,
+            _subVaults,
+            _ranges,
+            _context
+        );
 
-        return _checkLiquidatable(_vault, _subVaults, _context, _ranges, position, sqrtPrice);
+        return _checkLiquidatable(_context, _params, sqrtPrice);
     }
 
     function _checkLiquidatable(
-        DataType.Vault memory _vault,
-        mapping(uint256 => DataType.SubVault) storage _subVaults,
         DataType.Context memory _context,
-        mapping(bytes32 => DataType.PerpStatus) storage _ranges,
-        DataType.Position memory _position,
+        PositionCalculator.PositionCalculatorParams memory _params,
         uint160 sqrtPrice
-    ) internal view returns (bool) {
+    ) internal pure returns (bool) {
         // calculate Min. Collateral by using TWAP.
-        int256 minCollateral = PositionCalculator.calculateMinCollateral(_position, sqrtPrice, _context.isMarginZero);
+        int256 minCollateral = PositionCalculator.calculateMinCollateral(_params, sqrtPrice, _context.isMarginZero);
 
-        int256 vaultValue = VaultLib.getVaultValue(_vault, _subVaults, _ranges, _context, _position, sqrtPrice);
+        int256 vaultValue = VaultLib.getVaultValue(_context, _params, sqrtPrice);
 
         return minCollateral > vaultValue;
     }
