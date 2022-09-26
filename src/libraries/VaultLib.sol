@@ -254,118 +254,100 @@ library VaultLib {
         DataType.SubVaultStatus[] memory subVaultsStatus = new DataType.SubVaultStatus[](_vault.subVaults.length);
 
         for (uint256 i = 0; i < _vault.subVaults.length; i++) {
-            DataType.VaultStatusAmount memory statusAmount = getVaultStatusAmount(
+            DataType.SubVaultAmount memory statusAmount = getVaultStatusAmount(
                 _subVaults[_vault.subVaults[i]],
                 _ranges,
                 _context,
                 _sqrtPrice
             );
-            DataType.VaultStatusValue memory statusValue = getVaultStatusValue(
-                statusAmount,
-                _sqrtPrice,
-                _context.isMarginZero
+
+            DataType.SubVaultPremium memory subVaultPremium = getVaultStatusPremium(
+                _subVaults[_vault.subVaults[i]],
+                _ranges
             );
 
-            subVaultsStatus[i] = DataType.SubVaultStatus(statusValue, statusAmount);
+            DataType.SubVaultInterest memory statusInterest = getVaultStatusInterest(
+                _subVaults[_vault.subVaults[i]],
+                _context
+            );
+
+            subVaultsStatus[i] = DataType.SubVaultStatus(
+                getVaultStatusValue(statusAmount, statusInterest, subVaultPremium, _sqrtPrice, _context.isMarginZero),
+                statusAmount,
+                statusInterest,
+                subVaultPremium
+            );
         }
+
+        PositionCalculator.PositionCalculatorParams memory params = getPositionCalculatorParams(
+            _vault,
+            _subVaults,
+            _ranges,
+            _context
+        );
+
+        (int256 marginValue, uint256 collateralValue, uint256 debtValue) = PositionCalculator
+            .calculateCollateralAndDebtValue(params, _sqrtPrice, _context.isMarginZero, false);
 
         return
             DataType.VaultStatus(
-                getPositionValue(
-                    VaultLib.getPosition(_vault, _subVaults, _ranges, _context),
-                    _sqrtPrice,
-                    _context.isMarginZero
-                ),
-                getMarginValue(_vault, _subVaults, _ranges, _context, _sqrtPrice),
-                PositionCalculator.calculateMinCollateral(
-                    PositionLib.concat(getPositions(_vault, _subVaults, _ranges, _context)),
-                    _sqrtPrice,
-                    _context.isMarginZero
-                ),
+                int256(collateralValue) - int256(debtValue),
+                marginValue,
+                PositionCalculator.calculateMinCollateral(params, _sqrtPrice, _context.isMarginZero),
                 subVaultsStatus
             );
     }
 
-    function getMarginValue(
+    function getMarginAmount(
         DataType.Vault memory _vault,
         mapping(uint256 => DataType.SubVault) storage _subVaults,
         mapping(bytes32 => DataType.PerpStatus) storage _ranges,
-        DataType.Context memory _context,
-        uint160 _sqrtPrice
-    ) internal view returns (int256) {
-        uint256 price = LPTMath.decodeSqrtPriceX96(_context.isMarginZero, _sqrtPrice);
-
+        DataType.Context memory _context
+    ) internal view returns (int256 marginAmount0, int256 marginAmount1) {
         (int256 fee0, int256 fee1) = getPremiumAndFee(_vault, _subVaults, _ranges, _context);
 
-        int256 marginAmount0 = int256(_vault.marginAmount0) + fee0;
-        int256 marginAmount1 = int256(_vault.marginAmount1) + fee1;
-
-        if (_context.isMarginZero) {
-            return marginAmount0.add(calculateUnderlyingValue(marginAmount1, price));
-        } else {
-            return marginAmount1.add(calculateUnderlyingValue(marginAmount0, price));
-        }
-    }
-
-    function getPositionValue(
-        DataType.Position memory _position,
-        uint160 _sqrtPrice,
-        bool _isMarginZero
-    ) internal pure returns (int256) {
-        return PositionCalculator.calculateValue(_position, _sqrtPrice, _isMarginZero, false);
+        marginAmount0 = int256(_vault.marginAmount0) + fee0;
+        marginAmount1 = int256(_vault.marginAmount1) + fee1;
     }
 
     function getVaultValue(
-        DataType.Vault memory _vault,
-        mapping(uint256 => DataType.SubVault) storage _subVaults,
-        mapping(bytes32 => DataType.PerpStatus) storage _ranges,
         DataType.Context memory _context,
-        DataType.Position memory _position,
+        PositionCalculator.PositionCalculatorParams memory _params,
         uint160 _sqrtPrice
-    ) internal view returns (int256) {
-        return
-            getMarginValue(_vault, _subVaults, _ranges, _context, _sqrtPrice) +
-            PositionCalculator.calculateValue(_position, _sqrtPrice, _context.isMarginZero, false);
-    }
-
-    function calculateUnderlyingValue(int256 _amount, uint256 _price) internal pure returns (int256) {
-        if (_amount >= 0) {
-            return _amount.mul(int256(_price)).div(1e18).div(2);
-        } else {
-            return _amount.mul(int256(_price)).div(1e18).mul(2);
-        }
+    ) internal pure returns (int256) {
+        return PositionCalculator.calculateValue(_params, _sqrtPrice, _context.isMarginZero, false);
     }
 
     function getVaultStatusValue(
-        DataType.VaultStatusAmount memory statusAmount,
+        DataType.SubVaultAmount memory statusAmount,
+        DataType.SubVaultInterest memory statusInterest,
+        DataType.SubVaultPremium memory statusPremium,
         uint160 _sqrtPrice,
         bool _isMarginZero
-    ) internal pure returns (DataType.VaultStatusValue memory) {
+    ) internal pure returns (DataType.SubVaultValue memory) {
         uint256 price = LPTMath.decodeSqrtPriceX96(_isMarginZero, _sqrtPrice);
 
-        int256 premium = int256(statusAmount.receivedPremium).sub(int256(statusAmount.paidpremium));
+        int256 fee0 = statusInterest.collateralFee0 - statusInterest.debtFee0;
+        int256 fee1 = statusInterest.collateralFee1 - statusInterest.debtFee1;
+
+        fee0 += int256(statusPremium.receivedTradeAmount0);
+        fee1 += int256(statusPremium.receivedTradeAmount1);
+
+        int256 premium = int256(statusPremium.receivedPremium).sub(int256(statusPremium.paidPremium));
 
         if (_isMarginZero) {
             return
-                DataType.VaultStatusValue(
+                DataType.SubVaultValue(
                     PredyMath.mulDiv(statusAmount.collateralAmount1, price, 1e18).add(statusAmount.collateralAmount0),
                     PredyMath.mulDiv(statusAmount.debtAmount1, price, 1e18).add(statusAmount.debtAmount0),
-                    int256(
-                        PredyMath.mulDiv(statusAmount.receivedTradeAmount1, price, 1e18).add(
-                            statusAmount.receivedTradeAmount0
-                        )
-                    ).add(premium)
+                    (fee1.mul(int256(price)).div(1e18).add(fee0)).add(premium)
                 );
         } else {
             return
-                DataType.VaultStatusValue(
+                DataType.SubVaultValue(
                     PredyMath.mulDiv(statusAmount.collateralAmount0, price, 1e18).add(statusAmount.collateralAmount1),
                     PredyMath.mulDiv(statusAmount.debtAmount0, price, 1e18).add(statusAmount.debtAmount1),
-                    int256(
-                        PredyMath.mulDiv(statusAmount.receivedTradeAmount0, price, 1e18).add(
-                            statusAmount.receivedTradeAmount1
-                        )
-                    ).add(premium)
+                    (fee0.mul(int256(price)).div(1e18).add(fee1)).add(premium)
                 );
         }
     }
@@ -375,9 +357,7 @@ library VaultLib {
         mapping(bytes32 => DataType.PerpStatus) storage _ranges,
         DataType.Context memory _context,
         uint160 _sqrtPrice
-    ) internal view returns (DataType.VaultStatusAmount memory) {
-        (uint256 fee0, uint256 fee1) = getEarnedTradeFee(_subVault, _ranges);
-
+    ) internal view returns (DataType.SubVaultAmount memory) {
         (uint256 collateralAmount0, uint256 collateralAmount1) = getCollateralPositionAmounts(
             _subVault,
             _ranges,
@@ -386,17 +366,35 @@ library VaultLib {
         );
         (uint256 debtAmount0, uint256 debtAmount1) = getDebtPositionAmounts(_subVault, _ranges, _context, _sqrtPrice);
 
+        return DataType.SubVaultAmount(collateralAmount0, collateralAmount1, debtAmount0, debtAmount1);
+    }
+
+    function getVaultStatusPremium(
+        DataType.SubVault memory _subVault,
+        mapping(bytes32 => DataType.PerpStatus) storage _ranges
+    ) internal view returns (DataType.SubVaultPremium memory) {
+        (uint256 fee0, uint256 fee1) = getEarnedTradeFee(_subVault, _ranges);
+
         return
-            DataType.VaultStatusAmount(
-                collateralAmount0,
-                collateralAmount1,
-                debtAmount0,
-                debtAmount1,
+            DataType.SubVaultPremium(
                 fee0,
                 fee1,
                 getEarnedDailyPremium(_subVault, _ranges),
                 getPaidDailyPremium(_subVault, _ranges)
             );
+    }
+
+    function getVaultStatusInterest(DataType.SubVault memory _subVault, DataType.Context memory _context)
+        internal
+        pure
+        returns (DataType.SubVaultInterest memory)
+    {
+        (int256 collateralFee0, int256 collateralFee1, int256 debtFee0, int256 debtFee1) = getTokenInterestOfSubVault(
+            _subVault,
+            _context
+        );
+
+        return DataType.SubVaultInterest(collateralFee0, collateralFee1, debtFee0, debtFee1);
     }
 
     function isDebtZero(
@@ -700,5 +698,23 @@ library VaultLib {
         DataType.Context memory _context
     ) internal view returns (DataType.Position memory position) {
         return PositionLib.concat(VaultLib.getPositions(_vault, _subVaults, _ranges, _context));
+    }
+
+    function getPositionCalculatorParams(
+        DataType.Vault memory _vault,
+        mapping(uint256 => DataType.SubVault) storage _subVaults,
+        mapping(bytes32 => DataType.PerpStatus) storage _ranges,
+        DataType.Context memory _context
+    ) public view returns (PositionCalculator.PositionCalculatorParams memory params) {
+        {
+            DataType.Position memory position = getPosition(_vault, _subVaults, _ranges, _context);
+            params.collateral0 = position.collateral0;
+            params.collateral1 = position.collateral1;
+            params.debt0 = position.debt0;
+            params.debt1 = position.debt1;
+            params.lpts = position.lpts;
+        }
+
+        (params.marginAmount0, params.marginAmount1) = getMarginAmount(_vault, _subVaults, _ranges, _context);
     }
 }

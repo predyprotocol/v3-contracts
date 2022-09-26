@@ -40,7 +40,7 @@ contract Reader {
     {
         return
             PositionCalculator.calculateMinCollateral(
-                PositionLib.concat(controller.getPosition(_vaultId), _position),
+                PositionCalculator.add(controller.getPositionCalculatorParams(_vaultId), _position),
                 controller.getSqrtPrice(),
                 isMarginZero
             );

@@ -19,23 +19,33 @@ library PositionCalculator {
     // sqrt{1/1.24} = 0.89802651013
     uint160 internal constant LOWER_E8 = 89802651;
 
+    struct PositionCalculatorParams {
+        int256 marginAmount0;
+        int256 marginAmount1;
+        uint256 collateral0;
+        uint256 collateral1;
+        uint256 debt0;
+        uint256 debt1;
+        DataType.LPT[] lpts;
+    }
+
     /**
      * @notice Calculates Min. Collateral for a position.
      * MinCollateral = 0.02 * DebtValue - minValue + positionValue
-     * @param _position position object
+     * @param _params position object
      * @param _sqrtPrice square root price to calculate
      * @param _isMarginZero whether the stable token is token0 or token1
      */
     function calculateMinCollateral(
-        DataType.Position memory _position,
+        PositionCalculatorParams memory _params,
         uint160 _sqrtPrice,
         bool _isMarginZero
     ) internal pure returns (int256) {
-        int256 positionValue = calculateValue(_position, _sqrtPrice, _isMarginZero);
+        int256 positionValue = calculateValue(_params, _sqrtPrice, _isMarginZero);
 
-        int256 minValue = calculateMinValue(_position, _sqrtPrice, _isMarginZero);
+        int256 minValue = calculateMinValue(_params, _sqrtPrice, _isMarginZero);
 
-        (, uint256 debtValue) = calculateCollateralAndDebtValue(_position, _sqrtPrice, _isMarginZero, false);
+        (, , uint256 debtValue) = calculateCollateralAndDebtValue(_params, _sqrtPrice, _isMarginZero, false);
 
         return int256(debtValue).div(50).sub(minValue).add(positionValue);
     }
@@ -56,7 +66,7 @@ library PositionCalculator {
      * 3. values of at P_{min} of LPTs
      */
     function calculateMinValue(
-        DataType.Position memory _position,
+        PositionCalculatorParams memory _position,
         uint160 _sqrtPrice,
         bool _isMarginZero
     ) internal pure returns (int256 minValue) {
@@ -111,7 +121,7 @@ library PositionCalculator {
     }
 
     function calculateValue(
-        DataType.Position memory _position,
+        PositionCalculatorParams memory _position,
         uint160 _sqrtPrice,
         bool _isMarginZero
     ) internal pure returns (int256 value) {
@@ -119,31 +129,77 @@ library PositionCalculator {
     }
 
     function calculateValue(
-        DataType.Position memory _position,
+        PositionCalculatorParams memory _position,
         uint160 _sqrtPrice,
         bool isMarginZero,
         bool _isMinPrice
     ) internal pure returns (int256 value) {
-        (uint256 collateralValue, uint256 debtValue) = calculateCollateralAndDebtValue(
+        (int256 marginValue, uint256 collateralValue, uint256 debtValue) = calculateCollateralAndDebtValue(
             _position,
             _sqrtPrice,
             isMarginZero,
             _isMinPrice
         );
 
-        return int256(collateralValue) - int256(debtValue);
+        return marginValue + int256(collateralValue) - int256(debtValue);
     }
 
     function calculateCollateralAndDebtValue(
-        DataType.Position memory _position,
+        PositionCalculatorParams memory _position,
         uint160 _sqrtPrice,
         bool _isMarginZero,
         bool _isMinPrice
-    ) internal pure returns (uint256 collateralValue, uint256 debtValue) {
-        uint256 collateralAmount0 = _position.collateral0;
-        uint256 collateralAmount1 = _position.collateral1;
-        uint256 debtAmount0 = _position.debt0;
-        uint256 debtAmount1 = _position.debt1;
+    )
+        internal
+        pure
+        returns (
+            int256 marginValue,
+            uint256 collateralValue,
+            uint256 debtValue
+        )
+    {
+        uint256 price = LPTMath.decodeSqrtPriceX96(_isMarginZero, _sqrtPrice);
+
+        if (_isMarginZero) {
+            marginValue = _position.marginAmount0.add(_position.marginAmount1.mul(int256(price)).div(1e18));
+        } else {
+            marginValue = _position.marginAmount0.mul(int256(price)).div(1e18).add(_position.marginAmount1);
+        }
+
+        (
+            uint256 collateralAmount0,
+            uint256 collateralAmount1,
+            uint256 debtAmount0,
+            uint256 debtAmount1
+        ) = calculateCollateralAndDebtAmount(_position, _sqrtPrice, _isMinPrice);
+
+        if (_isMarginZero) {
+            collateralValue = collateralAmount0.add(collateralAmount1.mul(price).div(1e18));
+            debtValue = debtAmount0.add(debtAmount1.mul(price).div(1e18));
+        } else {
+            collateralValue = collateralAmount0.mul(price).div(1e18).add(collateralAmount1);
+            debtValue = debtAmount0.mul(price).div(1e18).add(debtAmount1);
+        }
+    }
+
+    function calculateCollateralAndDebtAmount(
+        PositionCalculatorParams memory _position,
+        uint160 _sqrtPrice,
+        bool _isMinPrice
+    )
+        internal
+        pure
+        returns (
+            uint256 collateralAmount0,
+            uint256 collateralAmount1,
+            uint256 debtAmount0,
+            uint256 debtAmount1
+        )
+    {
+        collateralAmount0 = _position.collateral0;
+        collateralAmount1 = _position.collateral1;
+        debtAmount0 = _position.debt0;
+        debtAmount1 = _position.debt1;
 
         for (uint256 i = 0; i < _position.lpts.length; i++) {
             DataType.LPT memory lpt = _position.lpts[i];
@@ -177,15 +233,41 @@ library PositionCalculator {
                 debtAmount1 = debtAmount1.add(amount1);
             }
         }
+    }
 
-        uint256 price = LPTMath.decodeSqrtPriceX96(_isMarginZero, _sqrtPrice);
+    function add(PositionCalculatorParams memory _params, DataType.Position memory _position)
+        internal
+        pure
+        returns (PositionCalculatorParams memory _newParams)
+    {
+        uint256 numLPTs = _params.lpts.length + _position.lpts.length;
 
-        if (_isMarginZero) {
-            collateralValue = collateralAmount0.add(collateralAmount1.mul(price).div(1e18));
-            debtValue = debtAmount0.add(debtAmount1.mul(price).div(1e18));
-        } else {
-            collateralValue = collateralAmount0.mul(price).div(1e18).add(collateralAmount1);
-            debtValue = debtAmount0.mul(price).div(1e18).add(debtAmount1);
+        DataType.LPT[] memory lpts = new DataType.LPT[](numLPTs);
+
+        _newParams = PositionCalculatorParams(
+            _params.marginAmount0,
+            _params.marginAmount1,
+            _params.collateral0,
+            _params.collateral1,
+            _params.debt0,
+            _params.debt1,
+            lpts
+        );
+
+        _newParams.collateral0 += _position.collateral0;
+        _newParams.collateral1 += _position.collateral1;
+        _newParams.debt0 += _position.debt0;
+        _newParams.debt1 += _position.debt1;
+
+        uint256 k;
+
+        for (uint256 j = 0; j < _params.lpts.length; j++) {
+            _newParams.lpts[k] = _params.lpts[j];
+            k++;
+        }
+        for (uint256 j = 0; j < _position.lpts.length; j++) {
+            _newParams.lpts[k] = _position.lpts[j];
+            k++;
         }
     }
 }
