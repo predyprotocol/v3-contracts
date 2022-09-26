@@ -274,6 +274,46 @@ abstract contract BaseTestHelper {
         );
     }
 
+    function getShortPutPosition(
+        uint256 _subVaultId,
+        int24 _lower,
+        int24 _upper,
+        uint256 _amount
+    ) internal returns (DataType.Position[] memory positions) {
+        (uint128 liquidity, , ) = LPTMath.getLiquidityAndAmountToBorrow(true, _amount, _lower, _lower, _upper);
+
+        DataType.LPT[] memory lpts = new DataType.LPT[](1);
+        lpts[0] = DataType.LPT(true, liquidity, _lower, _upper);
+
+        positions = new DataType.Position[](1);
+
+        uint256 usdcAmount = LiquidityAmounts.getAmount0ForLiquidity(
+            TickMath.getSqrtRatioAtTick(_lower),
+            TickMath.getSqrtRatioAtTick(_upper),
+            liquidity
+        );
+
+        positions[0] = DataType.Position(_subVaultId, 0, 0, usdcAmount, 0, lpts);
+    }
+
+    function makeShortPut(
+        uint256 _vaultId,
+        uint256 _subVaultId,
+        int24 _lower,
+        int24 _upper,
+        uint256 _amount,
+        uint256 _margin
+    ) public returns (uint256 vaultId) {
+        DataType.Position[] memory positions = getShortPutPosition(_subVaultId, _lower, _upper, _amount);
+
+        (vaultId, , ) = controller.openPosition(
+            _vaultId,
+            positions[0],
+            DataType.TradeOption(false, false, false, getIsMarginZero(), int256(_margin), -1, EMPTY_METADATA),
+            DataType.OpenPositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 1e10, 0)
+        );
+    }
+
     function swap(address recipient, bool _priceUp) internal {
         uint256 ethAmount;
         uint256 usdcAmount;
