@@ -99,8 +99,7 @@ contract InterestCalculatorTest is TestDeployer, Test {
     }
 
     function testUpdatePremiumGrowth(uint256 amountIn) public {
-        vm.assume(amountIn > 0);
-        vm.assume(amountIn <= 1e14);
+        uint256 amountIn = bound(amountIn, 1, 1e14);
 
         vm.warp(block.timestamp + 30 minutes);
 

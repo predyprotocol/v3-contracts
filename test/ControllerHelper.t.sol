@@ -103,9 +103,9 @@ contract ControllerHelperTest is TestDeployer, Test {
     }
 
     function testBorrowLPT(uint256 _swapAmount) public {
-        vm.assume(1e16 <= _swapAmount && _swapAmount < 10 * 1e18);
+        uint256 swapAmount = bound(_swapAmount, 1e16, 10 * 1e18);
 
-        slip(owner, true, _swapAmount);
+        slip(owner, true, swapAmount);
 
         int256 margin = 500 * 1e6;
 
@@ -127,9 +127,9 @@ contract ControllerHelperTest is TestDeployer, Test {
     }
 
     function testBorrowLPTWithLowPrice(uint256 _swapAmount) public {
-        vm.assume(1e16 <= _swapAmount && _swapAmount < 10 * 1e18);
+        uint256 swapAmount = bound(_swapAmount, 1e16, 10 * 1e18);
 
-        slip(owner, false, _swapAmount);
+        slip(owner, false, swapAmount);
 
         uint256 margin = 100 * 1e6;
 
@@ -327,11 +327,15 @@ contract ControllerHelperTest is TestDeployer, Test {
         );
     }
 
-    function testComplecatedPosition() public {
+    function testComplecatedPosition(uint256 _swapAmount) public {
+        uint256 swapAmount = bound(_swapAmount, 1e16, 20 * 1e18);
+
         uint256 vaultId = depositLPT(0, 0, 202600, 202700, 1 * 1e18);
         borrowLPT(vaultId, 0, 202600, 202500, 202600, 1e18, 100 * 1e6);
 
         swapToSamePrice(owner);
+
+        slip(owner, false, swapAmount);
 
         vm.warp(block.timestamp + 5 minutes);
 
@@ -367,12 +371,12 @@ contract ControllerHelperTest is TestDeployer, Test {
     }
 
     function testWithdrawLPT(uint256 _swapAmount) public {
-        vm.assume(1e16 <= _swapAmount && _swapAmount < 5 * 1e18);
+        uint256 swapAmount = bound(_swapAmount, 1e16, 5 * 1e18);
 
         uint256 vaultId = depositLPT(0, 0, 202500, 202600, 1e18);
         borrowLPT(0, 0, 202600, 202500, 202600, 1e18, 100 * 1e6);
 
-        slip(owner, true, _swapAmount);
+        slip(owner, true, swapAmount);
 
         vm.warp(block.timestamp + 5 minutes);
 
@@ -387,10 +391,14 @@ contract ControllerHelperTest is TestDeployer, Test {
         assertEq(vaultStatus.subVaults.length, 0);
     }
 
-    function testRepayLPT() public {
+    function testRepayLPT(uint256 _swapAmount) public {
+        uint256 swapAmount = bound(_swapAmount, 1e16, 10 * 1e18);
+
         uint256 vaultId = borrowLPT(0, 0, 202600, 202500, 202600, 1e18, 100 * 1e6);
 
         swapToSamePrice(owner);
+
+        slip(owner, true, swapAmount);
 
         vm.warp(block.timestamp + 5 minutes);
 
