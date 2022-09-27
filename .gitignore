@@ -24,4 +24,4 @@ typechain-types
 cache
 cache_hardhat
 artifacts
-
+.chainid

@@ -5,8 +5,13 @@ const uniswapPositionManager = '0xC36442b4a4522E871399CD717aBDD847Ab11FE88'
 const uniswapFactoryAddress = '0x1F98431c8aD98523631AE4a59f267346ea31F984'
 const swapRouterAddress = '0xE592427A0AEce92De3Edee1F18E0157C05861564'
 
-const wethAddress = '0x6466232Bf77e70bEa2535393DC9B2b0d94ea3C22'
-const usdcAddress = '0xF61Cffd6071a8DB7cD5E8DF1D3A5450D9903cF1c'
+// arbitrum rinkeby
+// const wethAddress = '0x6466232Bf77e70bEa2535393DC9B2b0d94ea3C22'
+// const usdcAddress = '0xF61Cffd6071a8DB7cD5E8DF1D3A5450D9903cF1c'
+
+// goerli
+const wethAddress = '0x163691b2153F4e18F3c3F556426b7f5C74a99FA4'
+const usdcAddress = '0x603eFB95394c6cf5b6b29B1c813bd1Ee42A07714'
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts, ethers, network } = hre
