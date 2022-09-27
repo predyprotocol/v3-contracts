@@ -15,6 +15,8 @@ import "./LPTMath.sol";
 import "./LPTStateLib.sol";
 import "./Constants.sol";
 
+import "forge-std/console.sol";
+
 library InterestCalculator {
     using SafeMath for uint256;
     using SafeCast for uint256;
@@ -165,41 +167,29 @@ library InterestCalculator {
         if (_perpState.borrowedLiquidity > 0) {
             uint256 perpUr = LPTStateLib.getPerpUR(_context, _perpState);
 
-            uint256 dailyPremium = calculateStableValueFromTotalPremiumValue(
-                calculatePremium(
-                    _params,
-                    IUniswapV3Pool(_context.uniswapPool),
+            return
+                calculateStableValue(
+                    _context.isMarginZero,
+                    calculateRangeVariance(
+                        _params,
+                        IUniswapV3Pool(_context.uniswapPool),
+                        _perpState.lowerTick,
+                        _perpState.upperTick,
+                        perpUr
+                    ),
+                    calculateInterestRate(_params.irmParams, perpUr),
+                    _sqrtPrice,
                     _perpState.lowerTick,
-                    _perpState.upperTick,
-                    perpUr
-                ),
-                LPTStateLib.getAvailableLiquidityAmount(_context, _perpState)
-            );
-
-            uint256 dailyInterest = calculateStableValueFromRatio(
-                _context.isMarginZero,
-                calculateInterestRate(_params.irmParams, perpUr),
-                _sqrtPrice,
-                _perpState.lowerTick,
-                _perpState.upperTick
-            );
-
-            return dailyPremium + dailyInterest;
+                    _perpState.upperTick
+                );
         }
 
         return 0;
     }
 
-    function calculateStableValueFromTotalPremiumValue(uint256 _premiumInUsd, uint256 _totalLiquidity)
-        internal
-        pure
-        returns (uint256 value)
-    {
-        return (_premiumInUsd * 1e18) / _totalLiquidity;
-    }
-
-    function calculateStableValueFromRatio(
+    function calculateStableValue(
         bool _isMarginZero,
+        uint256 _variance,
         uint256 _ratio,
         uint160 _sqrtPrice,
         int24 _lowerTick,
@@ -222,9 +212,12 @@ library InterestCalculator {
 
         // value (usd/liquidity)
         value = (value * _ratio) / 1e18;
+
+        // 2 * sqrt{price} * variance
+        value = value.add((2 * PredyMath.sqrt(price * 1e18) * _variance) / 1e18);
     }
 
-    function calculatePremium(
+    function calculateRangeVariance(
         YearlyPremiumParams storage _params,
         IUniswapV3Pool uniPool,
         int24 _lowerTick,
@@ -260,7 +253,7 @@ library InterestCalculator {
     }
 
     function calculateRatio(
-        uint256 _dailyFeeAmount,
+        uint256 _variance,
         TickSnapshot memory snapshot,
         uint256 feeGrowthInside0X128,
         uint256 feeGrowthInside1X128,
@@ -282,7 +275,7 @@ library InterestCalculator {
                 (feeGrowthGlobal1X128 - snapshot.lastFeeGrowthGlobal1X128);
         }
 
-        return (_dailyFeeAmount * (a + b)) / (2 * Constants.ONE);
+        return (_variance * (a + b)) / (2 * Constants.ONE);
     }
 
     function calculateInterestRate(IRMParams memory _irmParams, uint256 _utilizationRatio)

@@ -24,9 +24,6 @@ import "./libraries/Constants.sol";
  * P2: caller must be vault owner
  * P3: must not be liquidatable
  * P4: must be liquidatable
- * P5: no enough token0
- * P6: no enough token1
- * P7: debt must be 0
  */
 contract Controller is IController, Initializable {
     using BaseToken for BaseToken.TokenState;
@@ -172,9 +169,6 @@ contract Controller is IController, Initializable {
 
         // check the vault is safe
         require(!LiquidationLogic.checkLiquidatable(vault, subVaults, context, ranges), "P3");
-
-        // require(int256(_buffer0) >= requiredAmount0, "P5");
-        // require(int256(_buffer1) >= requiredAmount1, "P6");
 
         if (requiredAmount0 > 0) {
             TransferHelper.safeTransferFrom(context.token0, msg.sender, address(this), uint256(requiredAmount0));

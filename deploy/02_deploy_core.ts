@@ -89,10 +89,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         slope2: '750000000000000000',
       },
       {
-        baseRate: '7000000000',
+        baseRate: '40000000000000000',
         kinkRate: '300000000000000000',
-        slope1: '50000000000',
-        slope2: '100000000000',
+        slope1: '160000000000000000',
+        slope2: '1000000000000000000',
       },
     )
   }
