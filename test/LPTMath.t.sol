@@ -8,8 +8,13 @@ import "forge-std/console.sol";
 import "../src/libraries/LPTMath.sol";
 
 contract LPTMathTest is Test {
+    // int24 MIN
+    // int24 MAX
     int24 lower = -220000;
     int24 upper = -210000;
+
+    // tick 400000
+    uint160 MAX_SQRT_PRICE = 1912126632133671917217560250559053505;
 
     // confirm constraint below
     //
@@ -19,22 +24,23 @@ contract LPTMathTest is Test {
     // L = getLiquidityForAmount(getAmountForLiquidityRoundUp(l))
     // L >= l
     //
+
     function testGetAmountForLiquidity(uint160 _sqrtPrice, uint128 _l) public {
-        vm.assume(1e18 <= _sqrtPrice && _sqrtPrice <= 1e40);
+        uint160 sqrtPrice = uint160(bound(_sqrtPrice, 1e18, 1e40));
         vm.assume(0 < _l && _l < type(uint128).max / 2);
 
-        (uint256 a0, uint256 a1) = LPTMath.getAmountsForLiquidity(_sqrtPrice, lower, upper, _l);
-        uint256 _l2 = LPTMath.getLiquidityForAmounts(_sqrtPrice, lower, upper, a0, a1);
+        (uint256 a0, uint256 a1) = LPTMath.getAmountsForLiquidity(sqrtPrice, lower, upper, _l);
+        uint256 _l2 = LPTMath.getLiquidityForAmounts(sqrtPrice, lower, upper, a0, a1);
 
         assertLe(_l2, _l);
     }
 
     function testGetAmountForLiquidityRoundUp(uint160 _sqrtPrice, uint128 _l) public {
-        vm.assume(1e18 <= _sqrtPrice && _sqrtPrice <= 1e40);
+        uint160 sqrtPrice = uint160(bound(_sqrtPrice, 1e18, 1e40));
         vm.assume(0 < _l && _l < type(uint128).max / 2);
 
-        (uint256 a0, uint256 a1) = LPTMath.getAmountsForLiquidityRoundUp(_sqrtPrice, lower, upper, _l);
-        uint256 _l2 = LPTMath.getLiquidityForAmounts(_sqrtPrice, lower, upper, a0, a1);
+        (uint256 a0, uint256 a1) = LPTMath.getAmountsForLiquidityRoundUp(sqrtPrice, lower, upper, _l);
+        uint256 _l2 = LPTMath.getLiquidityForAmounts(sqrtPrice, lower, upper, a0, a1);
 
         assertGe(_l2, _l);
     }
@@ -63,14 +69,14 @@ contract LPTMathTest is Test {
         uint160 _sqrtPrice2,
         uint128 _l
     ) public {
-        vm.assume(1e18 <= _sqrtPrice);
-        vm.assume(_sqrtPrice < _sqrtPrice2 && _sqrtPrice2 < 1e40);
+        uint160 sqrtPrice = uint160(bound(_sqrtPrice, 1e18, 1e40 - 1));
+        uint160 sqrtPrice2 = uint160(bound(_sqrtPrice2, sqrtPrice + 1, 1e40));
         vm.assume(0 < _l && _l < type(uint128).max / 2);
 
-        uint256 a0 = LiquidityAmounts.getAmount1ForLiquidity(_sqrtPrice, _sqrtPrice2, _l);
-        uint256 ar0 = LPTMath.getAmount1ForLiquidityRoundUp(_sqrtPrice, _sqrtPrice2, _l);
-        uint256 _l1 = LiquidityAmounts.getLiquidityForAmount1(_sqrtPrice, _sqrtPrice2, a0);
-        uint256 _l2 = LiquidityAmounts.getLiquidityForAmount1(_sqrtPrice, _sqrtPrice2, ar0);
+        uint256 a0 = LiquidityAmounts.getAmount1ForLiquidity(sqrtPrice, sqrtPrice2, _l);
+        uint256 ar0 = LPTMath.getAmount1ForLiquidityRoundUp(sqrtPrice, sqrtPrice2, _l);
+        uint256 _l1 = LiquidityAmounts.getLiquidityForAmount1(sqrtPrice, sqrtPrice2, a0);
+        uint256 _l2 = LiquidityAmounts.getLiquidityForAmount1(sqrtPrice, sqrtPrice2, ar0);
 
         assertGe(_l, _l1);
         assertGe(_l2, _l);

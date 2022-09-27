@@ -39,7 +39,7 @@ contract PositionCalculatorTest is Test {
     }
 
     function testcalculateMinCollateralOfBorrowLPT0(uint160 _sqrtPrice) public {
-        vm.assume(TickMath.MIN_SQRT_RATIO < _sqrtPrice && _sqrtPrice < TickMath.MAX_SQRT_RATIO);
+        uint256 sqrtPrice = bound(_sqrtPrice, TickMath.MIN_SQRT_RATIO + 1, TickMath.MAX_SQRT_RATIO - 1);
 
         DataType.LPT[] memory lpts = new DataType.LPT[](1);
         uint128 liquidity = LiquidityAmounts.getLiquidityForAmounts(
@@ -62,11 +62,11 @@ contract PositionCalculatorTest is Test {
             lpts
         );
 
-        assertGe(PositionCalculator.calculateMinCollateral(position, _sqrtPrice, false), 0);
+        assertGe(PositionCalculator.calculateMinCollateral(position, uint160(sqrtPrice), false), 0);
     }
 
     function testcalculateMinCollateralOfBorrowLPT1(uint160 _sqrtPrice) public {
-        vm.assume(TickMath.MIN_SQRT_RATIO < _sqrtPrice && _sqrtPrice < TickMath.MAX_SQRT_RATIO);
+        uint256 sqrtPrice = bound(_sqrtPrice, TickMath.MIN_SQRT_RATIO + 1, TickMath.MAX_SQRT_RATIO - 1);
 
         DataType.LPT[] memory lpts = new DataType.LPT[](1);
         uint128 liquidity = LiquidityAmounts.getLiquidityForAmounts(
@@ -89,7 +89,7 @@ contract PositionCalculatorTest is Test {
             lpts
         );
 
-        assertGe(PositionCalculator.calculateMinCollateral(position, _sqrtPrice, false), 0);
+        assertGe(PositionCalculator.calculateMinCollateral(position, uint160(sqrtPrice), false), 0);
     }
 
     function getLiquidity(

@@ -42,10 +42,9 @@ contract BaseTokenTest is Test {
     }
 
     function testUpdateScaler(uint256 _interestAmount) public {
-        vm.assume(_interestAmount > 0);
-        vm.assume(_interestAmount <= 1e20);
+        uint256 interestAmount = bound(_interestAmount, 1, 1e20);
 
-        uint256 protocolFee = BaseToken.updateScaler(tokenState, _interestAmount);
+        uint256 protocolFee = BaseToken.updateScaler(tokenState, interestAmount);
 
         uint256 collateralValue = BaseToken.getCollateralValue(tokenState, accountState);
         uint256 debtValue = BaseToken.getDebtValue(tokenState, accountState);

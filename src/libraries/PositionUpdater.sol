@@ -593,26 +593,20 @@ library PositionUpdater {
             sqrtPriceLimitX96: 0
         });
 
-        try ISwapRouter(_context.swapRouter).exactInputSingle(params) returns (uint256 amountOut) {
-            emit TokenSwap(
-                _vault.vaultId,
-                _vault.subVaults[_positionUpdate.subVaultIndex],
-                _positionUpdate.zeroForOne,
-                _positionUpdate.param0,
-                amountOut
-            );
+        uint256 amountOut = ISwapRouter(_context.swapRouter).exactInputSingle(params);
 
-            if (_positionUpdate.zeroForOne) {
-                return (int256(_positionUpdate.param0), -int256(amountOut));
-            } else {
-                return (-int256(amountOut), int256(_positionUpdate.param0));
-            }
-        } catch (bytes memory reason) {
-            if (keccak256(reason) == keccak256(abi.encodeWithSignature("Error(string)", "AS"))) {
-                return (0, 0);
-            } else {
-                revert(string(reason));
-            }
+        emit TokenSwap(
+            _vault.vaultId,
+            _vault.subVaults[_positionUpdate.subVaultIndex],
+            _positionUpdate.zeroForOne,
+            _positionUpdate.param0,
+            amountOut
+        );
+
+        if (_positionUpdate.zeroForOne) {
+            return (int256(_positionUpdate.param0), -int256(amountOut));
+        } else {
+            return (-int256(amountOut), int256(_positionUpdate.param0));
         }
     }
 
@@ -632,26 +626,20 @@ library PositionUpdater {
             sqrtPriceLimitX96: 0
         });
 
-        try ISwapRouter(_context.swapRouter).exactOutputSingle(params) returns (uint256 amountIn) {
-            emit TokenSwap(
-                _vault.vaultId,
-                _vault.subVaults[_positionUpdate.subVaultIndex],
-                _positionUpdate.zeroForOne,
-                amountIn,
-                _positionUpdate.param0
-            );
+        uint256 amountIn = ISwapRouter(_context.swapRouter).exactOutputSingle(params);
 
-            if (_positionUpdate.zeroForOne) {
-                return (int256(amountIn), -int256(_positionUpdate.param0));
-            } else {
-                return (-int256(_positionUpdate.param0), int256(amountIn));
-            }
-        } catch (bytes memory reason) {
-            if (keccak256(reason) == keccak256(abi.encodeWithSignature("Error(string)", "AS"))) {
-                return (0, 0);
-            } else {
-                revert(string(reason));
-            }
+        emit TokenSwap(
+            _vault.vaultId,
+            _vault.subVaults[_positionUpdate.subVaultIndex],
+            _positionUpdate.zeroForOne,
+            amountIn,
+            _positionUpdate.param0
+        );
+
+        if (_positionUpdate.zeroForOne) {
+            return (int256(amountIn), -int256(_positionUpdate.param0));
+        } else {
+            return (-int256(_positionUpdate.param0), int256(amountIn));
         }
     }
 
