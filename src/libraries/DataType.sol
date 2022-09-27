@@ -127,8 +127,6 @@ library DataType {
     struct OpenPositionOption {
         uint256 lowerSqrtPrice;
         uint256 upperSqrtPrice;
-        uint256 bufferAmount0;
-        uint256 bufferAmount1;
     }
 
     struct ClosePositionOption {

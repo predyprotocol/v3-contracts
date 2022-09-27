@@ -29,7 +29,7 @@ contract ControllerTest is TestDeployer, Test {
         deployContracts(user, factory);
         vm.warp(block.timestamp + 1 minutes);
 
-        depositToken(0, 2000 * 1e6, 1e18);
+        depositToken(0, 2000 * 1e6, 5 * 1e18);
         lpVaultId = depositLPT(0, 0, 202500, 202600, 2 * 1e18);
 
         isQuoteZero = getIsMarginZero();
@@ -174,32 +174,6 @@ contract ControllerTest is TestDeployer, Test {
      *  Test: updatePosition  *
      **************************/
 
-    function testCannotDepositLPTByNoEnoughAmount0() public {
-        (DataType.PositionUpdate[] memory positionUpdates, , uint256 amount1) = createPositionUpdatesForDepositLPT();
-
-        vm.expectRevert(bytes("P5"));
-        controller.updatePosition(
-            0,
-            positionUpdates,
-            0,
-            amount1 * 2,
-            DataType.TradeOption(false, false, false, isQuoteZero, -1, -1, EMPTY_METADATA)
-        );
-    }
-
-    function testCannotDepositLPTByNoEnoughAmount1() public {
-        (DataType.PositionUpdate[] memory positionUpdates, uint256 amount0, ) = createPositionUpdatesForDepositLPT();
-
-        vm.expectRevert(bytes("P6"));
-        controller.updatePosition(
-            0,
-            positionUpdates,
-            amount0 * 2,
-            0,
-            DataType.TradeOption(false, false, false, isQuoteZero, -1, -1, EMPTY_METADATA)
-        );
-    }
-
     function testDepositLPT() public {
         (
             DataType.PositionUpdate[] memory positionUpdates,
@@ -210,8 +184,6 @@ contract ControllerTest is TestDeployer, Test {
         controller.updatePosition(
             0,
             positionUpdates,
-            amount0 * 2,
-            amount1 * 2,
             DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1, EMPTY_METADATA)
         );
     }
@@ -234,8 +206,6 @@ contract ControllerTest is TestDeployer, Test {
         controller.updatePosition(
             lpVaultId,
             positionUpdates,
-            0,
-            0,
             DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1, EMPTY_METADATA)
         );
 
@@ -252,8 +222,6 @@ contract ControllerTest is TestDeployer, Test {
         (uint256 vaultId, , ) = controller.updatePosition(
             0,
             positionUpdates,
-            (1e18 * 1800) / 1e12,
-            margin,
             DataType.TradeOption(false, false, false, getIsMarginZero(), int256(margin), -1, EMPTY_METADATA)
         );
 
@@ -275,8 +243,6 @@ contract ControllerTest is TestDeployer, Test {
         controller.updatePosition(
             0,
             positionUpdates,
-            (1e18 * 1800) / 1e12,
-            margin,
             DataType.TradeOption(false, false, false, isQuoteZero, -1, -1, EMPTY_METADATA)
         );
     }
@@ -289,8 +255,6 @@ contract ControllerTest is TestDeployer, Test {
         (uint256 vaultId, , ) = controller.updatePosition(
             0,
             positionUpdates,
-            (1e18 * 1800) / 1e12,
-            margin,
             DataType.TradeOption(false, false, false, getIsMarginZero(), int256(margin), -1, EMPTY_METADATA)
         );
 
@@ -306,8 +270,6 @@ contract ControllerTest is TestDeployer, Test {
         controller.updatePosition(
             vaultId,
             positionUpdates2,
-            0,
-            0,
             DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1, EMPTY_METADATA)
         );
 

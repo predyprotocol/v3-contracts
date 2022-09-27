@@ -137,14 +137,10 @@ contract Controller is IController, Initializable {
      * @notice Update position in a vault.
      * @param _vaultId vault id
      * @param _positionUpdates parameters to update position
-     * @param _buffer0 max amount of token0 to send
-     * @param _buffer1 max amount of token1 to send
      */
     function updatePosition(
         uint256 _vaultId,
         DataType.PositionUpdate[] memory _positionUpdates,
-        uint256 _buffer0,
-        uint256 _buffer1,
         DataType.TradeOption memory _tradeOption
     )
         public
@@ -156,13 +152,6 @@ contract Controller is IController, Initializable {
         )
     {
         applyPerpFee(_vaultId, _positionUpdates);
-
-        if (_buffer0 > 0) {
-            TransferHelper.safeTransferFrom(context.token0, msg.sender, address(this), uint256(_buffer0));
-        }
-        if (_buffer1 > 0) {
-            TransferHelper.safeTransferFrom(context.token1, msg.sender, address(this), uint256(_buffer1));
-        }
 
         DataType.Vault storage vault;
         (vaultId, vault) = createOrGetVault(_vaultId, _tradeOption.quoterMode);
@@ -184,18 +173,19 @@ contract Controller is IController, Initializable {
         // check the vault is safe
         require(!LiquidationLogic.checkLiquidatable(vault, subVaults, context, ranges), "P3");
 
-        require(int256(_buffer0) >= requiredAmount0, "P5");
-        require(int256(_buffer1) >= requiredAmount1, "P6");
+        // require(int256(_buffer0) >= requiredAmount0, "P5");
+        // require(int256(_buffer1) >= requiredAmount1, "P6");
 
-        if (int256(_buffer0) > requiredAmount0) {
-            uint256 amount0 = uint256(int256(_buffer0).sub(requiredAmount0));
-
-            TransferHelper.safeTransfer(context.token0, msg.sender, amount0);
+        if (requiredAmount0 > 0) {
+            TransferHelper.safeTransferFrom(context.token0, msg.sender, address(this), uint256(requiredAmount0));
+        } else if (requiredAmount0 < 0) {
+            TransferHelper.safeTransfer(context.token0, msg.sender, uint256(-requiredAmount0));
         }
-        if (int256(_buffer1) > requiredAmount1) {
-            uint256 amount1 = uint256(int256(_buffer1).sub(requiredAmount1));
 
-            TransferHelper.safeTransfer(context.token1, msg.sender, amount1);
+        if (requiredAmount1 > 0) {
+            TransferHelper.safeTransferFrom(context.token1, msg.sender, address(this), uint256(requiredAmount1));
+        } else if (requiredAmount1 < 0) {
+            TransferHelper.safeTransfer(context.token1, msg.sender, uint256(-requiredAmount1));
         }
 
         emit PositionUpdated(vaultId, requiredAmount0, requiredAmount1, getSqrtPrice(), _tradeOption.metadata);
