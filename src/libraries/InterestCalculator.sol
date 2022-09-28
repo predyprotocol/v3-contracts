@@ -205,16 +205,22 @@ library InterestCalculator {
         uint256 price = LPTMath.decodeSqrtPriceX96(_isMarginZero, _sqrtPrice);
 
         if (_isMarginZero) {
-            value = PredyMath.mulDiv(amount1, price, 1e18) + amount0;
+            value = PredyMath.mulDiv(amount1, price, 1e18).add(amount0);
         } else {
-            value = PredyMath.mulDiv(amount0, price, 1e18) + amount1;
+            value = PredyMath.mulDiv(amount0, price, 1e18).add(amount1);
         }
 
         // value (usd/liquidity)
-        value = (value * _ratio) / 1e18;
+        value = value.mul(_ratio).div(1e18);
 
-        // sqrt{price} * variance
-        value = value.add((PredyMath.sqrt(price * 1e18) * _variance) / 1e18);
+        // premium = (value of virtual liquidity) * variance / L
+        // where `(value of virtual liquidity) = 2 * L * sqrt{price}` and `L = 1e18`.
+        // value per 1 underlying token is `2 * sqrt{price/1e18}`
+        // so value for `L=1e18` is `2 * sqrt{price/1e18} * L`
+        // then
+        // `(value of virtual liquidity) = 2 * sqrt{price/1e18}*1e18 = 2 * sqrt{price * 1e18}`
+        // Since variance is multiplied by 2 in advance, final formula is below.
+        value = value.add((PredyMath.sqrt(price.mul(1e18)).mul(_variance)).div(1e18));
     }
 
     function calculateRangeVariance(
