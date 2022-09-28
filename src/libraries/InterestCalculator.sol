@@ -213,8 +213,8 @@ library InterestCalculator {
         // value (usd/liquidity)
         value = (value * _ratio) / 1e18;
 
-        // 2 * sqrt{price} * variance
-        value = value.add((2 * PredyMath.sqrt(price * 1e18) * _variance) / 1e18);
+        // sqrt{price} * variance
+        value = value.add((PredyMath.sqrt(price * 1e18) * _variance) / 1e18);
     }
 
     function calculateRangeVariance(

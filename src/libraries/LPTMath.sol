@@ -256,6 +256,11 @@ library LPTMath {
         revert("e/empty-error");
     }
 
+    /**
+     * if isMarginZero is true, calculates token1 price by token0.
+     * if isMarginZero is false, calculates token0 price by token1.
+     * @dev underlying token's decimal must be 1e18.
+     */
     function decodeSqrtPriceX96(bool isMarginZero, uint256 sqrtPriceX96) internal pure returns (uint256 price) {
         uint256 scaler = 1e18; //10**ERC20(token0).decimals();
 

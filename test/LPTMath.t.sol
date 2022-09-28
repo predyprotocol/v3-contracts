@@ -10,11 +10,8 @@ import "../src/libraries/LPTMath.sol";
 contract LPTMathTest is Test {
     // int24 MIN
     // int24 MAX
-    int24 lower = -220000;
-    int24 upper = -210000;
-
-    // tick 400000
-    uint160 MAX_SQRT_PRICE = 1912126632133671917217560250559053505;
+    int24 private lower = -220000;
+    int24 private upper = -210000;
 
     // confirm constraint below
     //
@@ -80,5 +77,13 @@ contract LPTMathTest is Test {
 
         assertGe(_l, _l1);
         assertGe(_l2, _l);
+    }
+
+    function testDecodeSqrtPriceX96IsMarginZero() public {
+        assertEq(LPTMath.decodeSqrtPriceX96(true, TickMath.getSqrtRatioAtTick(-74320)), 1688555020577491795738);
+    }
+
+    function testDecodeSqrtPriceX96IsMarginOne() public {
+        assertEq(LPTMath.decodeSqrtPriceX96(false, TickMath.getSqrtRatioAtTick(74320)), 1688555020577489349584);
     }
 }

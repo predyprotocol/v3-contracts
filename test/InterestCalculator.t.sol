@@ -184,7 +184,7 @@ contract InterestCalculatorTest is TestDeployer, Test {
         assertEq(dailyPremium, 88000000000000000);
     }
 
-    function testCalculateStableValueFuzz(uint256 _sqrtPrice) public {
+    function testCalculateStableValueMargin0Fuzz(uint256 _sqrtPrice) public {
         uint160 sqrtPrice = uint160(bound(_sqrtPrice, 1e18, 1e40));
 
         int24 lower = 202000;
@@ -195,7 +195,18 @@ contract InterestCalculatorTest is TestDeployer, Test {
         assertGt(premium, 0);
     }
 
-    function testCalculateStableValue1() public {
+    function testCalculateStableValueMargin1Fuzz(uint256 _sqrtPrice) public {
+        uint160 sqrtPrice = uint160(bound(_sqrtPrice, 1e18, 1e40));
+
+        int24 lower = -203000;
+        int24 upper = -202000;
+
+        uint256 premium = InterestCalculator.calculateStableValue(false, 16 * 1e16, 0, sqrtPrice, lower, upper);
+
+        assertGt(premium, 0);
+    }
+
+    function testCalculateStableValueMargin0() public {
         int24 lower = 202000;
         int24 upper = 203000;
 
@@ -216,7 +227,55 @@ contract InterestCalculatorTest is TestDeployer, Test {
             1e18
         );
 
-        assertEq((liquidityForOne * premium) / 1e18, 10029425812);
+        assertEq((liquidityForOne * premium) / 1e18, 5014712906);
+    }
+
+    function testCalculateStableValueMargin1() public {
+        int24 lower = -203000;
+        int24 upper = -202000;
+
+        uint256 premium = InterestCalculator.calculateStableValue(
+            false,
+            16 * 1e16,
+            0,
+            TickMath.getSqrtRatioAtTick(lower),
+            lower,
+            upper
+        );
+
+        uint128 liquidityForOne = LiquidityAmounts.getLiquidityForAmounts(
+            TickMath.getSqrtRatioAtTick(lower),
+            TickMath.getSqrtRatioAtTick(lower),
+            TickMath.getSqrtRatioAtTick(upper),
+            1e18,
+            0
+        );
+
+        assertEq((liquidityForOne * premium) / 1e18, 5014712906);
+    }
+
+    function testCalculateStableValueMarginDAI() public {
+        int24 lower = -74320;
+        int24 upper = -73320;
+
+        uint256 premium = InterestCalculator.calculateStableValue(
+            true,
+            16 * 1e16,
+            0,
+            TickMath.getSqrtRatioAtTick(upper),
+            lower,
+            upper
+        );
+
+        uint128 liquidityForOne = LiquidityAmounts.getLiquidityForAmounts(
+            TickMath.getSqrtRatioAtTick(upper),
+            TickMath.getSqrtRatioAtTick(lower),
+            TickMath.getSqrtRatioAtTick(upper),
+            0,
+            1e18
+        );
+
+        assertEq((liquidityForOne * premium) / 1e18, 5012694270960490914000);
     }
 
     function testCalculateStableValue2() public {
