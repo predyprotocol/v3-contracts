@@ -37,13 +37,7 @@ contract ControllerHelper is Controller {
             getSqrtPrice()
         );
 
-        (vaultId, requiredAmount0, requiredAmount1) = updatePosition(
-            _vaultId,
-            positionUpdates,
-            _openPositionOptions.bufferAmount0,
-            _openPositionOptions.bufferAmount1,
-            _tradeOption
-        );
+        (vaultId, requiredAmount0, requiredAmount1) = updatePosition(_vaultId, positionUpdates, _tradeOption);
 
         _checkPrice(_openPositionOptions.lowerSqrtPrice, _openPositionOptions.upperSqrtPrice);
     }
@@ -95,7 +89,7 @@ contract ControllerHelper is Controller {
             getSqrtPrice()
         );
 
-        (, requiredAmount0, requiredAmount1) = updatePosition(_vaultId, positionUpdates, 0, 0, _tradeOption);
+        (, requiredAmount0, requiredAmount1) = updatePosition(_vaultId, positionUpdates, _tradeOption);
 
         _checkPrice(_closePositionOptions.lowerSqrtPrice, _closePositionOptions.upperSqrtPrice);
     }

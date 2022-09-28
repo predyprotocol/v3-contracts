@@ -8,8 +8,6 @@ interface IController {
     function updatePosition(
         uint256 _vaultId,
         DataType.PositionUpdate[] memory _positionUpdates,
-        uint256 _buffer0,
-        uint256 _buffer1,
         DataType.TradeOption memory _tradeOption
     )
         external

@@ -38,7 +38,7 @@ contract InterestCalculatorTest is TestDeployer, Test {
         perpStatus.lastTouchedTimestamp = block.timestamp;
 
         ypParams.irmParams = InterestCalculator.IRMParams(1e12, 30 * 1e16, 20 * 1e16, 50 * 1e16);
-        ypParams.premiumParams = InterestCalculator.IRMParams(8000 * 1e6, 30 * 1e16, 10000 * 1e6, 20000 * 1e6);
+        ypParams.premiumParams = InterestCalculator.IRMParams(4 * 1e16, 30 * 1e16, 16 * 1e16, 100 * 1e16);
 
         INonfungiblePositionManager.MintParams memory params = INonfungiblePositionManager.MintParams(
             address(token0),
@@ -171,29 +171,126 @@ contract InterestCalculatorTest is TestDeployer, Test {
 
         swapToSamePrice(owner);
 
-        assertEq(InterestCalculator.calculateInterestRate(ypParams.premiumParams, 50 * 1e16), 15000000000);
+        assertEq(InterestCalculator.calculateInterestRate(ypParams.premiumParams, 50 * 1e16), 288000000000000000);
 
-        uint256 dailyPremium = InterestCalculator.calculatePremium(
+        uint256 dailyPremium = InterestCalculator.calculateRangeVariance(
             ypParams,
             uniPool,
             perpStatus.lowerTick,
             perpStatus.upperTick,
-            50 * 1e16
+            30 * 1e16
         );
 
-        assertEq(dailyPremium, 15000000000);
+        assertEq(dailyPremium, 88000000000000000);
+    }
 
-        uint256 premium = InterestCalculator.calculateStableValueFromTotalPremiumValue(dailyPremium, liquidity);
+    function testCalculateStableValueMargin0Fuzz(uint256 _sqrtPrice) public {
+        uint160 sqrtPrice = uint160(bound(_sqrtPrice, 1e18, 1e40));
 
-        assertEq(premium, 70552280495);
+        int24 lower = 202000;
+        int24 upper = 203000;
+
+        uint256 premium = InterestCalculator.calculateStableValue(true, 16 * 1e16, 0, sqrtPrice, lower, upper);
+
+        assertGt(premium, 0);
+    }
+
+    function testCalculateStableValueMargin1Fuzz(uint256 _sqrtPrice) public {
+        uint160 sqrtPrice = uint160(bound(_sqrtPrice, 1e18, 1e40));
+
+        int24 lower = -203000;
+        int24 upper = -202000;
+
+        uint256 premium = InterestCalculator.calculateStableValue(false, 16 * 1e16, 0, sqrtPrice, lower, upper);
+
+        assertGt(premium, 0);
+    }
+
+    function testCalculateStableValueMargin0() public {
+        int24 lower = 202000;
+        int24 upper = 203000;
+
+        uint256 premium = InterestCalculator.calculateStableValue(
+            true,
+            16 * 1e16,
+            0,
+            TickMath.getSqrtRatioAtTick(upper),
+            lower,
+            upper
+        );
+
         uint128 liquidityForOne = LiquidityAmounts.getLiquidityForAmounts(
-            TickMath.getSqrtRatioAtTick(perpStatus.upperTick),
-            TickMath.getSqrtRatioAtTick(perpStatus.lowerTick),
-            TickMath.getSqrtRatioAtTick(perpStatus.upperTick),
+            TickMath.getSqrtRatioAtTick(upper),
+            TickMath.getSqrtRatioAtTick(lower),
+            TickMath.getSqrtRatioAtTick(upper),
             0,
             1e18
         );
 
-        assertEq((liquidityForOne * premium) / 1e18, 187140856);
+        assertEq((liquidityForOne * premium) / 1e18, 5014712906);
+    }
+
+    function testCalculateStableValueMargin1() public {
+        int24 lower = -203000;
+        int24 upper = -202000;
+
+        uint256 premium = InterestCalculator.calculateStableValue(
+            false,
+            16 * 1e16,
+            0,
+            TickMath.getSqrtRatioAtTick(lower),
+            lower,
+            upper
+        );
+
+        uint128 liquidityForOne = LiquidityAmounts.getLiquidityForAmounts(
+            TickMath.getSqrtRatioAtTick(lower),
+            TickMath.getSqrtRatioAtTick(lower),
+            TickMath.getSqrtRatioAtTick(upper),
+            1e18,
+            0
+        );
+
+        assertEq((liquidityForOne * premium) / 1e18, 5014712906);
+    }
+
+    function testCalculateStableValueMarginDAI() public {
+        int24 lower = -74320;
+        int24 upper = -73320;
+
+        uint256 premium = InterestCalculator.calculateStableValue(
+            true,
+            16 * 1e16,
+            0,
+            TickMath.getSqrtRatioAtTick(upper),
+            lower,
+            upper
+        );
+
+        uint128 liquidityForOne = LiquidityAmounts.getLiquidityForAmounts(
+            TickMath.getSqrtRatioAtTick(upper),
+            TickMath.getSqrtRatioAtTick(lower),
+            TickMath.getSqrtRatioAtTick(upper),
+            0,
+            1e18
+        );
+
+        assertEq((liquidityForOne * premium) / 1e18, 5012694270960490914000);
+    }
+
+    function testCalculateStableValue2() public {
+        int24 lower = 202000;
+        int24 upper = 203000;
+
+        uint256 interestPerl = InterestCalculator.calculateStableValue(
+            true,
+            0,
+            5 * 1e16,
+            TickMath.getSqrtRatioAtTick(upper),
+            lower,
+            upper
+        );
+
+        assertEq(interestPerl, 95331868969);
     }
 }
