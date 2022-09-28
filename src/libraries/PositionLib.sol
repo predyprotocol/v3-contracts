@@ -139,8 +139,8 @@ library PositionLib {
         uint256 k;
 
         for (uint256 i = 0; i < _positions.length; i++) {
-            _position.collateral0 += _positions[i].collateral0;
-            _position.collateral1 += _positions[i].collateral1;
+            _position.asset0 += _positions[i].asset0;
+            _position.asset1 += _positions[i].asset1;
             _position.debt0 += _positions[i].debt0;
             _position.debt1 += _positions[i].debt1;
 
@@ -205,13 +205,13 @@ library PositionLib {
         DataType.Position memory _destPosition,
         uint160 _sqrtPrice
     ) internal pure returns (int256 requiredAmount0, int256 requiredAmount1) {
-        requiredAmount0 = requiredAmount0.sub(int256(_srcPosition.collateral0));
-        requiredAmount1 = requiredAmount1.sub(int256(_srcPosition.collateral1));
+        requiredAmount0 = requiredAmount0.sub(int256(_srcPosition.asset0));
+        requiredAmount1 = requiredAmount1.sub(int256(_srcPosition.asset1));
         requiredAmount0 = requiredAmount0.add(int256(_srcPosition.debt0));
         requiredAmount1 = requiredAmount1.add(int256(_srcPosition.debt1));
 
-        requiredAmount0 = requiredAmount0.add(int256(_destPosition.collateral0));
-        requiredAmount1 = requiredAmount1.add(int256(_destPosition.collateral1));
+        requiredAmount0 = requiredAmount0.add(int256(_destPosition.asset0));
+        requiredAmount1 = requiredAmount1.add(int256(_destPosition.asset1));
         requiredAmount0 = requiredAmount0.sub(int256(_destPosition.debt0));
         requiredAmount1 = requiredAmount1.sub(int256(_destPosition.debt1));
 
@@ -271,7 +271,7 @@ library PositionLib {
     {
         length = _position.lpts.length;
 
-        if (_position.collateral0 > 0 || _position.collateral1 > 0) {
+        if (_position.asset0 > 0 || _position.asset1 > 0) {
             length += 1;
         }
 
@@ -306,7 +306,7 @@ library PositionLib {
             }
         }
 
-        if (_position.collateral0 > 0 || _position.collateral1 > 0) {
+        if (_position.asset0 > 0 || _position.asset1 > 0) {
             positionUpdates[index] = DataType.PositionUpdate(
                 DataType.PositionUpdateType.DEPOSIT_TOKEN,
                 _position.subVaultIndex,
@@ -314,8 +314,8 @@ library PositionLib {
                 0,
                 0,
                 0,
-                _position.collateral0,
-                _position.collateral1
+                _position.asset0,
+                _position.asset1
             );
             index++;
         }
@@ -406,7 +406,7 @@ library PositionLib {
         }
 
         for (uint256 i = 0; i < _positions.length; i++) {
-            if (_positions[i].collateral0 > 0 || _positions[i].collateral1 > 0) {
+            if (_positions[i].asset0 > 0 || _positions[i].asset1 > 0) {
                 positionUpdates[index] = DataType.PositionUpdate(
                     DataType.PositionUpdateType.WITHDRAW_TOKEN,
                     _positions[i].subVaultIndex,
@@ -414,8 +414,8 @@ library PositionLib {
                     0,
                     0,
                     0,
-                    _positions[i].collateral0,
-                    _positions[i].collateral1
+                    _positions[i].asset0,
+                    _positions[i].asset1
                 );
                 index++;
             }

@@ -11,17 +11,17 @@ library BaseToken {
     struct TokenState {
         uint256 totalDeposited;
         uint256 totalBorrowed;
-        uint256 collateralScaler;
+        uint256 assetScaler;
         uint256 debtScaler;
     }
 
     struct AccountState {
-        uint256 collateralAmount;
+        uint256 assetAmount;
         uint256 debtAmount;
     }
 
     function initialize(TokenState storage tokenState) internal {
-        tokenState.collateralScaler = Constants.ONE;
+        tokenState.assetScaler = Constants.ONE;
         tokenState.debtScaler = Constants.ONE;
     }
 
@@ -30,9 +30,9 @@ library BaseToken {
         AccountState storage accountState,
         uint256 _amount
     ) internal returns (uint256 mintAmount) {
-        mintAmount = PredyMath.mulDiv(_amount, Constants.ONE, tokenState.collateralScaler);
+        mintAmount = PredyMath.mulDiv(_amount, Constants.ONE, tokenState.assetScaler);
 
-        accountState.collateralAmount = accountState.collateralAmount.add(mintAmount);
+        accountState.assetAmount = accountState.assetAmount.add(mintAmount);
         tokenState.totalDeposited = tokenState.totalDeposited.add(mintAmount);
     }
 
@@ -53,11 +53,11 @@ library BaseToken {
         internal
         returns (uint256 finalRemoveAmount)
     {
-        finalRemoveAmount = accountState.collateralAmount;
+        finalRemoveAmount = accountState.assetAmount;
         tokenState.totalDeposited = tokenState.totalDeposited.sub(finalRemoveAmount);
-        accountState.collateralAmount = 0;
+        accountState.assetAmount = 0;
 
-        finalRemoveAmount = PredyMath.mulDiv(finalRemoveAmount, tokenState.collateralScaler, Constants.ONE);
+        finalRemoveAmount = PredyMath.mulDiv(finalRemoveAmount, tokenState.assetScaler, Constants.ONE);
     }
 
     function clearDebt(TokenState storage tokenState, AccountState storage accountState)
@@ -76,20 +76,20 @@ library BaseToken {
         AccountState storage accountState,
         uint256 _amount
     ) internal returns (uint256 finalBurnAmount) {
-        uint256 burnAmount = PredyMath.mulDiv(_amount, Constants.ONE, tokenState.collateralScaler);
+        uint256 burnAmount = PredyMath.mulDiv(_amount, Constants.ONE, tokenState.assetScaler);
 
-        if (accountState.collateralAmount < burnAmount) {
-            finalBurnAmount = accountState.collateralAmount;
-            accountState.collateralAmount = 0;
+        if (accountState.assetAmount < burnAmount) {
+            finalBurnAmount = accountState.assetAmount;
+            accountState.assetAmount = 0;
         } else {
             finalBurnAmount = burnAmount;
-            accountState.collateralAmount = accountState.collateralAmount.sub(burnAmount);
+            accountState.assetAmount = accountState.assetAmount.sub(burnAmount);
         }
 
         tokenState.totalDeposited = tokenState.totalDeposited.sub(finalBurnAmount);
 
         // TODO: roundUp
-        finalBurnAmount = PredyMath.mulDiv(finalBurnAmount, tokenState.collateralScaler, Constants.ONE);
+        finalBurnAmount = PredyMath.mulDiv(finalBurnAmount, tokenState.assetScaler, Constants.ONE);
     }
 
     function removeDebt(
@@ -114,12 +114,12 @@ library BaseToken {
     }
 
     // get collateral value
-    function getCollateralValue(TokenState memory tokenState, AccountState memory accountState)
+    function getAssetValue(TokenState memory tokenState, AccountState memory accountState)
         internal
         pure
         returns (uint256)
     {
-        return PredyMath.mulDiv(accountState.collateralAmount, tokenState.collateralScaler, Constants.ONE);
+        return PredyMath.mulDiv(accountState.assetAmount, tokenState.assetScaler, Constants.ONE);
     }
 
     // get debt value
@@ -153,17 +153,13 @@ library BaseToken {
                 Constants.ONE
             );
 
-        tokenState.collateralScaler = PredyMath.mulDiv(
-            tokenState.collateralScaler,
-            updateCollateralScaler,
-            Constants.ONE
-        );
+        tokenState.assetScaler = PredyMath.mulDiv(tokenState.assetScaler, updateCollateralScaler, Constants.ONE);
 
         return protocolFee;
     }
 
     function getTotalCollateralValue(TokenState memory tokenState) internal pure returns (uint256) {
-        return PredyMath.mulDiv(tokenState.totalDeposited, tokenState.collateralScaler, Constants.ONE);
+        return PredyMath.mulDiv(tokenState.totalDeposited, tokenState.assetScaler, Constants.ONE);
     }
 
     function getTotalDebtValue(TokenState memory tokenState) internal pure returns (uint256) {

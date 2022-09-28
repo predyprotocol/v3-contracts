@@ -211,13 +211,13 @@ library PositionUpdater {
                 DataType.SubVault memory subVault = _subVaults[_vault.subVaults[index]];
 
                 if (
-                    subVault.collateralAmount0 == 0 &&
+                    subVault.assetAmount0 == 0 &&
                     subVault.debtAmount0 == 0 &&
-                    subVault.collateralAmount1 == 0 &&
+                    subVault.assetAmount1 == 0 &&
                     subVault.debtAmount1 == 0 &&
-                    subVault.balance0.collateralAmount == 0 &&
+                    subVault.balance0.assetAmount == 0 &&
                     subVault.balance0.debtAmount == 0 &&
-                    subVault.balance1.collateralAmount == 0 &&
+                    subVault.balance1.assetAmount == 0 &&
                     subVault.balance1.debtAmount == 0 &&
                     subVault.lpts.length == 0
                 ) {
@@ -287,8 +287,8 @@ library PositionUpdater {
         _subVault.isCompound = _positionUpdate.zeroForOne;
 
         if (!_subVault.isCompound) {
-            _subVault.collateralAmount0 = _subVault.collateralAmount0.add(_positionUpdate.param0);
-            _subVault.collateralAmount1 = _subVault.collateralAmount1.add(_positionUpdate.param1);
+            _subVault.assetAmount0 = _subVault.assetAmount0.add(_positionUpdate.param0);
+            _subVault.assetAmount1 = _subVault.assetAmount1.add(_positionUpdate.param1);
         }
 
         _context.tokenState0.addCollateral(_subVault.balance0, _positionUpdate.param0);
@@ -308,39 +308,35 @@ library PositionUpdater {
 
             emit TokenWithdrawn(_subVault.id, withdrawAmount0, withdrawAmount1);
         } else {
-            uint256 collateralFee0 = _context.tokenState0.getCollateralValue(_subVault.balance0).sub(
-                _subVault.collateralAmount0
-            );
-            uint256 collateralFee1 = _context.tokenState1.getCollateralValue(_subVault.balance1).sub(
-                _subVault.collateralAmount1
-            );
+            uint256 assetFee0 = _context.tokenState0.getAssetValue(_subVault.balance0).sub(_subVault.assetAmount0);
+            uint256 assetFee1 = _context.tokenState1.getAssetValue(_subVault.balance1).sub(_subVault.assetAmount1);
 
-            if (_subVault.collateralAmount0 > 0) {
-                collateralFee0 = (collateralFee0 * _positionUpdate.param0) / _subVault.collateralAmount0;
+            if (_subVault.assetAmount0 > 0) {
+                assetFee0 = (assetFee0 * _positionUpdate.param0) / _subVault.assetAmount0;
             }
-            if (_subVault.collateralAmount1 > 0) {
-                collateralFee1 = (collateralFee1 * _positionUpdate.param1) / _subVault.collateralAmount1;
+            if (_subVault.assetAmount1 > 0) {
+                assetFee1 = (assetFee1 * _positionUpdate.param1) / _subVault.assetAmount1;
             }
 
-            _subVault.collateralAmount0 = _subVault.collateralAmount0.sub(_positionUpdate.param0);
-            _subVault.collateralAmount1 = _subVault.collateralAmount1.sub(_positionUpdate.param1);
+            _subVault.assetAmount0 = _subVault.assetAmount0.sub(_positionUpdate.param0);
+            _subVault.assetAmount1 = _subVault.assetAmount1.sub(_positionUpdate.param1);
 
-            if (_subVault.collateralAmount0 == 0) {
-                collateralFee0 = _context.tokenState0.clearCollateral(_subVault.balance0).sub(_positionUpdate.param0);
+            if (_subVault.assetAmount0 == 0) {
+                assetFee0 = _context.tokenState0.clearCollateral(_subVault.balance0).sub(_positionUpdate.param0);
             } else {
-                _context.tokenState0.removeCollateral(_subVault.balance0, _positionUpdate.param0.add(collateralFee0));
+                _context.tokenState0.removeCollateral(_subVault.balance0, _positionUpdate.param0.add(assetFee0));
             }
 
-            if (_subVault.collateralAmount1 == 0) {
-                collateralFee1 = _context.tokenState1.clearCollateral(_subVault.balance1).sub(_positionUpdate.param1);
+            if (_subVault.assetAmount1 == 0) {
+                assetFee1 = _context.tokenState1.clearCollateral(_subVault.balance1).sub(_positionUpdate.param1);
             } else {
-                _context.tokenState1.removeCollateral(_subVault.balance1, _positionUpdate.param1.add(collateralFee1));
+                _context.tokenState1.removeCollateral(_subVault.balance1, _positionUpdate.param1.add(assetFee1));
             }
 
-            withdrawAmount0 = _positionUpdate.param0.add(collateralFee0);
-            withdrawAmount1 = _positionUpdate.param1.add(collateralFee1);
+            withdrawAmount0 = _positionUpdate.param0.add(assetFee0);
+            withdrawAmount1 = _positionUpdate.param1.add(assetFee1);
 
-            emit FeeUpdated(_subVault.id, int256(collateralFee0), int256(collateralFee1));
+            emit FeeUpdated(_subVault.id, int256(assetFee0), int256(assetFee1));
 
             emit TokenWithdrawn(_subVault.id, _positionUpdate.param0, _positionUpdate.param1);
         }

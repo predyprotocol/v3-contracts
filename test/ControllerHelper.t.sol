@@ -122,7 +122,7 @@ contract ControllerHelperTest is TestDeployer, Test {
         DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);
 
         assertEq(vaultStatus.marginValue, margin);
-        assertGt(vaultStatus.subVaults[0].values.collateralValue, 0);
+        assertGt(vaultStatus.subVaults[0].values.assetValue, 0);
         assertGt(vaultStatus.subVaults[0].values.debtValue, 0);
     }
 
@@ -148,7 +148,7 @@ contract ControllerHelperTest is TestDeployer, Test {
 
         DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);
 
-        assertGt(vaultStatus.subVaults[0].values.collateralValue, 0);
+        assertGt(vaultStatus.subVaults[0].values.assetValue, 0);
         assertGt(vaultStatus.subVaults[0].values.debtValue, 0);
     }
 

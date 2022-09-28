@@ -229,7 +229,7 @@ contract ControllerTest is TestDeployer, Test {
 
         DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);
 
-        assertGt(vaultStatus.subVaults[0].values.collateralValue, 0);
+        assertGt(vaultStatus.subVaults[0].values.assetValue, 0);
         assertGt(vaultStatus.subVaults[0].values.debtValue, 0);
     }
 
@@ -238,7 +238,7 @@ contract ControllerTest is TestDeployer, Test {
 
         DataType.PositionUpdate[] memory positionUpdates = createPositionUpdatesForBorrowLPT(margin);
 
-        // no enough collateral
+        // no enough deposit
         vm.expectRevert(bytes("P3"));
         controller.updatePosition(
             0,

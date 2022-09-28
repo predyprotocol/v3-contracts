@@ -286,14 +286,14 @@ library VaultLib {
             _context
         );
 
-        (int256 marginValue, uint256 collateralValue, uint256 debtValue) = PositionCalculator
+        (int256 marginValue, uint256 assetValue, uint256 debtValue) = PositionCalculator
             .calculateCollateralAndDebtValue(params, _sqrtPrice, _context.isMarginZero, false);
 
         return
             DataType.VaultStatus(
-                int256(collateralValue) - int256(debtValue),
+                int256(assetValue) - int256(debtValue),
                 marginValue,
-                PositionCalculator.calculateMinCollateral(params, _sqrtPrice, _context.isMarginZero),
+                PositionCalculator.calculateMinDeposit(params, _sqrtPrice, _context.isMarginZero),
                 subVaultsStatus
             );
     }
@@ -327,8 +327,8 @@ library VaultLib {
     ) internal pure returns (DataType.SubVaultValue memory) {
         uint256 price = LPTMath.decodeSqrtPriceX96(_isMarginZero, _sqrtPrice);
 
-        int256 fee0 = statusInterest.collateralFee0 - statusInterest.debtFee0;
-        int256 fee1 = statusInterest.collateralFee1 - statusInterest.debtFee1;
+        int256 fee0 = statusInterest.assetFee0 - statusInterest.debtFee0;
+        int256 fee1 = statusInterest.assetFee1 - statusInterest.debtFee1;
 
         fee0 += int256(statusPremium.receivedTradeAmount0);
         fee1 += int256(statusPremium.receivedTradeAmount1);
@@ -338,14 +338,14 @@ library VaultLib {
         if (_isMarginZero) {
             return
                 DataType.SubVaultValue(
-                    PredyMath.mulDiv(statusAmount.collateralAmount1, price, 1e18).add(statusAmount.collateralAmount0),
+                    PredyMath.mulDiv(statusAmount.assetAmount1, price, 1e18).add(statusAmount.assetAmount0),
                     PredyMath.mulDiv(statusAmount.debtAmount1, price, 1e18).add(statusAmount.debtAmount0),
                     (fee1.mul(int256(price)).div(1e18).add(fee0)).add(premium)
                 );
         } else {
             return
                 DataType.SubVaultValue(
-                    PredyMath.mulDiv(statusAmount.collateralAmount0, price, 1e18).add(statusAmount.collateralAmount1),
+                    PredyMath.mulDiv(statusAmount.assetAmount0, price, 1e18).add(statusAmount.assetAmount1),
                     PredyMath.mulDiv(statusAmount.debtAmount0, price, 1e18).add(statusAmount.debtAmount1),
                     (fee0.mul(int256(price)).div(1e18).add(fee1)).add(premium)
                 );
@@ -358,7 +358,7 @@ library VaultLib {
         DataType.Context memory _context,
         uint160 _sqrtPrice
     ) internal view returns (DataType.SubVaultAmount memory) {
-        (uint256 collateralAmount0, uint256 collateralAmount1) = getCollateralPositionAmounts(
+        (uint256 assetAmount0, uint256 assetAmount1) = getAssetPositionAmounts(
             _subVault,
             _ranges,
             _context,
@@ -366,7 +366,7 @@ library VaultLib {
         );
         (uint256 debtAmount0, uint256 debtAmount1) = getDebtPositionAmounts(_subVault, _ranges, _context, _sqrtPrice);
 
-        return DataType.SubVaultAmount(collateralAmount0, collateralAmount1, debtAmount0, debtAmount1);
+        return DataType.SubVaultAmount(assetAmount0, assetAmount1, debtAmount0, debtAmount1);
     }
 
     function getVaultStatusPremium(
@@ -389,12 +389,12 @@ library VaultLib {
         pure
         returns (DataType.SubVaultInterest memory)
     {
-        (int256 collateralFee0, int256 collateralFee1, int256 debtFee0, int256 debtFee1) = getTokenInterestOfSubVault(
+        (int256 assetFee0, int256 assetFee1, int256 debtFee0, int256 debtFee1) = getTokenInterestOfSubVault(
             _subVault,
             _context
         );
 
-        return DataType.SubVaultInterest(collateralFee0, collateralFee1, debtFee0, debtFee1);
+        return DataType.SubVaultInterest(assetFee0, assetFee1, debtFee0, debtFee1);
     }
 
     function isDebtZero(
@@ -437,20 +437,20 @@ library VaultLib {
     }
 
     /**
-     * @notice latest collateral amounts
+     * @notice latest asset amounts
      */
-    function getCollateralPositionAmounts(
+    function getAssetPositionAmounts(
         DataType.SubVault memory _subVault,
         mapping(bytes32 => DataType.PerpStatus) storage _ranges,
         DataType.Context memory _context,
         uint160 _sqrtPrice
     ) internal view returns (uint256 totalAmount0, uint256 totalAmount1) {
         if (_subVault.isCompound) {
-            totalAmount0 = totalAmount0.add(_context.tokenState0.getCollateralValue(_subVault.balance0));
-            totalAmount1 = totalAmount1.add(_context.tokenState1.getCollateralValue(_subVault.balance1));
+            totalAmount0 = totalAmount0.add(_context.tokenState0.getAssetValue(_subVault.balance0));
+            totalAmount1 = totalAmount1.add(_context.tokenState1.getAssetValue(_subVault.balance1));
         } else {
-            totalAmount0 = totalAmount0.add(_subVault.collateralAmount0);
-            totalAmount1 = totalAmount1.add(_subVault.collateralAmount1);
+            totalAmount0 = totalAmount0.add(_subVault.assetAmount0);
+            totalAmount1 = totalAmount1.add(_subVault.assetAmount1);
         }
 
         {
@@ -585,15 +585,13 @@ library VaultLib {
             DataType.SubVault memory subVault = _subVaults[_vault.subVaults[i]];
 
             (int256 fee0, int256 fee1) = getPremiumAndFeeOfSubVault(subVault, _ranges, _context);
-            (
-                int256 collateralFee0,
-                int256 collateralFee1,
-                int256 debtFee0,
-                int256 debtFee1
-            ) = getTokenInterestOfSubVault(subVault, _context);
+            (int256 assetFee0, int256 assetFee1, int256 debtFee0, int256 debtFee1) = getTokenInterestOfSubVault(
+                subVault,
+                _context
+            );
 
-            totalFee0 = totalFee0.add(fee0.add(collateralFee0).sub(debtFee0));
-            totalFee1 = totalFee1.add(fee1.add(collateralFee1).sub(debtFee1));
+            totalFee0 = totalFee0.add(fee0.add(assetFee0).sub(debtFee0));
+            totalFee1 = totalFee1.add(fee1.add(assetFee1).sub(debtFee1));
         }
     }
 
@@ -620,18 +618,18 @@ library VaultLib {
         internal
         pure
         returns (
-            int256 collateralFee0,
-            int256 collateralFee1,
+            int256 assetFee0,
+            int256 assetFee1,
             int256 debtFee0,
             int256 debtFee1
         )
     {
         if (!_subVault.isCompound) {
-            collateralFee0 = int256(_context.tokenState0.getCollateralValue(_subVault.balance0)).sub(
-                int256(_subVault.collateralAmount0)
+            assetFee0 = int256(_context.tokenState0.getAssetValue(_subVault.balance0)).sub(
+                int256(_subVault.assetAmount0)
             );
-            collateralFee1 = int256(_context.tokenState1.getCollateralValue(_subVault.balance1)).sub(
-                int256(_subVault.collateralAmount1)
+            assetFee1 = int256(_context.tokenState1.getAssetValue(_subVault.balance1)).sub(
+                int256(_subVault.assetAmount1)
             );
             debtFee0 = int256(_context.tokenState0.getDebtValue(_subVault.balance0)).sub(int256(_subVault.debtAmount0));
             debtFee1 = int256(_context.tokenState1.getDebtValue(_subVault.balance1)).sub(int256(_subVault.debtAmount1));
@@ -660,8 +658,8 @@ library VaultLib {
         if (_subVault.isCompound) {
             position = DataType.Position(
                 _subVaultIndex,
-                _context.tokenState0.getCollateralValue(_subVault.balance0),
-                _context.tokenState1.getCollateralValue(_subVault.balance1),
+                _context.tokenState0.getAssetValue(_subVault.balance0),
+                _context.tokenState1.getAssetValue(_subVault.balance1),
                 _context.tokenState0.getDebtValue(_subVault.balance0),
                 _context.tokenState1.getDebtValue(_subVault.balance1),
                 lpts
@@ -669,8 +667,8 @@ library VaultLib {
         } else {
             position = DataType.Position(
                 _subVaultIndex,
-                _subVault.collateralAmount0,
-                _subVault.collateralAmount1,
+                _subVault.assetAmount0,
+                _subVault.assetAmount1,
                 _subVault.debtAmount0,
                 _subVault.debtAmount1,
                 lpts
@@ -708,8 +706,8 @@ library VaultLib {
     ) public view returns (PositionCalculator.PositionCalculatorParams memory params) {
         {
             DataType.Position memory position = getPosition(_vault, _subVaults, _ranges, _context);
-            params.collateral0 = position.collateral0;
-            params.collateral1 = position.collateral1;
+            params.asset0 = position.asset0;
+            params.asset1 = position.asset1;
             params.debt0 = position.debt0;
             params.debt1 = position.debt1;
             params.lpts = position.lpts;

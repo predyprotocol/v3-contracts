@@ -75,7 +75,7 @@ contract InterestCalculatorTest is TestDeployer, Test {
             0
         );
 
-        assertGt(context.tokenState0.collateralScaler, 1e18);
+        assertGt(context.tokenState0.assetScaler, 1e18);
         assertGt(context.tokenState0.debtScaler, 1e18);
     }
 
