@@ -66,6 +66,62 @@ library LiquidationLogic {
         emit Liquidated(_vault.vaultId, msg.sender, debtValue, penaltyAmount);
     }
 
+    function execSaveMargin(
+        DataType.Vault storage _vault,
+        mapping(uint256 => DataType.SubVault) storage _subVaults,
+        DataType.Context storage _context,
+        mapping(bytes32 => DataType.PerpStatus) storage _ranges
+    ) external {
+        uint160 sqrtPrice = getSqrtTWAP(_context.uniswapPool);
+
+        PositionCalculator.PositionCalculatorParams memory _params = VaultLib.getPositionCalculatorParams(
+            _vault,
+            _subVaults,
+            _ranges,
+            _context
+        );
+
+        DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](1);
+
+        {
+            (int256 marginValue, , uint256 debtValue) = PositionCalculator.calculateCollateralAndDebtValue(
+                _params,
+                sqrtPrice,
+                _context.isMarginZero,
+                false
+            );
+
+            // check margin is negative
+            require(marginValue < 0);
+
+            uint256 requiredDebtValue = uint256(-marginValue) + (debtValue / 100);
+
+            positionUpdates[0] = DataType.PositionUpdate(
+                DataType.PositionUpdateType.BORROW_TOKEN,
+                _vault.subVaults.length,
+                false,
+                0,
+                0,
+                0,
+                _context.isMarginZero ? requiredDebtValue : 0,
+                _context.isMarginZero ? 0 : requiredDebtValue
+            );
+        }
+
+        // close position
+        PositionUpdater.updatePosition(
+            _vault,
+            _subVaults,
+            _context,
+            _ranges,
+            positionUpdates,
+            // reduce only
+            DataType.TradeOption(false, true, false, _context.isMarginZero, -2, -2, bytes(""))
+        );
+
+        // check margin is positive
+    }
+
     /**
      * @notice Checks the vault is liquidatable or not.
      * if Min. Deposit is greater than margin value + position value, then return true.

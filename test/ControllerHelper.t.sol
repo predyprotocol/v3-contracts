@@ -512,4 +512,27 @@ contract ControllerHelperTest is TestDeployer, Test {
 
         assertEq(vaultStatus.subVaults.length, 0);
     }
+
+    function testSaveMargin() public {
+        uint256 vaultId = borrowLPT(0, 0, 202600, 202500, 202600, 1e18, 100 * 1e6);
+        depositToken(vaultId, 1e11, 0);
+
+        swapToSamePrice(owner);
+
+        vm.warp(block.timestamp + 2 days);
+
+        DataType.VaultStatus memory vaultStatus1 = controller.getVaultStatus(vaultId);
+
+        assertLt(vaultStatus1.marginValue, 0);
+
+        assertFalse(controller.checkLiquidatable(vaultId));
+
+        controller.saveMargin(vaultId);
+
+        DataType.VaultStatus memory vaultStatus2 = controller.getVaultStatus(vaultId);
+
+        assertGt(vaultStatus2.marginValue, 0);
+
+        assertFalse(controller.checkLiquidatable(vaultId));
+    }
 }

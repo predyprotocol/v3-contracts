@@ -196,6 +196,12 @@ contract Controller is IController, Initializable {
         LiquidationLogic.execLiquidation(vaults[_vaultId], subVaults, _positionUpdates, context, ranges);
     }
 
+    function saveMargin(uint256 _vaultId) external {
+        applyPerpFee(_vaultId);
+
+        LiquidationLogic.execSaveMargin(vaults[_vaultId], subVaults, context, ranges);
+    }
+
     /**
      * @notice Contract owner can close positions
      * @param _data vaults data to close position
