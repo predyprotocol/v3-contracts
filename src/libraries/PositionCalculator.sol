@@ -31,7 +31,7 @@ library PositionCalculator {
 
     /**
      * @notice Calculates Min. Deposit for a vault.
-     * MinDeposit = 0.02 * DebtValue - minValue + positionValue
+     * MinDeposit = vaultPositionValue - minValue + 0.02 * DebtValue
      * @param _params position object
      * @param _sqrtPrice square root price to calculate
      * @param _isMarginZero whether the stable token is token0 or token1
@@ -41,13 +41,13 @@ library PositionCalculator {
         uint160 _sqrtPrice,
         bool _isMarginZero
     ) internal pure returns (int256) {
-        int256 positionValue = calculateValue(_params, _sqrtPrice, _isMarginZero);
+        int256 vaultPositionValue = calculateValue(_params, _sqrtPrice, _isMarginZero);
 
         int256 minValue = calculateMinValue(_params, _sqrtPrice, _isMarginZero);
 
         (, , uint256 debtValue) = calculateCollateralAndDebtValue(_params, _sqrtPrice, _isMarginZero, false);
 
-        return int256(debtValue).div(50).sub(minValue).add(positionValue);
+        return int256(debtValue).div(50).add(vaultPositionValue).sub(minValue);
     }
 
     /**
