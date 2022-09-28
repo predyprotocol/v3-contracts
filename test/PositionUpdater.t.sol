@@ -71,8 +71,8 @@ contract PositionUpdaterTest is TestDeployer, Test {
 
         PositionUpdater.updatePosition(vault1, subVaults, context, ranges, positionUpdates, tradeOption);
 
-        assertEq(subVaults[vault1.subVaults[0]].collateralAmount0, 1e6);
-        assertEq(subVaults[vault1.subVaults[0]].collateralAmount1, 1e18);
+        assertEq(subVaults[vault1.subVaults[0]].assetAmount0, 1e6);
+        assertEq(subVaults[vault1.subVaults[0]].assetAmount1, 1e18);
     }
 
     function testUpdatePositionDepositTokenWithCompound() public {
@@ -91,10 +91,10 @@ contract PositionUpdaterTest is TestDeployer, Test {
 
         PositionUpdater.updatePosition(vault1, subVaults, context, ranges, positionUpdates, tradeOption);
 
-        assertEq(subVaults[vault1.subVaults[0]].collateralAmount0, 0);
-        assertEq(subVaults[vault1.subVaults[0]].collateralAmount1, 0);
-        assertEq(BaseToken.getCollateralValue(context.tokenState0, subVaults[vault1.subVaults[0]].balance0), 1e6);
-        assertEq(BaseToken.getCollateralValue(context.tokenState1, subVaults[vault1.subVaults[0]].balance1), 1e18);
+        assertEq(subVaults[vault1.subVaults[0]].assetAmount0, 0);
+        assertEq(subVaults[vault1.subVaults[0]].assetAmount1, 0);
+        assertEq(BaseToken.getAssetValue(context.tokenState0, subVaults[vault1.subVaults[0]].balance0), 1e6);
+        assertEq(BaseToken.getAssetValue(context.tokenState1, subVaults[vault1.subVaults[0]].balance1), 1e18);
     }
 
     function testUpdatePositionWithdrawToken() public {

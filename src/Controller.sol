@@ -186,7 +186,7 @@ contract Controller is IController, Initializable {
     }
 
     /**
-     * @notice Anyone can liquidates the vault if its required collateral value is positive.
+     * @notice Anyone can liquidates the vault if its vault value is less than Min. Deposit.
      * @param _vaultId vault id
      * @param _positionUpdates parameters to update position
      */
@@ -286,7 +286,7 @@ contract Controller is IController, Initializable {
     }
 
     /**
-     * @notice Returns collateral value and debt value.
+     * @notice Returns asset value and debt value.
      * @param _vaultId vault id
      */
     function getVaultStatus(uint256 _vaultId) external returns (DataType.VaultStatus memory) {

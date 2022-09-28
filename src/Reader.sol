@@ -28,18 +28,14 @@ contract Reader {
     }
 
     /**
-     * @notice Calculates Min. Collateral of the vault.
+     * @notice Calculates Min. Deposit of the vault.
      * @param _vaultId vault id
      * @param _position position you wanna add to the vault
-     * @return minCollateral minimal amount of collateral to keep positions.
+     * @return minDeposit minimal amount of deposit to keep positions.
      */
-    function calculateMinCollateral(uint256 _vaultId, DataType.Position memory _position)
-        external
-        view
-        returns (int256)
-    {
+    function calculateMinDeposit(uint256 _vaultId, DataType.Position memory _position) external view returns (int256) {
         return
-            PositionCalculator.calculateMinCollateral(
+            PositionCalculator.calculateMinDeposit(
                 PositionCalculator.add(controller.getPositionCalculatorParams(_vaultId), _position),
                 controller.getSqrtPrice(),
                 isMarginZero

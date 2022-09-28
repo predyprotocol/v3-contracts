@@ -22,21 +22,21 @@ library PositionCalculator {
     struct PositionCalculatorParams {
         int256 marginAmount0;
         int256 marginAmount1;
-        uint256 collateral0;
-        uint256 collateral1;
+        uint256 asset0;
+        uint256 asset1;
         uint256 debt0;
         uint256 debt1;
         DataType.LPT[] lpts;
     }
 
     /**
-     * @notice Calculates Min. Collateral for a position.
-     * MinCollateral = 0.02 * DebtValue - minValue + positionValue
+     * @notice Calculates Min. Deposit for a vault.
+     * MinDeposit = 0.02 * DebtValue - minValue + positionValue
      * @param _params position object
      * @param _sqrtPrice square root price to calculate
      * @param _isMarginZero whether the stable token is token0 or token1
      */
-    function calculateMinCollateral(
+    function calculateMinDeposit(
         PositionCalculatorParams memory _params,
         uint160 _sqrtPrice,
         bool _isMarginZero
@@ -134,14 +134,14 @@ library PositionCalculator {
         bool isMarginZero,
         bool _isMinPrice
     ) internal pure returns (int256 value) {
-        (int256 marginValue, uint256 collateralValue, uint256 debtValue) = calculateCollateralAndDebtValue(
+        (int256 marginValue, uint256 assetValue, uint256 debtValue) = calculateCollateralAndDebtValue(
             _position,
             _sqrtPrice,
             isMarginZero,
             _isMinPrice
         );
 
-        return marginValue + int256(collateralValue) - int256(debtValue);
+        return marginValue + int256(assetValue) - int256(debtValue);
     }
 
     function calculateCollateralAndDebtValue(
@@ -154,7 +154,7 @@ library PositionCalculator {
         pure
         returns (
             int256 marginValue,
-            uint256 collateralValue,
+            uint256 assetValue,
             uint256 debtValue
         )
     {
@@ -167,17 +167,17 @@ library PositionCalculator {
         }
 
         (
-            uint256 collateralAmount0,
-            uint256 collateralAmount1,
+            uint256 assetAmount0,
+            uint256 assetAmount1,
             uint256 debtAmount0,
             uint256 debtAmount1
         ) = calculateCollateralAndDebtAmount(_position, _sqrtPrice, _isMinPrice);
 
         if (_isMarginZero) {
-            collateralValue = collateralAmount0.add(collateralAmount1.mul(price).div(1e18));
+            assetValue = assetAmount0.add(assetAmount1.mul(price).div(1e18));
             debtValue = debtAmount0.add(debtAmount1.mul(price).div(1e18));
         } else {
-            collateralValue = collateralAmount0.mul(price).div(1e18).add(collateralAmount1);
+            assetValue = assetAmount0.mul(price).div(1e18).add(assetAmount1);
             debtValue = debtAmount0.mul(price).div(1e18).add(debtAmount1);
         }
     }
@@ -190,14 +190,14 @@ library PositionCalculator {
         internal
         pure
         returns (
-            uint256 collateralAmount0,
-            uint256 collateralAmount1,
+            uint256 assetAmount0,
+            uint256 assetAmount1,
             uint256 debtAmount0,
             uint256 debtAmount1
         )
     {
-        collateralAmount0 = _position.collateral0;
-        collateralAmount1 = _position.collateral1;
+        assetAmount0 = _position.asset0;
+        assetAmount1 = _position.asset1;
         debtAmount0 = _position.debt0;
         debtAmount1 = _position.debt1;
 
@@ -226,8 +226,8 @@ library PositionCalculator {
             );
 
             if (lpt.isCollateral) {
-                collateralAmount0 = collateralAmount0.add(amount0);
-                collateralAmount1 = collateralAmount1.add(amount1);
+                assetAmount0 = assetAmount0.add(amount0);
+                assetAmount1 = assetAmount1.add(amount1);
             } else {
                 debtAmount0 = debtAmount0.add(amount0);
                 debtAmount1 = debtAmount1.add(amount1);
@@ -247,15 +247,15 @@ library PositionCalculator {
         _newParams = PositionCalculatorParams(
             _params.marginAmount0,
             _params.marginAmount1,
-            _params.collateral0,
-            _params.collateral1,
+            _params.asset0,
+            _params.asset1,
             _params.debt0,
             _params.debt1,
             lpts
         );
 
-        _newParams.collateral0 += _position.collateral0;
-        _newParams.collateral1 += _position.collateral1;
+        _newParams.asset0 += _position.asset0;
+        _newParams.asset1 += _position.asset1;
         _newParams.debt0 += _position.debt0;
         _newParams.debt1 += _position.debt1;
 

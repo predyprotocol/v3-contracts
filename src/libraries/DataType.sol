@@ -30,8 +30,8 @@ library DataType {
     struct SubVault {
         uint256 id;
         bool isCompound;
-        uint256 collateralAmount0;
-        uint256 collateralAmount1;
+        uint256 assetAmount0;
+        uint256 assetAmount1;
         uint256 debtAmount0;
         uint256 debtAmount1;
         BaseToken.AccountState balance0;
@@ -80,8 +80,8 @@ library DataType {
 
     struct Position {
         uint256 subVaultIndex;
-        uint256 collateral0;
-        uint256 collateral1;
+        uint256 asset0;
+        uint256 asset1;
         uint256 debt0;
         uint256 debt1;
         LPT[] lpts;
@@ -143,21 +143,21 @@ library DataType {
     }
 
     struct SubVaultValue {
-        uint256 collateralValue;
+        uint256 assetValue;
         uint256 debtValue;
         int256 premiumValue;
     }
 
     struct SubVaultAmount {
-        uint256 collateralAmount0;
-        uint256 collateralAmount1;
+        uint256 assetAmount0;
+        uint256 assetAmount1;
         uint256 debtAmount0;
         uint256 debtAmount1;
     }
 
     struct SubVaultInterest {
-        int256 collateralFee0;
-        int256 collateralFee1;
+        int256 assetFee0;
+        int256 assetFee1;
         int256 debtFee0;
         int256 debtFee1;
     }

@@ -17,7 +17,7 @@ library LiquidationLogic {
     event Liquidated(uint256 indexed vaultId, address liquidator, uint256 debtValue, uint256 penaltyAmount);
 
     /**
-     * @notice Anyone can liquidates the vault if its required collateral value is positive.
+     * @notice Anyone can liquidates the vault if its vault value is less than Min. Deposit.
      * @param _vault vault
      * @param _positionUpdates parameters to update position
      */
@@ -68,7 +68,7 @@ library LiquidationLogic {
 
     /**
      * @notice Checks the vault is liquidatable or not.
-     * if Min collateral is greater than margin value + position value, then return true.
+     * if Min. Deposit is greater than margin value + position value, then return true.
      * otherwise return false.
      */
     function checkLiquidatable(
@@ -95,7 +95,7 @@ library LiquidationLogic {
         uint160 sqrtPrice
     ) internal pure returns (bool) {
         // calculate Min. Collateral by using TWAP.
-        int256 minCollateral = PositionCalculator.calculateMinCollateral(_params, sqrtPrice, _context.isMarginZero);
+        int256 minCollateral = PositionCalculator.calculateMinDeposit(_params, sqrtPrice, _context.isMarginZero);
 
         int256 vaultValue = VaultLib.getVaultValue(_context, _params, sqrtPrice);
 
