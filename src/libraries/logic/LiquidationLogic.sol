@@ -139,9 +139,23 @@ library LiquidationLogic {
         // calculate Min. Collateral by using TWAP.
         int256 minCollateral = PositionCalculator.calculateMinDeposit(_params, sqrtPrice, _context.isMarginZero);
 
-        int256 vaultValue = VaultLib.getVaultValue(_context, _params, sqrtPrice);
+        int256 vaultValue;
+        int256 marginValue;
+        {
+            uint256 assetValue;
+            uint256 debtValue;
 
-        return minCollateral > vaultValue;
+            (marginValue, assetValue, debtValue) = PositionCalculator.calculateCollateralAndDebtValue(
+                _params,
+                sqrtPrice,
+                _context.isMarginZero,
+                false
+            );
+
+            vaultValue = marginValue + int256(assetValue) - int256(debtValue);
+        }
+
+        return minCollateral > vaultValue || marginValue < 0;
     }
 
     function reducePosition(

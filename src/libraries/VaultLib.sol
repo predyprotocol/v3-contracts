@@ -336,14 +336,6 @@ library VaultLib {
         marginAmount1 = int256(_vault.marginAmount1) + fee1;
     }
 
-    function getVaultValue(
-        DataType.Context memory _context,
-        PositionCalculator.PositionCalculatorParams memory _params,
-        uint160 _sqrtPrice
-    ) internal pure returns (int256) {
-        return PositionCalculator.calculateValue(_params, _sqrtPrice, _context.isMarginZero, false);
-    }
-
     function getVaultStatusValue(
         DataType.SubVaultAmount memory statusAmount,
         DataType.SubVaultInterest memory statusInterest,
