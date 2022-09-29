@@ -211,10 +211,6 @@ library PositionUpdater {
                 DataType.SubVault memory subVault = _subVaults[_vault.subVaults[index]];
 
                 if (
-                    subVault.assetAmount0 == 0 &&
-                    subVault.debtAmount0 == 0 &&
-                    subVault.assetAmount1 == 0 &&
-                    subVault.debtAmount1 == 0 &&
                     subVault.balance0.assetAmount == 0 &&
                     subVault.balance0.debtAmount == 0 &&
                     subVault.balance1.assetAmount == 0 &&
@@ -284,15 +280,8 @@ library PositionUpdater {
         DataType.Context storage _context,
         DataType.PositionUpdate memory _positionUpdate
     ) internal {
-        _subVault.isCompound = _positionUpdate.zeroForOne;
-
-        if (!_subVault.isCompound) {
-            _subVault.assetAmount0 = _subVault.assetAmount0.add(_positionUpdate.param0);
-            _subVault.assetAmount1 = _subVault.assetAmount1.add(_positionUpdate.param1);
-        }
-
-        _context.tokenState0.addCollateral(_subVault.balance0, _positionUpdate.param0);
-        _context.tokenState1.addCollateral(_subVault.balance1, _positionUpdate.param1);
+        _context.tokenState0.addCollateral(_subVault.balance0, _positionUpdate.param0, _positionUpdate.zeroForOne);
+        _context.tokenState1.addCollateral(_subVault.balance1, _positionUpdate.param1, _positionUpdate.zeroForOne);
 
         emit TokenDeposited(_subVault.id, _positionUpdate.param0, _positionUpdate.param1);
     }
@@ -302,44 +291,26 @@ library PositionUpdater {
         DataType.Context storage _context,
         DataType.PositionUpdate memory _positionUpdate
     ) internal returns (uint256 withdrawAmount0, uint256 withdrawAmount1) {
-        if (_subVault.isCompound) {
-            withdrawAmount0 = _context.tokenState0.removeCollateral(_subVault.balance0, _positionUpdate.param0);
-            withdrawAmount1 = _context.tokenState1.removeCollateral(_subVault.balance1, _positionUpdate.param1);
+        uint256 assetFee0;
+        uint256 assetFee1;
 
-            emit TokenWithdrawn(_subVault.id, withdrawAmount0, withdrawAmount1);
-        } else {
-            uint256 assetFee0 = _context.tokenState0.getAssetValue(_subVault.balance0).sub(_subVault.assetAmount0);
-            uint256 assetFee1 = _context.tokenState1.getAssetValue(_subVault.balance1).sub(_subVault.assetAmount1);
+        (withdrawAmount0, assetFee0) = _context.tokenState0.removeCollateral(
+            _subVault.balance0,
+            _positionUpdate.param0
+        );
+        (withdrawAmount1, assetFee1) = _context.tokenState1.removeCollateral(
+            _subVault.balance1,
+            _positionUpdate.param1
+        );
 
-            if (_subVault.assetAmount0 > 0) {
-                assetFee0 = (assetFee0 * _positionUpdate.param0) / _subVault.assetAmount0;
-            }
-            if (_subVault.assetAmount1 > 0) {
-                assetFee1 = (assetFee1 * _positionUpdate.param1) / _subVault.assetAmount1;
-            }
-
-            _subVault.assetAmount0 = _subVault.assetAmount0.sub(_positionUpdate.param0);
-            _subVault.assetAmount1 = _subVault.assetAmount1.sub(_positionUpdate.param1);
-
-            if (_subVault.assetAmount0 == 0) {
-                assetFee0 = _context.tokenState0.clearCollateral(_subVault.balance0).sub(_positionUpdate.param0);
-            } else {
-                _context.tokenState0.removeCollateral(_subVault.balance0, _positionUpdate.param0.add(assetFee0));
-            }
-
-            if (_subVault.assetAmount1 == 0) {
-                assetFee1 = _context.tokenState1.clearCollateral(_subVault.balance1).sub(_positionUpdate.param1);
-            } else {
-                _context.tokenState1.removeCollateral(_subVault.balance1, _positionUpdate.param1.add(assetFee1));
-            }
-
-            withdrawAmount0 = _positionUpdate.param0.add(assetFee0);
-            withdrawAmount1 = _positionUpdate.param1.add(assetFee1);
-
+        if (assetFee0 > 0 || assetFee1 > 0) {
             emit FeeUpdated(_subVault.id, int256(assetFee0), int256(assetFee1));
-
-            emit TokenWithdrawn(_subVault.id, _positionUpdate.param0, _positionUpdate.param1);
         }
+
+        emit TokenWithdrawn(_subVault.id, withdrawAmount0, withdrawAmount1);
+
+        withdrawAmount0 = withdrawAmount0.add(assetFee0);
+        withdrawAmount1 = withdrawAmount1.add(assetFee1);
     }
 
     function borrowTokens(
@@ -347,15 +318,8 @@ library PositionUpdater {
         DataType.Context storage _context,
         DataType.PositionUpdate memory _positionUpdate
     ) internal {
-        _subVault.isCompound = _positionUpdate.zeroForOne;
-
-        if (!_subVault.isCompound) {
-            _subVault.debtAmount0 = _subVault.debtAmount0.add(_positionUpdate.param0);
-            _subVault.debtAmount1 = _subVault.debtAmount1.add(_positionUpdate.param1);
-        }
-
-        _context.tokenState0.addDebt(_subVault.balance0, _positionUpdate.param0);
-        _context.tokenState1.addDebt(_subVault.balance1, _positionUpdate.param1);
+        _context.tokenState0.addDebt(_subVault.balance0, _positionUpdate.param0, _positionUpdate.zeroForOne);
+        _context.tokenState1.addDebt(_subVault.balance1, _positionUpdate.param1, _positionUpdate.zeroForOne);
 
         emit TokenBorrowed(_subVault.id, _positionUpdate.param0, _positionUpdate.param1);
     }
@@ -365,44 +329,20 @@ library PositionUpdater {
         DataType.Context storage _context,
         DataType.PositionUpdate memory _positionUpdate
     ) internal returns (uint256 requiredAmount0, uint256 requiredAmount1) {
-        if (_subVault.isCompound) {
-            requiredAmount0 = _context.tokenState0.removeDebt(_subVault.balance0, _positionUpdate.param0);
-            requiredAmount1 = _context.tokenState1.removeDebt(_subVault.balance1, _positionUpdate.param1);
+        uint256 debtFee0;
+        uint256 debtFee1;
 
-            emit TokenRepaid(_subVault.id, requiredAmount0, requiredAmount1);
-        } else {
-            uint256 debtFee0 = _context.tokenState0.getDebtValue(_subVault.balance0).sub(_subVault.debtAmount0);
-            uint256 debtFee1 = _context.tokenState1.getDebtValue(_subVault.balance1).sub(_subVault.debtAmount1);
+        (requiredAmount0, debtFee0) = _context.tokenState0.removeDebt(_subVault.balance0, _positionUpdate.param0);
+        (requiredAmount1, debtFee1) = _context.tokenState1.removeDebt(_subVault.balance1, _positionUpdate.param1);
 
-            if (_subVault.debtAmount0 > 0) {
-                debtFee0 = (debtFee0 * _positionUpdate.param0) / _subVault.debtAmount0;
-            }
-            if (_subVault.debtAmount1 > 0) {
-                debtFee1 = (debtFee1 * _positionUpdate.param1) / _subVault.debtAmount1;
-            }
-
-            _subVault.debtAmount0 = _subVault.debtAmount0.sub(_positionUpdate.param0);
-            _subVault.debtAmount1 = _subVault.debtAmount1.sub(_positionUpdate.param1);
-
-            if (_subVault.debtAmount0 == 0) {
-                debtFee0 = _context.tokenState0.clearDebt(_subVault.balance0).sub(_positionUpdate.param0);
-            } else {
-                _context.tokenState0.removeDebt(_subVault.balance0, _positionUpdate.param0.add(debtFee0));
-            }
-
-            if (_subVault.debtAmount1 == 0) {
-                debtFee1 = _context.tokenState1.clearDebt(_subVault.balance1).sub(_positionUpdate.param1);
-            } else {
-                _context.tokenState1.removeDebt(_subVault.balance1, _positionUpdate.param1.add(debtFee1));
-            }
-
-            requiredAmount0 = _positionUpdate.param0.add(debtFee0);
-            requiredAmount1 = _positionUpdate.param1.add(debtFee1);
-
+        if (debtFee0 > 0 || debtFee1 > 0) {
             emit FeeUpdated(_subVault.id, -int256(debtFee0), -int256(debtFee1));
-
-            emit TokenRepaid(_subVault.id, _positionUpdate.param0, _positionUpdate.param1);
         }
+
+        emit TokenRepaid(_subVault.id, requiredAmount0, requiredAmount1);
+
+        requiredAmount0 = requiredAmount0.add(debtFee0);
+        requiredAmount1 = requiredAmount1.add(debtFee1);
     }
 
     function depositLPT(

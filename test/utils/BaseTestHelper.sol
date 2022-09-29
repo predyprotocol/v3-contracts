@@ -40,7 +40,7 @@ abstract contract BaseTestHelper {
     bytes internal constant EMPTY_METADATA = bytes("");
 
     function getContext() internal view returns (DataType.Context memory) {
-        BaseToken.TokenState memory tokenState = BaseToken.TokenState(0, 0, 1e18, 1e18);
+        BaseToken.TokenState memory tokenState = BaseToken.TokenState(0, 0, 0, 0, 1e18, 1e18, 0, 0);
 
         return
             DataType.Context(

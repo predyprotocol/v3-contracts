@@ -416,17 +416,11 @@ library VaultLib {
         pure
         returns (bool)
     {
-        if (_subVault.isCompound) {
-            if (
-                _context.tokenState0.getDebtValue(_subVault.balance0) != 0 ||
-                _context.tokenState1.getDebtValue(_subVault.balance1) != 0
-            ) {
-                return false;
-            }
-        } else {
-            if (_subVault.debtAmount0 != 0 || _subVault.debtAmount1 != 0) {
-                return false;
-            }
+        if (
+            _context.tokenState0.getDebtValue(_subVault.balance0) != 0 ||
+            _context.tokenState1.getDebtValue(_subVault.balance1) != 0
+        ) {
+            return false;
         }
 
         if (_subVault.lpts.length > 0) {
@@ -445,13 +439,8 @@ library VaultLib {
         DataType.Context memory _context,
         uint160 _sqrtPrice
     ) internal view returns (uint256 totalAmount0, uint256 totalAmount1) {
-        if (_subVault.isCompound) {
-            totalAmount0 = totalAmount0.add(_context.tokenState0.getAssetValue(_subVault.balance0));
-            totalAmount1 = totalAmount1.add(_context.tokenState1.getAssetValue(_subVault.balance1));
-        } else {
-            totalAmount0 = totalAmount0.add(_subVault.assetAmount0);
-            totalAmount1 = totalAmount1.add(_subVault.assetAmount1);
-        }
+        totalAmount0 = totalAmount0.add(_context.tokenState0.getAssetValue(_subVault.balance0));
+        totalAmount1 = totalAmount1.add(_context.tokenState1.getAssetValue(_subVault.balance1));
 
         {
             (uint256 amount0, uint256 amount1) = getLPTPositionAmounts(_subVault, _ranges, _sqrtPrice, true);
@@ -467,13 +456,8 @@ library VaultLib {
         DataType.Context memory _context,
         uint160 _sqrtPrice
     ) internal view returns (uint256 totalAmount0, uint256 totalAmount1) {
-        if (_subVault.isCompound) {
-            totalAmount0 = totalAmount0.add(_context.tokenState0.getDebtValue(_subVault.balance0));
-            totalAmount1 = totalAmount1.add(_context.tokenState1.getDebtValue(_subVault.balance1));
-        } else {
-            totalAmount0 = totalAmount0.add(_subVault.debtAmount0);
-            totalAmount1 = totalAmount1.add(_subVault.debtAmount1);
-        }
+        totalAmount0 = totalAmount0.add(_context.tokenState0.getDebtValue(_subVault.balance0));
+        totalAmount1 = totalAmount1.add(_context.tokenState1.getDebtValue(_subVault.balance1));
 
         {
             (uint256 amount0, uint256 amount1) = getLPTPositionAmounts(_subVault, _ranges, _sqrtPrice, false);
@@ -624,16 +608,10 @@ library VaultLib {
             int256 debtFee1
         )
     {
-        if (!_subVault.isCompound) {
-            assetFee0 = int256(_context.tokenState0.getAssetValue(_subVault.balance0)).sub(
-                int256(_subVault.assetAmount0)
-            );
-            assetFee1 = int256(_context.tokenState1.getAssetValue(_subVault.balance1)).sub(
-                int256(_subVault.assetAmount1)
-            );
-            debtFee0 = int256(_context.tokenState0.getDebtValue(_subVault.balance0)).sub(int256(_subVault.debtAmount0));
-            debtFee1 = int256(_context.tokenState1.getDebtValue(_subVault.balance1)).sub(int256(_subVault.debtAmount1));
-        }
+        assetFee0 = int256(_context.tokenState0.getAssetFee(_subVault.balance0));
+        assetFee1 = int256(_context.tokenState1.getAssetFee(_subVault.balance1));
+        debtFee0 = int256(_context.tokenState0.getDebtFee(_subVault.balance0));
+        debtFee1 = int256(_context.tokenState1.getDebtFee(_subVault.balance1));
     }
 
     function getPositionOfSubVault(
@@ -655,25 +633,14 @@ library VaultLib {
             );
         }
 
-        if (_subVault.isCompound) {
-            position = DataType.Position(
-                _subVaultIndex,
-                _context.tokenState0.getAssetValue(_subVault.balance0),
-                _context.tokenState1.getAssetValue(_subVault.balance1),
-                _context.tokenState0.getDebtValue(_subVault.balance0),
-                _context.tokenState1.getDebtValue(_subVault.balance1),
-                lpts
-            );
-        } else {
-            position = DataType.Position(
-                _subVaultIndex,
-                _subVault.assetAmount0,
-                _subVault.assetAmount1,
-                _subVault.debtAmount0,
-                _subVault.debtAmount1,
-                lpts
-            );
-        }
+        position = DataType.Position(
+            _subVaultIndex,
+            _context.tokenState0.getAssetValue(_subVault.balance0),
+            _context.tokenState1.getAssetValue(_subVault.balance1),
+            _context.tokenState0.getDebtValue(_subVault.balance0),
+            _context.tokenState1.getDebtValue(_subVault.balance1),
+            lpts
+        );
     }
 
     function getPositions(

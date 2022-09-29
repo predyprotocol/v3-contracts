@@ -8,16 +8,29 @@ import "./Constants.sol";
 library BaseToken {
     using SafeMath for uint256;
 
+    enum InterestType {
+        EMPTY,
+        COMPOUND,
+        NORMAL
+    }
+
     struct TokenState {
-        uint256 totalDeposited;
-        uint256 totalBorrowed;
+        uint256 totalCompoundDeposited;
+        uint256 totalCompoundBorrowed;
+        uint256 totalNormalDeposited;
+        uint256 totalNormalBorrowed;
         uint256 assetScaler;
         uint256 debtScaler;
+        uint256 assetGrowth;
+        uint256 debtGrowth;
     }
 
     struct AccountState {
+        InterestType interestType;
         uint256 assetAmount;
         uint256 debtAmount;
+        uint256 lastAssetGrowth;
+        uint256 lastDebtGrowth;
     }
 
     function initialize(TokenState storage tokenState) internal {
@@ -28,89 +41,163 @@ library BaseToken {
     function addCollateral(
         TokenState storage tokenState,
         AccountState storage accountState,
-        uint256 _amount
+        uint256 _amount,
+        bool _isCompound
     ) internal returns (uint256 mintAmount) {
-        mintAmount = PredyMath.mulDiv(_amount, Constants.ONE, tokenState.assetScaler);
+        if (_amount == 0) {
+            return 0;
+        }
 
-        accountState.assetAmount = accountState.assetAmount.add(mintAmount);
-        tokenState.totalDeposited = tokenState.totalDeposited.add(mintAmount);
+        if (_isCompound) {
+            require(accountState.interestType != InterestType.NORMAL, "B1");
+            mintAmount = PredyMath.mulDiv(_amount, Constants.ONE, tokenState.assetScaler);
+
+            accountState.assetAmount = accountState.assetAmount.add(mintAmount);
+            tokenState.totalCompoundDeposited = tokenState.totalCompoundDeposited.add(mintAmount);
+
+            accountState.interestType = InterestType.COMPOUND;
+        } else {
+            require(accountState.interestType != InterestType.COMPOUND, "B2");
+            accountState.assetAmount += _amount;
+
+            accountState.lastAssetGrowth = (
+                accountState.lastAssetGrowth.mul(accountState.assetAmount).add(tokenState.assetGrowth.mul(_amount))
+            ).div(accountState.assetAmount.add(_amount));
+
+            tokenState.totalNormalDeposited += _amount;
+
+            accountState.interestType = InterestType.NORMAL;
+        }
     }
 
     function addDebt(
         TokenState storage tokenState,
         AccountState storage accountState,
-        uint256 _amount
+        uint256 _amount,
+        bool _isCompound
     ) internal returns (uint256 mintAmount) {
+        if (_amount == 0) {
+            return 0;
+        }
+
         require(getAvailableCollateralValue(tokenState) >= _amount, "B0");
 
-        mintAmount = PredyMath.mulDiv(_amount, Constants.ONE, tokenState.debtScaler);
+        if (_isCompound) {
+            require(accountState.interestType != InterestType.NORMAL, "B1");
+            mintAmount = PredyMath.mulDiv(_amount, Constants.ONE, tokenState.debtScaler);
 
-        accountState.debtAmount = accountState.debtAmount.add(mintAmount);
-        tokenState.totalBorrowed = tokenState.totalBorrowed.add(mintAmount);
-    }
+            accountState.debtAmount = accountState.debtAmount.add(mintAmount);
+            tokenState.totalCompoundBorrowed = tokenState.totalCompoundBorrowed.add(mintAmount);
 
-    function clearCollateral(TokenState storage tokenState, AccountState storage accountState)
-        internal
-        returns (uint256 finalRemoveAmount)
-    {
-        finalRemoveAmount = accountState.assetAmount;
-        tokenState.totalDeposited = tokenState.totalDeposited.sub(finalRemoveAmount);
-        accountState.assetAmount = 0;
+            accountState.interestType = InterestType.COMPOUND;
+        } else {
+            require(accountState.interestType != InterestType.COMPOUND, "B2");
+            accountState.debtAmount += _amount;
 
-        finalRemoveAmount = PredyMath.mulDiv(finalRemoveAmount, tokenState.assetScaler, Constants.ONE);
-    }
+            accountState.lastDebtGrowth = (
+                accountState.lastDebtGrowth.mul(accountState.debtAmount).add(tokenState.debtGrowth.mul(_amount))
+            ).div(accountState.debtAmount.add(_amount));
 
-    function clearDebt(TokenState storage tokenState, AccountState storage accountState)
-        internal
-        returns (uint256 finalRemoveAmount)
-    {
-        finalRemoveAmount = accountState.debtAmount;
-        tokenState.totalBorrowed = tokenState.totalBorrowed.sub(finalRemoveAmount);
-        accountState.debtAmount = 0;
+            tokenState.totalNormalBorrowed += _amount;
 
-        finalRemoveAmount = PredyMath.mulDiv(finalRemoveAmount, tokenState.debtScaler, Constants.ONE);
+            accountState.interestType = InterestType.NORMAL;
+        }
     }
 
     function removeCollateral(
         TokenState storage tokenState,
         AccountState storage accountState,
         uint256 _amount
-    ) internal returns (uint256 finalBurnAmount) {
-        uint256 burnAmount = PredyMath.mulDiv(_amount, Constants.ONE, tokenState.assetScaler);
-
-        if (accountState.assetAmount < burnAmount) {
-            finalBurnAmount = accountState.assetAmount;
-            accountState.assetAmount = 0;
-        } else {
-            finalBurnAmount = burnAmount;
-            accountState.assetAmount = accountState.assetAmount.sub(burnAmount);
+    ) internal returns (uint256 finalBurnAmount, uint256 fee) {
+        if (_amount == 0) {
+            return (0, 0);
         }
 
-        tokenState.totalDeposited = tokenState.totalDeposited.sub(finalBurnAmount);
+        if (accountState.interestType == InterestType.COMPOUND) {
+            uint256 burnAmount = PredyMath.mulDiv(_amount, Constants.ONE, tokenState.assetScaler);
 
-        // TODO: roundUp
-        finalBurnAmount = PredyMath.mulDiv(finalBurnAmount, tokenState.assetScaler, Constants.ONE);
+            if (accountState.assetAmount < burnAmount) {
+                finalBurnAmount = accountState.assetAmount;
+                accountState.assetAmount = 0;
+            } else {
+                finalBurnAmount = burnAmount;
+                accountState.assetAmount = accountState.assetAmount.sub(burnAmount);
+            }
+
+            tokenState.totalCompoundDeposited = tokenState.totalCompoundDeposited.sub(finalBurnAmount);
+
+            // TODO: roundUp
+            finalBurnAmount = PredyMath.mulDiv(finalBurnAmount, tokenState.assetScaler, Constants.ONE);
+        } else {
+            fee = getAssetFee(tokenState, accountState);
+
+            if (accountState.assetAmount < _amount) {
+                finalBurnAmount = accountState.assetAmount;
+                accountState.assetAmount = 0;
+            } else {
+                finalBurnAmount = _amount;
+                fee = (fee * finalBurnAmount) / accountState.assetAmount;
+                accountState.assetAmount = accountState.assetAmount.sub(_amount);
+            }
+
+            tokenState.totalNormalDeposited = tokenState.totalNormalDeposited.sub(finalBurnAmount);
+        }
     }
 
     function removeDebt(
         TokenState storage tokenState,
         AccountState storage accountState,
         uint256 _amount
-    ) internal returns (uint256 finalBurnAmount) {
-        uint256 burnAmount = PredyMath.mulDiv(_amount, Constants.ONE, tokenState.debtScaler);
-
-        if (accountState.debtAmount < burnAmount) {
-            finalBurnAmount = accountState.debtAmount;
-            accountState.debtAmount = 0;
-        } else {
-            finalBurnAmount = burnAmount;
-            accountState.debtAmount = accountState.debtAmount.sub(burnAmount);
+    ) internal returns (uint256 finalBurnAmount, uint256 fee) {
+        if (_amount == 0) {
+            return (0, 0);
         }
 
-        tokenState.totalBorrowed = tokenState.totalBorrowed.sub(finalBurnAmount);
+        if (accountState.interestType == InterestType.COMPOUND) {
+            uint256 burnAmount = PredyMath.mulDiv(_amount, Constants.ONE, tokenState.debtScaler);
 
-        // TODO: roundUp
-        finalBurnAmount = PredyMath.mulDiv(finalBurnAmount, tokenState.debtScaler, Constants.ONE);
+            if (accountState.debtAmount < burnAmount) {
+                finalBurnAmount = accountState.debtAmount;
+                accountState.debtAmount = 0;
+            } else {
+                finalBurnAmount = burnAmount;
+                accountState.debtAmount = accountState.debtAmount.sub(burnAmount);
+            }
+
+            tokenState.totalCompoundBorrowed = tokenState.totalCompoundBorrowed.sub(finalBurnAmount);
+
+            // TODO: roundUp
+            finalBurnAmount = PredyMath.mulDiv(finalBurnAmount, tokenState.debtScaler, Constants.ONE);
+        } else {
+            fee = getDebtFee(tokenState, accountState);
+
+            if (accountState.debtAmount < _amount) {
+                finalBurnAmount = accountState.debtAmount;
+                accountState.debtAmount = 0;
+            } else {
+                finalBurnAmount = _amount;
+                fee = (fee * finalBurnAmount) / accountState.debtAmount;
+                accountState.debtAmount = accountState.debtAmount.sub(_amount);
+            }
+
+            tokenState.totalNormalBorrowed = tokenState.totalNormalBorrowed.sub(finalBurnAmount);
+        }
+    }
+
+    function getAssetFee(TokenState memory tokenState, AccountState memory accountState)
+        internal
+        pure
+        returns (uint256)
+    {
+        return ((tokenState.assetGrowth.sub(accountState.lastAssetGrowth)) * accountState.assetAmount) / 1e18;
+    }
+
+    function getDebtFee(TokenState memory tokenState, AccountState memory accountState)
+        internal
+        pure
+        returns (uint256)
+    {
+        return ((tokenState.debtGrowth.sub(accountState.lastDebtGrowth)) * accountState.debtAmount) / 1e18;
     }
 
     // get collateral value
@@ -119,7 +206,11 @@ library BaseToken {
         pure
         returns (uint256)
     {
-        return PredyMath.mulDiv(accountState.assetAmount, tokenState.assetScaler, Constants.ONE);
+        if (accountState.interestType == InterestType.COMPOUND) {
+            return PredyMath.mulDiv(accountState.assetAmount, tokenState.assetScaler, Constants.ONE);
+        } else {
+            return accountState.assetAmount;
+        }
     }
 
     // get debt value
@@ -128,12 +219,16 @@ library BaseToken {
         pure
         returns (uint256)
     {
-        return PredyMath.mulDiv(accountState.debtAmount, tokenState.debtScaler, Constants.ONE);
+        if (accountState.interestType == InterestType.COMPOUND) {
+            return PredyMath.mulDiv(accountState.debtAmount, tokenState.debtScaler, Constants.ONE);
+        } else {
+            return accountState.debtAmount;
+        }
     }
 
     // update scaler
     function updateScaler(TokenState storage tokenState, uint256 _interestAmount) internal returns (uint256) {
-        if (tokenState.totalDeposited == 0) {
+        if (tokenState.totalCompoundDeposited == 0) {
             return 0;
         }
 
@@ -146,24 +241,37 @@ library BaseToken {
             Constants.ONE
         );
 
+        tokenState.debtGrowth += _interestAmount;
+
         uint256 updateCollateralScaler = Constants.ONE +
             PredyMath.mulDiv(
-                PredyMath.mulDiv(_interestAmount, tokenState.totalBorrowed, tokenState.totalDeposited),
+                PredyMath.mulDiv(_interestAmount, tokenState.totalCompoundBorrowed, tokenState.totalCompoundDeposited),
                 Constants.ONE - Constants.RESERVE_FACTOR,
                 Constants.ONE
             );
 
+        uint256 updateAssetGrowth = PredyMath.mulDiv(
+            PredyMath.mulDiv(_interestAmount, tokenState.totalCompoundBorrowed, tokenState.totalCompoundDeposited),
+            Constants.ONE - Constants.RESERVE_FACTOR,
+            Constants.ONE
+        );
+
         tokenState.assetScaler = PredyMath.mulDiv(tokenState.assetScaler, updateCollateralScaler, Constants.ONE);
+        tokenState.assetGrowth += updateAssetGrowth;
 
         return protocolFee;
     }
 
     function getTotalCollateralValue(TokenState memory tokenState) internal pure returns (uint256) {
-        return PredyMath.mulDiv(tokenState.totalDeposited, tokenState.assetScaler, Constants.ONE);
+        return
+            PredyMath.mulDiv(tokenState.totalCompoundDeposited, tokenState.assetScaler, Constants.ONE) +
+            tokenState.totalNormalDeposited;
     }
 
     function getTotalDebtValue(TokenState memory tokenState) internal pure returns (uint256) {
-        return PredyMath.mulDiv(tokenState.totalBorrowed, tokenState.debtScaler, Constants.ONE);
+        return
+            PredyMath.mulDiv(tokenState.totalCompoundBorrowed, tokenState.debtScaler, Constants.ONE) +
+            tokenState.totalNormalBorrowed;
     }
 
     function getAvailableCollateralValue(TokenState memory tokenState) internal pure returns (uint256) {
@@ -171,7 +279,7 @@ library BaseToken {
     }
 
     function getUtilizationRatio(TokenState memory tokenState) internal pure returns (uint256) {
-        if (tokenState.totalDeposited == 0) {
+        if (tokenState.totalCompoundDeposited == 0) {
             return Constants.ONE;
         }
 
