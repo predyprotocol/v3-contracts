@@ -31,8 +31,8 @@ contract VaultLibTest is Test {
             address(0),
             true,
             1,
-            BaseToken.TokenState(0, 0, 0, 0),
-            BaseToken.TokenState(0, 0, 0, 0),
+            BaseToken.TokenState(0, 0, 0, 0, 1e18, 1e18, 0, 0),
+            BaseToken.TokenState(0, 0, 0, 0, 1e18, 1e18, 0, 0),
             0,
             0
         );

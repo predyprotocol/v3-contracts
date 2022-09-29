@@ -71,8 +71,8 @@ contract PositionUpdaterTest is TestDeployer, Test {
 
         PositionUpdater.updatePosition(vault1, subVaults, context, ranges, positionUpdates, tradeOption);
 
-        assertEq(subVaults[vault1.subVaults[0]].assetAmount0, 1e6);
-        assertEq(subVaults[vault1.subVaults[0]].assetAmount1, 1e18);
+        assertEq(BaseToken.getAssetValue(context.tokenState0, subVaults[vault1.subVaults[0]].balance0), 1e6);
+        assertEq(BaseToken.getAssetValue(context.tokenState1, subVaults[vault1.subVaults[0]].balance1), 1e18);
     }
 
     function testUpdatePositionDepositTokenWithCompound() public {
@@ -91,8 +91,6 @@ contract PositionUpdaterTest is TestDeployer, Test {
 
         PositionUpdater.updatePosition(vault1, subVaults, context, ranges, positionUpdates, tradeOption);
 
-        assertEq(subVaults[vault1.subVaults[0]].assetAmount0, 0);
-        assertEq(subVaults[vault1.subVaults[0]].assetAmount1, 0);
         assertEq(BaseToken.getAssetValue(context.tokenState0, subVaults[vault1.subVaults[0]].balance0), 1e6);
         assertEq(BaseToken.getAssetValue(context.tokenState1, subVaults[vault1.subVaults[0]].balance1), 1e18);
     }
@@ -151,8 +149,8 @@ contract PositionUpdaterTest is TestDeployer, Test {
 
         PositionUpdater.updatePosition(vault1, subVaults, context, ranges, positionUpdates, tradeOption);
 
-        assertEq(subVaults[vault1.subVaults[0]].debtAmount0, 0);
-        assertEq(subVaults[vault1.subVaults[0]].debtAmount1, 1e18);
+        assertEq(BaseToken.getDebtValue(context.tokenState0, subVaults[vault1.subVaults[0]].balance0), 0);
+        assertEq(BaseToken.getDebtValue(context.tokenState1, subVaults[vault1.subVaults[0]].balance1), 1e18);
     }
 
     function testUpdatePositionBorrowTokenWithCompound() public {
@@ -171,8 +169,7 @@ contract PositionUpdaterTest is TestDeployer, Test {
 
         PositionUpdater.updatePosition(vault1, subVaults, context, ranges, positionUpdates, tradeOption);
 
-        assertEq(subVaults[vault1.subVaults[0]].debtAmount0, 0);
-        assertEq(subVaults[vault1.subVaults[0]].debtAmount1, 0);
+        assertEq(BaseToken.getDebtValue(context.tokenState0, subVaults[vault1.subVaults[0]].balance0), 0);
         assertEq(BaseToken.getDebtValue(context.tokenState1, subVaults[vault1.subVaults[0]].balance1), 1e18);
     }
 
@@ -199,8 +196,8 @@ contract PositionUpdaterTest is TestDeployer, Test {
             DataType.TradeOption(false, false, false, context.isMarginZero, 1e8, -1, EMPTY_METADATA)
         );
 
-        assertEq(subVaults[vault1.subVaults[0]].debtAmount0, 0);
-        assertEq(subVaults[vault1.subVaults[0]].debtAmount1, 1e18);
+        assertEq(BaseToken.getDebtValue(context.tokenState0, subVaults[vault1.subVaults[0]].balance0), 0);
+        assertEq(BaseToken.getDebtValue(context.tokenState1, subVaults[vault1.subVaults[0]].balance1), 1e18);
         assertEq(vault1.marginAmount0, 1e8);
     }
 
@@ -243,8 +240,6 @@ contract PositionUpdaterTest is TestDeployer, Test {
     }
 
     function testUpdatePositionRepayTokenWithMargin() public {
-        depositToken(vault3, context, ranges, 1e6, 1e18, false);
-
         DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](2);
 
         positionUpdates[0] = DataType.PositionUpdate(
@@ -272,6 +267,8 @@ contract PositionUpdaterTest is TestDeployer, Test {
         // test interest rate
         BaseToken.updateScaler(context.tokenState0, 1e15);
         BaseToken.updateScaler(context.tokenState1, 1e15);
+
+        depositToken(vault3, context, ranges, 1e6, 1e18, false);
 
         PositionUpdater.updatePosition(
             vault3,

@@ -29,11 +29,6 @@ library DataType {
 
     struct SubVault {
         uint256 id;
-        bool isCompound;
-        uint256 assetAmount0;
-        uint256 assetAmount1;
-        uint256 debtAmount0;
-        uint256 debtAmount1;
         BaseToken.AccountState balance0;
         BaseToken.AccountState balance1;
         LPTState[] lpts;
