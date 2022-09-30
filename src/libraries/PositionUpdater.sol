@@ -280,8 +280,8 @@ library PositionUpdater {
         DataType.Context storage _context,
         DataType.PositionUpdate memory _positionUpdate
     ) internal {
-        _context.tokenState0.addCollateral(_subVault.balance0, _positionUpdate.param0, _positionUpdate.zeroForOne);
-        _context.tokenState1.addCollateral(_subVault.balance1, _positionUpdate.param1, _positionUpdate.zeroForOne);
+        _context.tokenState0.addAsset(_subVault.balance0, _positionUpdate.param0, _positionUpdate.zeroForOne);
+        _context.tokenState1.addAsset(_subVault.balance1, _positionUpdate.param1, _positionUpdate.zeroForOne);
 
         emit TokenDeposited(_subVault.id, _positionUpdate.param0, _positionUpdate.param1);
     }
@@ -294,14 +294,8 @@ library PositionUpdater {
         uint256 assetFee0;
         uint256 assetFee1;
 
-        (withdrawAmount0, assetFee0) = _context.tokenState0.removeCollateral(
-            _subVault.balance0,
-            _positionUpdate.param0
-        );
-        (withdrawAmount1, assetFee1) = _context.tokenState1.removeCollateral(
-            _subVault.balance1,
-            _positionUpdate.param1
-        );
+        (withdrawAmount0, assetFee0) = _context.tokenState0.removeAsset(_subVault.balance0, _positionUpdate.param0);
+        (withdrawAmount1, assetFee1) = _context.tokenState1.removeAsset(_subVault.balance1, _positionUpdate.param1);
 
         if (assetFee0 > 0 || assetFee1 > 0) {
             emit FeeUpdated(_subVault.id, int256(assetFee0), int256(assetFee1));

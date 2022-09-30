@@ -38,7 +38,7 @@ library BaseToken {
         tokenState.debtScaler = Constants.ONE;
     }
 
-    function addCollateral(
+    function addAsset(
         TokenState storage tokenState,
         AccountState storage accountState,
         uint256 _amount,
@@ -58,12 +58,12 @@ library BaseToken {
             accountState.interestType = InterestType.COMPOUND;
         } else {
             require(accountState.interestType != InterestType.COMPOUND, "B2");
-            accountState.assetAmount += _amount;
 
             accountState.lastAssetGrowth = (
                 accountState.lastAssetGrowth.mul(accountState.assetAmount).add(tokenState.assetGrowth.mul(_amount))
             ).div(accountState.assetAmount.add(_amount));
 
+            accountState.assetAmount += _amount;
             tokenState.totalNormalDeposited += _amount;
 
             accountState.interestType = InterestType.NORMAL;
@@ -92,19 +92,19 @@ library BaseToken {
             accountState.interestType = InterestType.COMPOUND;
         } else {
             require(accountState.interestType != InterestType.COMPOUND, "B2");
-            accountState.debtAmount += _amount;
 
             accountState.lastDebtGrowth = (
                 accountState.lastDebtGrowth.mul(accountState.debtAmount).add(tokenState.debtGrowth.mul(_amount))
             ).div(accountState.debtAmount.add(_amount));
 
+            accountState.debtAmount += _amount;
             tokenState.totalNormalBorrowed += _amount;
 
             accountState.interestType = InterestType.NORMAL;
         }
     }
 
-    function removeCollateral(
+    function removeAsset(
         TokenState storage tokenState,
         AccountState storage accountState,
         uint256 _amount
@@ -228,36 +228,35 @@ library BaseToken {
 
     // update scaler
     function updateScaler(TokenState storage tokenState, uint256 _interestAmount) internal returns (uint256) {
-        if (tokenState.totalCompoundDeposited == 0) {
+        if (tokenState.totalCompoundDeposited == 0 && tokenState.totalNormalDeposited == 0) {
             return 0;
         }
 
-        uint256 protocolFee = (((getTotalDebtValue(tokenState) * _interestAmount) / Constants.ONE) *
-            Constants.RESERVE_FACTOR) / Constants.ONE;
-
-        tokenState.debtScaler = PredyMath.mulDiv(
-            tokenState.debtScaler,
-            (Constants.ONE + _interestAmount),
+        uint256 protocolFee = PredyMath.mulDiv(
+            PredyMath.mulDiv(_interestAmount, getTotalDebtValue(tokenState), Constants.ONE),
+            Constants.RESERVE_FACTOR,
             Constants.ONE
         );
 
-        tokenState.debtGrowth += _interestAmount;
-
-        uint256 updateCollateralScaler = Constants.ONE +
-            PredyMath.mulDiv(
-                PredyMath.mulDiv(_interestAmount, tokenState.totalCompoundBorrowed, tokenState.totalCompoundDeposited),
-                Constants.ONE - Constants.RESERVE_FACTOR,
-                Constants.ONE
-            );
-
         uint256 updateAssetGrowth = PredyMath.mulDiv(
-            PredyMath.mulDiv(_interestAmount, tokenState.totalCompoundBorrowed, tokenState.totalCompoundDeposited),
+            PredyMath.mulDiv(_interestAmount, getTotalDebtValue(tokenState), getTotalCollateralValue(tokenState)),
             Constants.ONE - Constants.RESERVE_FACTOR,
             Constants.ONE
         );
 
-        tokenState.assetScaler = PredyMath.mulDiv(tokenState.assetScaler, updateCollateralScaler, Constants.ONE);
-        tokenState.assetGrowth += updateAssetGrowth;
+        // round up
+        tokenState.debtScaler = PredyMath.mulDivUp(
+            tokenState.debtScaler,
+            (Constants.ONE.add(_interestAmount)),
+            Constants.ONE
+        );
+        tokenState.debtGrowth = tokenState.debtGrowth.add(_interestAmount);
+        tokenState.assetScaler = PredyMath.mulDiv(
+            tokenState.assetScaler,
+            Constants.ONE + updateAssetGrowth,
+            Constants.ONE
+        );
+        tokenState.assetGrowth = tokenState.assetGrowth.add(updateAssetGrowth);
 
         return protocolFee;
     }
@@ -275,11 +274,11 @@ library BaseToken {
     }
 
     function getAvailableCollateralValue(TokenState memory tokenState) internal pure returns (uint256) {
-        return getTotalCollateralValue(tokenState) - getTotalDebtValue(tokenState);
+        return getTotalCollateralValue(tokenState).sub(getTotalDebtValue(tokenState));
     }
 
     function getUtilizationRatio(TokenState memory tokenState) internal pure returns (uint256) {
-        if (tokenState.totalCompoundDeposited == 0) {
+        if (tokenState.totalCompoundDeposited == 0 && tokenState.totalNormalBorrowed == 0) {
             return Constants.ONE;
         }
 

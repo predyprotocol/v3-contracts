@@ -133,7 +133,7 @@ library InterestCalculator {
                 PredyMath.mulDiv(
                     premium.sub(protocolFeePerLiquidity),
                     _perpState.borrowedLiquidity,
-                    LPTStateLib.getTotalLiquidityAmount(_context, _perpState)
+                    LPTStateLib.getTotalLiquidityAmount(_context.positionManager, _perpState)
                 )
             );
 
@@ -165,7 +165,7 @@ library InterestCalculator {
         uint160 _sqrtPrice
     ) internal view returns (uint256) {
         if (_perpState.borrowedLiquidity > 0) {
-            uint256 perpUr = LPTStateLib.getPerpUR(_context, _perpState);
+            uint256 perpUr = LPTStateLib.getPerpUR(_context.positionManager, _perpState);
 
             return
                 calculateStableValue(

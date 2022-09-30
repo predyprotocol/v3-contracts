@@ -3,6 +3,7 @@ pragma solidity ^0.7.6;
 pragma abicoder v2;
 
 import "./Controller.sol";
+import "./libraries/BaseToken.sol";
 import "./libraries/LPTMath.sol";
 import "./libraries/PositionCalculator.sol";
 
@@ -10,11 +11,12 @@ contract Reader {
     Controller public controller;
     bool public isMarginZero;
     address public uniswapPool;
+    address public positionManager;
 
     constructor(Controller _controller) {
         controller = _controller;
 
-        (isMarginZero, , , uniswapPool, , ) = controller.getContext();
+        (isMarginZero, , , uniswapPool, positionManager, , ) = controller.getContext();
     }
 
     function getPrice() public view returns (uint256) {
@@ -25,6 +27,44 @@ contract Reader {
         uint160 sqrtPrice = LiquidationLogic.getSqrtTWAP(uniswapPool);
 
         return LPTMath.decodeSqrtPriceX96(isMarginZero, sqrtPrice);
+    }
+
+    function getAssetStatus()
+        external
+        view
+        returns (
+            uint256,
+            uint256,
+            uint256,
+            uint256,
+            uint256,
+            uint256
+        )
+    {
+        (BaseToken.TokenState memory tokenState0, BaseToken.TokenState memory tokenState1) = controller.getTokenState();
+
+        return (
+            BaseToken.getTotalCollateralValue(tokenState0),
+            BaseToken.getTotalDebtValue(tokenState0),
+            BaseToken.getUtilizationRatio(tokenState0),
+            BaseToken.getTotalCollateralValue(tokenState1),
+            BaseToken.getTotalDebtValue(tokenState1),
+            BaseToken.getUtilizationRatio(tokenState1)
+        );
+    }
+
+    function getLPTStatus(bytes32 _rangeId)
+        external
+        view
+        returns (
+            uint256,
+            uint256,
+            uint256
+        )
+    {
+        DataType.PerpStatus memory range = controller.getRange(_rangeId);
+
+        return LPTStateLib.getPerpStatus(positionManager, range);
     }
 
     /**

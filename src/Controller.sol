@@ -223,6 +223,7 @@ contract Controller is IController, Initializable {
             uint256,
             uint256,
             address,
+            address,
             uint256,
             uint256
         )
@@ -232,6 +233,7 @@ contract Controller is IController, Initializable {
             vaultIdCount,
             context.nextSubVaultId,
             context.uniswapPool,
+            context.positionManager,
             context.accumuratedProtocolFee0,
             context.accumuratedProtocolFee1
         );
@@ -241,38 +243,8 @@ contract Controller is IController, Initializable {
         return ranges[_rangeId];
     }
 
-    function getAssetStatus()
-        external
-        view
-        returns (
-            uint256,
-            uint256,
-            uint256,
-            uint256,
-            uint256,
-            uint256
-        )
-    {
-        return (
-            BaseToken.getTotalCollateralValue(context.tokenState0),
-            BaseToken.getTotalDebtValue(context.tokenState0),
-            BaseToken.getUtilizationRatio(context.tokenState0),
-            BaseToken.getTotalCollateralValue(context.tokenState1),
-            BaseToken.getTotalDebtValue(context.tokenState1),
-            BaseToken.getUtilizationRatio(context.tokenState1)
-        );
-    }
-
-    function getLPTStatus(bytes32 _rangeId)
-        external
-        view
-        returns (
-            uint256,
-            uint256,
-            uint256
-        )
-    {
-        return LPTStateLib.getPerpStatus(context, ranges[_rangeId]);
+    function getTokenState() external view returns (BaseToken.TokenState memory, BaseToken.TokenState memory) {
+        return (context.tokenState0, context.tokenState1);
     }
 
     /**

@@ -61,7 +61,7 @@ contract InterestCalculatorTest is TestDeployer, Test {
 
     function testApplyInterest() public {
         // deposit token
-        BaseToken.addCollateral(context.tokenState0, balance0, 1e18, true);
+        BaseToken.addAsset(context.tokenState0, balance0, 1e18, true);
         // borrow token
         BaseToken.addDebt(context.tokenState0, balance0, 1e17, true);
 

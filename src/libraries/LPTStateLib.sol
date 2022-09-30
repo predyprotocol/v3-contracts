@@ -27,7 +27,7 @@ library LPTStateLib {
         return keccak256(abi.encode(_lower, _upper));
     }
 
-    function getPerpStatus(DataType.Context memory _context, DataType.PerpStatus storage _perpState)
+    function getPerpStatus(address _positionManager, DataType.PerpStatus memory _perpState)
         internal
         view
         returns (
@@ -37,37 +37,38 @@ library LPTStateLib {
         )
     {
         return (
-            getTotalLiquidityAmount(_context, _perpState),
+            getTotalLiquidityAmount(_positionManager, _perpState),
             _perpState.borrowedLiquidity,
-            getPerpUR(_context, _perpState)
+            getPerpUR(_positionManager, _perpState)
         );
     }
 
-    function getPerpUR(DataType.Context memory _context, DataType.PerpStatus storage _perpState)
+    function getPerpUR(address _positionManager, DataType.PerpStatus memory _perpState)
         internal
         view
         returns (uint256)
     {
-        return PredyMath.mulDiv(_perpState.borrowedLiquidity, 1e18, getTotalLiquidityAmount(_context, _perpState));
+        return
+            PredyMath.mulDiv(_perpState.borrowedLiquidity, 1e18, getTotalLiquidityAmount(_positionManager, _perpState));
     }
 
-    function getAvailableLiquidityAmount(DataType.Context memory _context, DataType.PerpStatus memory _perpState)
+    function getAvailableLiquidityAmount(address _positionManager, DataType.PerpStatus memory _perpState)
         internal
         view
         returns (uint256)
     {
-        (, , , , , , , uint128 liquidity, , , , ) = INonfungiblePositionManager(_context.positionManager).positions(
+        (, , , , , , , uint128 liquidity, , , , ) = INonfungiblePositionManager(_positionManager).positions(
             _perpState.tokenId
         );
 
         return liquidity;
     }
 
-    function getTotalLiquidityAmount(DataType.Context memory _context, DataType.PerpStatus memory _perpState)
+    function getTotalLiquidityAmount(address _positionManager, DataType.PerpStatus memory _perpState)
         internal
         view
         returns (uint256)
     {
-        return getAvailableLiquidityAmount(_context, _perpState) + _perpState.borrowedLiquidity;
+        return getAvailableLiquidityAmount(_positionManager, _perpState) + _perpState.borrowedLiquidity;
     }
 }
