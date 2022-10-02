@@ -189,7 +189,16 @@ library BaseToken {
         pure
         returns (uint256)
     {
-        return ((tokenState.assetGrowth.sub(accountState.lastAssetGrowth)) * accountState.assetAmount) / 1e18;
+        if (accountState.interestType != InterestType.NORMAL) {
+            return 0;
+        }
+
+        return
+            PredyMath.mulDiv(
+                tokenState.assetGrowth.sub(accountState.lastAssetGrowth),
+                accountState.assetAmount,
+                Constants.ONE
+            );
     }
 
     function getDebtFee(TokenState memory tokenState, AccountState memory accountState)
@@ -197,7 +206,16 @@ library BaseToken {
         pure
         returns (uint256)
     {
-        return ((tokenState.debtGrowth.sub(accountState.lastDebtGrowth)) * accountState.debtAmount) / 1e18;
+        if (accountState.interestType != InterestType.NORMAL) {
+            return 0;
+        }
+
+        return
+            PredyMath.mulDiv(
+                tokenState.debtGrowth.sub(accountState.lastDebtGrowth),
+                accountState.debtAmount,
+                Constants.ONE
+            );
     }
 
     // get collateral value
