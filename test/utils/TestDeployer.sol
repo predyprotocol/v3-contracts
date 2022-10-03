@@ -5,6 +5,7 @@ pragma abicoder v2;
 import "./BaseTestHelper.sol";
 import "../../src/ControllerHelper.sol";
 import "../../src/Reader.sol";
+import "../../src/VaultNFT.sol";
 import "../../src/mocks/MockERC20.sol";
 import "../../src/libraries/DataType.sol";
 import {NonfungiblePositionManager} from "v3-periphery/NonfungiblePositionManager.sol";
@@ -52,8 +53,19 @@ abstract contract TestDeployer is BaseTestHelper {
             true
         );
 
+        VaultNFT vaultNFT = new VaultNFT("", "", "");
+
         controller = new ControllerHelper();
-        controller.initialize(initializationParam, address(positionManager), factory, address(swapRouter));
+
+        controller.initialize(
+            initializationParam,
+            address(positionManager),
+            factory,
+            address(swapRouter),
+            address(vaultNFT)
+        );
+
+        vaultNFT.init(address(controller));
 
         reader = new Reader(controller);
 

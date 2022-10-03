@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/math/SignedSafeMath.sol";
 import {TransferHelper} from "@uniswap/v3-periphery/libraries/TransferHelper.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "./interfaces/IController.sol";
+import {IVaultNFT} from "./interfaces/IVaultNFT.sol";
 import {BaseToken} from "./libraries/BaseToken.sol";
 import "./libraries/DataType.sol";
 import "./libraries/VaultLib.sol";
@@ -34,8 +35,6 @@ contract Controller is IController, Initializable {
 
     mapping(bytes32 => DataType.PerpStatus) internal ranges;
 
-    uint256 internal vaultIdCount;
-
     mapping(uint256 => DataType.Vault) internal vaults;
     mapping(uint256 => DataType.SubVault) internal subVaults;
 
@@ -45,16 +44,13 @@ contract Controller is IController, Initializable {
 
     address public operator;
 
+    address private vaultNFT;
+
     event VaultCreated(uint256 vaultId, address owner);
     event PositionUpdated(uint256 vaultId, int256 a0, int256 a1, uint160 sqrtPrice, bytes metadata);
 
     modifier onlyOperator() {
         require(operator == msg.sender, "caller must be operator");
-        _;
-    }
-
-    modifier onlyVaultOwner(uint256 _vaultId) {
-        require(vaults[_vaultId].owner == msg.sender, "P1");
         _;
     }
 
@@ -64,7 +60,8 @@ contract Controller is IController, Initializable {
         DataType.InitializationParams memory _initializationParams,
         address _positionManager,
         address _factory,
-        address _swapRouter
+        address _swapRouter,
+        address _vaultNFT
     ) public initializer {
         context.feeTier = _initializationParams.feeTier;
         context.token0 = _initializationParams.token0;
@@ -81,7 +78,8 @@ contract Controller is IController, Initializable {
 
         context.uniswapPool = PoolAddress.computeAddress(_factory, poolKey);
 
-        vaultIdCount = 1;
+        vaultNFT = _vaultNFT;
+
         context.nextSubVaultId = 1;
 
         ERC20(context.token0).approve(address(_positionManager), type(uint256).max);
@@ -221,7 +219,6 @@ contract Controller is IController, Initializable {
         returns (
             bool,
             uint256,
-            uint256,
             address,
             address,
             uint256,
@@ -230,7 +227,6 @@ contract Controller is IController, Initializable {
     {
         return (
             context.isMarginZero,
-            vaultIdCount,
             context.nextSubVaultId,
             context.uniswapPool,
             context.positionManager,
@@ -288,16 +284,15 @@ contract Controller is IController, Initializable {
         returns (uint256 vaultId, DataType.Vault storage)
     {
         if (_vaultId == 0) {
-            vaultId = vaultIdCount;
-            vaultIdCount++;
+            vaultId = IVaultNFT(vaultNFT).mintNFT(msg.sender);
 
             vaults[vaultId].vaultId = vaultId;
-            vaults[vaultId].owner = msg.sender;
 
-            emit VaultCreated(vaultId, vaults[vaultId].owner);
+            emit VaultCreated(vaultId, msg.sender);
         } else {
             vaultId = _vaultId;
-            require(vaults[vaultId].owner == msg.sender || _quoterMode, "P2");
+
+            require(IVaultNFT(vaultNFT).ownerOf(vaultId) == msg.sender || _quoterMode, "P2");
         }
 
         return (vaultId, vaults[vaultId]);

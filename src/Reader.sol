@@ -16,7 +16,7 @@ contract Reader {
     constructor(Controller _controller) {
         controller = _controller;
 
-        (isMarginZero, , , uniswapPool, positionManager, , ) = controller.getContext();
+        (isMarginZero, , uniswapPool, positionManager, , ) = controller.getContext();
     }
 
     function getPrice() public view returns (uint256) {

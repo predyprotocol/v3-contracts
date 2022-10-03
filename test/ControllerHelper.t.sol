@@ -455,11 +455,11 @@ contract ControllerHelperTest is TestDeployer, Test {
             DataType.ClosePositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 100)
         );
 
-        (, , , , , uint256 protocolFee0, uint256 protocolFee1) = controller.getContext();
+        (, , , , uint256 protocolFee0, uint256 protocolFee1) = controller.getContext();
 
         controller.withdrawProtocolFee(protocolFee0, protocolFee1);
 
-        (, , , , , uint256 protocolFee0After, uint256 protocolFee1After) = controller.getContext();
+        (, , , , uint256 protocolFee0After, uint256 protocolFee1After) = controller.getContext();
 
         assertEq(protocolFee0After, 0);
         assertEq(protocolFee1After, 0);

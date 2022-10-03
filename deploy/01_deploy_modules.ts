@@ -1,8 +1,22 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { DeployFunction } from 'hardhat-deploy/types'
 
+const vaultTokenName = 'pVault v202'
+const vaultTokenSymbol = 'PVAULT'
+
+function getVaultTokenBaseURI(network: string) {
+  switch (network) {
+    case 'goerli':
+      return 'https://metadata.predy.finance/goerli/'
+    case 'arbitrum':
+      return 'https://metadata.predy.finance/arbitrum/'
+    default:
+      return undefined
+  }
+}
+
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { deployments, getNamedAccounts, ethers } = hre
+  const { deployments, getNamedAccounts, ethers, network } = hre
   const { deployer } = await getNamedAccounts()
 
   console.log(`Start deploying with ${deployer}`)
@@ -32,6 +46,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       VaultLib: VaultLib.address,
     },
   })
+
+  const baseUri = getVaultTokenBaseURI(network.name)
+  await deploy('VaultNFT', { from: deployer, args: [vaultTokenName, vaultTokenSymbol, baseUri], log: true })
 }
 
 export default func

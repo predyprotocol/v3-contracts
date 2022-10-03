@@ -40,6 +40,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const PositionUpdater = await ethers.getContract('PositionUpdater', deployer)
   const VaultLib = await ethers.getContract('VaultLib', deployer)
   const PositionLib = await ethers.getContract('PositionLib', deployer)
+  const vaultNFT = await ethers.getContract('VaultNFT', deployer)
 
   const result = await deploy('ControllerHelper', {
     from: deployer,
@@ -66,6 +67,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
             uniswapPositionManager,
             uniswapFactoryAddress,
             swapRouterAddress,
+            vaultNFT.address,
           ],
         },
       },
@@ -74,6 +76,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   if (result.newlyDeployed) {
     const controller = await ethers.getContract('ControllerHelper', deployer)
+
+    await vaultNFT.init(controller.address)
 
     await controller.updateIRMParams({
       baseRate: '5000000000000000',
