@@ -34,9 +34,9 @@ library PositionUpdater {
     using LPTStateLib for DataType.PerpStatus;
 
     event TokenDeposited(uint256 indexed subVaultId, uint256 amount0, uint256 amount1);
-    event TokenWithdrawn(uint256 indexed subVaultId, uint256 amount0, uint256 amount1);
+    event TokenWithdrawn(uint256 indexed subVaultId, uint256 amount0, uint256 amount1, int256 fee0, int256 fee1);
     event TokenBorrowed(uint256 indexed subVaultId, uint256 amount0, uint256 amount1);
-    event TokenRepaid(uint256 indexed subVaultId, uint256 amount0, uint256 amount1);
+    event TokenRepaid(uint256 indexed subVaultId, uint256 amount0, uint256 amount1, int256 fee0, int256 fee1);
     event LPTDeposited(
         uint256 indexed subVaultId,
         bytes32 rangeId,
@@ -49,10 +49,20 @@ library PositionUpdater {
         bytes32 rangeId,
         uint128 liquidity,
         uint256 amount0,
-        uint256 amount1
+        uint256 amount1,
+        int256 fee0,
+        int256 fee1
     );
     event LPTBorrowed(uint256 indexed subVaultId, bytes32 rangeId, uint128 liquidity, uint256 amount0, uint256 amount1);
-    event LPTRepaid(uint256 indexed subVaultId, bytes32 rangeId, uint128 liquidity, uint256 amount0, uint256 amount1);
+    event LPTRepaid(
+        uint256 indexed subVaultId,
+        bytes32 rangeId,
+        uint128 liquidity,
+        uint256 amount0,
+        uint256 amount1,
+        int256 fee0,
+        int256 fee1
+    );
     event TokenSwap(
         uint256 indexed vaultId,
         uint256 subVaultId,
@@ -61,7 +71,6 @@ library PositionUpdater {
         uint256 destAmount
     );
     event MarginUpdated(uint256 indexed vaultId, int256 marginAmount0, int256 marginAmount1);
-    event FeeUpdated(uint256 indexed subVaultId, int256 fee0, int256 fee1);
 
     /**
      * @notice update position and return required token amounts.
@@ -297,11 +306,7 @@ library PositionUpdater {
         (withdrawAmount0, assetFee0) = _context.tokenState0.removeAsset(_subVault.balance0, _positionUpdate.param0);
         (withdrawAmount1, assetFee1) = _context.tokenState1.removeAsset(_subVault.balance1, _positionUpdate.param1);
 
-        if (assetFee0 > 0 || assetFee1 > 0) {
-            emit FeeUpdated(_subVault.id, int256(assetFee0), int256(assetFee1));
-        }
-
-        emit TokenWithdrawn(_subVault.id, withdrawAmount0, withdrawAmount1);
+        emit TokenWithdrawn(_subVault.id, withdrawAmount0, withdrawAmount1, int256(assetFee0), int256(assetFee1));
 
         withdrawAmount0 = withdrawAmount0.add(assetFee0);
         withdrawAmount1 = withdrawAmount1.add(assetFee1);
@@ -329,11 +334,7 @@ library PositionUpdater {
         (requiredAmount0, debtFee0) = _context.tokenState0.removeDebt(_subVault.balance0, _positionUpdate.param0);
         (requiredAmount1, debtFee1) = _context.tokenState1.removeDebt(_subVault.balance1, _positionUpdate.param1);
 
-        if (debtFee0 > 0 || debtFee1 > 0) {
-            emit FeeUpdated(_subVault.id, -int256(debtFee0), -int256(debtFee1));
-        }
-
-        emit TokenRepaid(_subVault.id, requiredAmount0, requiredAmount1);
+        emit TokenRepaid(_subVault.id, requiredAmount0, requiredAmount1, -int256(debtFee0), -int256(debtFee1));
 
         requiredAmount0 = requiredAmount0.add(debtFee0);
         requiredAmount1 = requiredAmount1.add(debtFee1);
@@ -394,22 +395,17 @@ library PositionUpdater {
         DataType.Context memory _context,
         mapping(bytes32 => DataType.PerpStatus) storage _ranges,
         DataType.PositionUpdate memory _positionUpdate
-    ) internal returns (uint256 totalWithdrawAmount0, uint256 totalWithdrawAmount1) {
+    ) internal returns (uint256 withdrawAmount0, uint256 withdrawAmount1) {
         bytes32 rangeId = LPTStateLib.getRangeKey(_positionUpdate.lowerTick, _positionUpdate.upperTick);
 
         {
-            (uint256 withdrawAmount0, uint256 withdrawAmount1) = decreaseLiquidityFromUni(
+            (withdrawAmount0, withdrawAmount1) = decreaseLiquidityFromUni(
                 _context,
                 _ranges[rangeId],
                 _positionUpdate.liquidity,
                 _positionUpdate.param0,
                 _positionUpdate.param1
             );
-
-            totalWithdrawAmount0 = totalWithdrawAmount0.add(withdrawAmount0);
-            totalWithdrawAmount1 = totalWithdrawAmount1.add(withdrawAmount1);
-
-            emit LPTWithdrawn(_subVault.id, rangeId, _positionUpdate.liquidity, withdrawAmount0, withdrawAmount1);
         }
 
         {
@@ -420,10 +416,18 @@ library PositionUpdater {
                 _context.isMarginZero
             );
 
-            emit FeeUpdated(_subVault.id, int256(fee0), int256(fee1));
+            emit LPTWithdrawn(
+                _subVault.id,
+                rangeId,
+                _positionUpdate.liquidity,
+                withdrawAmount0,
+                withdrawAmount1,
+                int256(fee0),
+                int256(fee1)
+            );
 
-            totalWithdrawAmount0 = totalWithdrawAmount0.add(fee0);
-            totalWithdrawAmount1 = totalWithdrawAmount1.add(fee1);
+            withdrawAmount0 = withdrawAmount0.add(fee0);
+            withdrawAmount1 = withdrawAmount1.add(fee1);
         }
     }
 
@@ -490,8 +494,6 @@ library PositionUpdater {
             .sub(_positionUpdate.liquidity)
             .toUint128();
 
-        emit LPTRepaid(_subVault.id, rangeId, _positionUpdate.liquidity, requiredAmount0, requiredAmount1);
-
         {
             (uint256 fee0, uint256 fee1) = _subVault.repayLPT(
                 _ranges[rangeId],
@@ -500,7 +502,15 @@ library PositionUpdater {
                 _context.isMarginZero
             );
 
-            emit FeeUpdated(_subVault.id, -int256(fee0), -int256(fee1));
+            emit LPTRepaid(
+                _subVault.id,
+                rangeId,
+                _positionUpdate.liquidity,
+                requiredAmount0,
+                requiredAmount1,
+                -int256(fee0),
+                -int256(fee1)
+            );
 
             requiredAmount0 = requiredAmount0.add(fee0);
             requiredAmount1 = requiredAmount1.add(fee1);
