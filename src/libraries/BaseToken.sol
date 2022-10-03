@@ -245,19 +245,20 @@ library BaseToken {
     }
 
     // update scaler
-    function updateScaler(TokenState storage tokenState, uint256 _interestAmount) internal returns (uint256) {
+    function updateScaler(TokenState storage tokenState, uint256 _interestRate) internal returns (uint256) {
         if (tokenState.totalCompoundDeposited == 0 && tokenState.totalNormalDeposited == 0) {
             return 0;
         }
 
         uint256 protocolFee = PredyMath.mulDiv(
-            PredyMath.mulDiv(_interestAmount, getTotalDebtValue(tokenState), Constants.ONE),
+            PredyMath.mulDiv(_interestRate, getTotalDebtValue(tokenState), Constants.ONE),
             Constants.RESERVE_FACTOR,
             Constants.ONE
         );
 
-        uint256 updateAssetGrowth = PredyMath.mulDiv(
-            PredyMath.mulDiv(_interestAmount, getTotalDebtValue(tokenState), getTotalCollateralValue(tokenState)),
+        // suppry interest rate is InterestRate * Utilization * (1 - ReserveFactor)
+        uint256 suppryInterestRate = PredyMath.mulDiv(
+            PredyMath.mulDiv(_interestRate, getTotalDebtValue(tokenState), getTotalCollateralValue(tokenState)),
             Constants.ONE - Constants.RESERVE_FACTOR,
             Constants.ONE
         );
@@ -265,16 +266,16 @@ library BaseToken {
         // round up
         tokenState.debtScaler = PredyMath.mulDivUp(
             tokenState.debtScaler,
-            (Constants.ONE.add(_interestAmount)),
+            (Constants.ONE.add(_interestRate)),
             Constants.ONE
         );
-        tokenState.debtGrowth = tokenState.debtGrowth.add(_interestAmount);
+        tokenState.debtGrowth = tokenState.debtGrowth.add(_interestRate);
         tokenState.assetScaler = PredyMath.mulDiv(
             tokenState.assetScaler,
-            Constants.ONE + updateAssetGrowth,
+            Constants.ONE + suppryInterestRate,
             Constants.ONE
         );
-        tokenState.assetGrowth = tokenState.assetGrowth.add(updateAssetGrowth);
+        tokenState.assetGrowth = tokenState.assetGrowth.add(suppryInterestRate);
 
         return protocolFee;
     }
