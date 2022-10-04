@@ -184,13 +184,13 @@ contract InterestCalculatorTest is TestDeployer, Test {
         assertEq(dailyPremium, 88000000000000000);
     }
 
-    function testCalculateStableValueMargin0Fuzz(uint256 _sqrtPrice) public {
+    function testCalculateValueByStableTokenMargin0Fuzz(uint256 _sqrtPrice) public {
         uint160 sqrtPrice = uint160(bound(_sqrtPrice, 1e18, 1e40));
 
         int24 lower = 202000;
         int24 upper = 203000;
 
-        uint256 premium = InterestCalculator.calculateStableValue(true, 16 * 1e16, 0, sqrtPrice, lower, upper);
+        uint256 premium = InterestCalculator.calculateValueByStableToken(true, 16 * 1e16, 0, sqrtPrice, lower, upper);
 
         assertGt(premium, 0);
     }
@@ -201,16 +201,16 @@ contract InterestCalculatorTest is TestDeployer, Test {
         int24 lower = -203000;
         int24 upper = -202000;
 
-        uint256 premium = InterestCalculator.calculateStableValue(false, 16 * 1e16, 0, sqrtPrice, lower, upper);
+        uint256 premium = InterestCalculator.calculateValueByStableToken(false, 16 * 1e16, 0, sqrtPrice, lower, upper);
 
         assertGt(premium, 0);
     }
 
-    function testCalculateStableValueMargin0() public {
+    function testCalculateValueByStableTokenMargin0() public {
         int24 lower = 202000;
         int24 upper = 203000;
 
-        uint256 premium = InterestCalculator.calculateStableValue(
+        uint256 premium = InterestCalculator.calculateValueByStableToken(
             true,
             16 * 1e16,
             0,
@@ -230,11 +230,11 @@ contract InterestCalculatorTest is TestDeployer, Test {
         assertEq((liquidityForOne * premium) / 1e18, 5014712906);
     }
 
-    function testCalculateStableValueMargin1() public {
+    function testCalculateValueByStableTokenMargin1() public {
         int24 lower = -203000;
         int24 upper = -202000;
 
-        uint256 premium = InterestCalculator.calculateStableValue(
+        uint256 premium = InterestCalculator.calculateValueByStableToken(
             false,
             16 * 1e16,
             0,
@@ -254,11 +254,11 @@ contract InterestCalculatorTest is TestDeployer, Test {
         assertEq((liquidityForOne * premium) / 1e18, 5014712906);
     }
 
-    function testCalculateStableValueMarginDAI() public {
+    function testCalculateValueByStableTokenMarginDAI() public {
         int24 lower = -74320;
         int24 upper = -73320;
 
-        uint256 premium = InterestCalculator.calculateStableValue(
+        uint256 premium = InterestCalculator.calculateValueByStableToken(
             true,
             16 * 1e16,
             0,
@@ -278,11 +278,11 @@ contract InterestCalculatorTest is TestDeployer, Test {
         assertEq((liquidityForOne * premium) / 1e18, 5012694270960490914000);
     }
 
-    function testCalculateStableValue2() public {
+    function testCalculateValueByStableToken2() public {
         int24 lower = 202000;
         int24 upper = 203000;
 
-        uint256 interestPerl = InterestCalculator.calculateStableValue(
+        uint256 interestPerl = InterestCalculator.calculateValueByStableToken(
             true,
             0,
             5 * 1e16,

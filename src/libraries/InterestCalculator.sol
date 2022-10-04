@@ -15,8 +15,6 @@ import "./LPTMath.sol";
 import "./LPTStateLib.sol";
 import "./Constants.sol";
 
-import "forge-std/console.sol";
-
 library InterestCalculator {
     using SafeMath for uint256;
     using SafeCast for uint256;
@@ -168,7 +166,7 @@ library InterestCalculator {
             uint256 perpUr = LPTStateLib.getPerpUR(_context.positionManager, _perpState);
 
             return
-                calculateStableValue(
+                calculateValueByStableToken(
                     _context.isMarginZero,
                     calculateRangeVariance(
                         _params,
@@ -187,10 +185,10 @@ library InterestCalculator {
         return 0;
     }
 
-    function calculateStableValue(
+    function calculateValueByStableToken(
         bool _isMarginZero,
         uint256 _variance,
-        uint256 _ratio,
+        uint256 _interestRate,
         uint160 _sqrtPrice,
         int24 _lowerTick,
         int24 _upperTick
@@ -211,7 +209,7 @@ library InterestCalculator {
         }
 
         // value (usd/liquidity)
-        value = value.mul(_ratio).div(1e18);
+        value = value.mul(_interestRate).div(1e18);
 
         // premium = (value of virtual liquidity) * variance / L
         // where `(value of virtual liquidity) = 2 * L * sqrt{price}` and `L = 1e18`.
