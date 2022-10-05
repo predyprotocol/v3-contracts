@@ -17,6 +17,10 @@ contract ControllerHelper is Controller {
 
     /**
      * @notice Opens new position.
+     * @param _vaultId The id of the vault. 0 means that it creates new vault.
+     * @param _position Position to open
+     * @param _tradeOption Trade parameters
+     * @param _openPositionOptions Option parameters to open position
      */
     function openPosition(
         uint256 _vaultId,
@@ -45,6 +49,9 @@ contract ControllerHelper is Controller {
 
     /**
      * @notice Closes all positions in a vault.
+     * @param _vaultId The id of the vault
+     * @param _tradeOption Trade parameters
+     * @param _closePositionOptions Option parameters to close position
      */
     function closeVault(
         uint256 _vaultId,
@@ -58,6 +65,10 @@ contract ControllerHelper is Controller {
 
     /**
      * @notice Closes all positions in sub-vault.
+     * @param _vaultId The id of the vault
+     * @param _subVaultIndex The index of the sub-vault
+     * @param _tradeOption Trade parameters
+     * @param _closePositionOptions Option parameters to close position
      */
     function closeSubVault(
         uint256 _vaultId,
@@ -76,6 +87,10 @@ contract ControllerHelper is Controller {
 
     /**
      * @notice Closes position partially.
+     * @param _vaultId The id of the vault
+     * @param _positions Positions to close
+     * @param _tradeOption Trade parameters
+     * @param _closePositionOptions Option parameters to close position
      */
     function closePosition(
         uint256 _vaultId,
@@ -98,6 +113,8 @@ contract ControllerHelper is Controller {
 
     /**
      * @notice Liquidates a vault.
+     * @param _vaultId The id of the vault
+     * @param _liquidationOption option parameters for liquidation call
      */
     function liquidate(uint256 _vaultId, DataType.LiquidationOption memory _liquidationOption) external {
         applyInterest();

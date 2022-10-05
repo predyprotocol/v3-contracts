@@ -15,6 +15,10 @@ import "./LPTMath.sol";
 import "./LPTStateLib.sol";
 import "./Constants.sol";
 
+/**
+ * @title InterestCalculator library
+ * @notice Implements the base logic calculating interest rate and premium.
+ */
 library InterestCalculator {
     using SafeMath for uint256;
     using SafeCast for uint256;

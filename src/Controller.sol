@@ -95,15 +95,31 @@ contract Controller is IController, Initializable {
         operator = msg.sender;
     }
 
+    /**
+     * @notice Sets new operator
+     * @dev Only operator can call this function.
+     * @param _newOperator The address of new operator
+     */
     function setOperator(address _newOperator) external onlyOperator {
         require(_newOperator != address(0));
         operator = _newOperator;
     }
 
+    /**
+     * @notice Updates interest rate model parameter.
+     * @dev Only operator can call this function.
+     * @param _irmParams New interest rate model parameter
+     */
     function updateIRMParams(InterestCalculator.IRMParams memory _irmParams) external onlyOperator {
         irmParams = _irmParams;
     }
 
+    /**
+     * @notice Updates interest rate model parameters for premium calculation.
+     * @dev Only operator can call this function.
+     * @param _irmParams New interest rate model parameter
+     * @param _premiumParams New interest rate model parameter for variance calculation
+     */
     function updateYearlyPremiumParams(
         InterestCalculator.IRMParams memory _irmParams,
         InterestCalculator.IRMParams memory _premiumParams
@@ -112,6 +128,12 @@ contract Controller is IController, Initializable {
         ypParams.premiumParams = _premiumParams;
     }
 
+    /**
+     * @notice Withdraws accumulated protocol fee.
+     * @dev Only operator can call this function.
+     * @param _amount0 amount of token0 to withdraw
+     * @param _amount1 amount of token1 to withdraw
+     */
     function withdrawProtocolFee(uint256 _amount0, uint256 _amount1) external onlyOperator {
         require(context.accumuratedProtocolFee0 >= _amount0 && context.accumuratedProtocolFee1 >= _amount1, "P8");
 
@@ -121,6 +143,7 @@ contract Controller is IController, Initializable {
         if (_amount0 > 0) {
             TransferHelper.safeTransfer(context.token0, msg.sender, _amount0);
         }
+
         if (_amount1 > 0) {
             TransferHelper.safeTransfer(context.token1, msg.sender, _amount1);
         }
@@ -130,8 +153,9 @@ contract Controller is IController, Initializable {
 
     /**
      * @notice Update position in a vault.
-     * @param _vaultId vault id
-     * @param _positionUpdates parameters to update position
+     * @param _vaultId The id of the vault. 0 means that it creates new vault.
+     * @param _positionUpdates Operation list to update position
+     * @param _tradeOption trade parameters
      */
     function updatePosition(
         uint256 _vaultId,
@@ -185,8 +209,8 @@ contract Controller is IController, Initializable {
 
     /**
      * @notice Anyone can liquidates the vault if its vault value is less than Min. Deposit.
-     * @param _vaultId vault id
-     * @param _positionUpdates parameters to update position
+     * @param _vaultId The id of the vault
+     * @param _positionUpdates Operation list to update position
      */
     function liquidate(uint256 _vaultId, DataType.PositionUpdate[] memory _positionUpdates) internal {
         applyPerpFee(_vaultId, _positionUpdates);
@@ -196,7 +220,7 @@ contract Controller is IController, Initializable {
 
     /**
      * @notice Contract owner can close positions
-     * @param _data vaults data to close position
+     * @param _data Vaults data to close position
      */
     function forceClose(bytes[] memory _data) external onlyOperator {
         for (uint256 i = 0; i < _data.length; i++) {
@@ -235,10 +259,17 @@ contract Controller is IController, Initializable {
         );
     }
 
+    /**
+     * @notice Returns a Liquidity Provider Token (LPT) data
+     * @param _rangeId The id of the LPT
+     */
     function getRange(bytes32 _rangeId) external view returns (DataType.PerpStatus memory) {
         return ranges[_rangeId];
     }
 
+    /**
+     * @notice Returns the status of supplied tokens.
+     */
     function getTokenState() external view returns (BaseToken.TokenState memory, BaseToken.TokenState memory) {
         return (context.tokenState0, context.tokenState1);
     }
@@ -246,6 +277,7 @@ contract Controller is IController, Initializable {
     /**
      * @notice Returns the flag whether a vault can be liquidated or not.
      * @param _vaultId vault id
+     * @return isLiquidatable true if the vault is liquidatable, false if the vault is safe.
      */
     function checkLiquidatable(uint256 _vaultId) external returns (bool) {
         applyPerpFee(_vaultId);
@@ -254,8 +286,8 @@ contract Controller is IController, Initializable {
     }
 
     /**
-     * @notice Returns asset value and debt value.
-     * @param _vaultId vault id
+     * @notice Returns values and token amounts of the vault.
+     * @param _vaultId The id of the vault
      */
     function getVaultStatus(uint256 _vaultId) external returns (DataType.VaultStatus memory) {
         uint160 sqrtPriceX96 = getSqrtPrice();
@@ -265,14 +297,28 @@ contract Controller is IController, Initializable {
         return vaults[_vaultId].getVaultStatus(subVaults, ranges, context, sqrtPriceX96);
     }
 
+    /**
+     * @notice Returns a vault data
+     * @param _vaultId The id of the vault
+     */
     function getVault(uint256 _vaultId) external view returns (DataType.Vault memory) {
         return vaults[_vaultId];
     }
 
+    /**
+     * @notice Returns a sub-vault data
+     * @param _subVaultId The id of the sub-vault
+     */
     function getSubVault(uint256 _subVaultId) external view returns (DataType.SubVault memory) {
         return subVaults[_subVaultId];
     }
 
+    /**
+     * @notice Returns yearly premium to borrow Liquidity Provider Token (LPT).
+     * The function can return yearly premium with specific utilization ratio.
+     * @param _rangeId The id of the range
+     * @param _utilizationRatio Utilization ratio of LPT
+     */
     function calculateYearlyPremium(bytes32 _rangeId, uint256 _utilizationRatio) external view returns (uint256) {
         if (ranges[_rangeId].tokenId == 0) {
             return 0;

@@ -9,6 +9,10 @@ import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import "./DataType.sol";
 import "./LPTMath.sol";
 
+/**
+ * @title PositionCalculator library
+ * @notice Implements the base logic calculating Min. Deposit and value of positions.
+ */
 library PositionCalculator {
     using SafeMath for uint256;
     using SignedSafeMath for int256;

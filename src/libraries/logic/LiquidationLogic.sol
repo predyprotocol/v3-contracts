@@ -11,6 +11,10 @@ import "../PositionLib.sol";
 import "../PositionCalculator.sol";
 import "../PositionUpdater.sol";
 
+/**
+ * @title LiquidationLogic library
+ * @notice Implements the base logic for all the actions related to liquidation call.
+ */
 library LiquidationLogic {
     uint256 internal constant ORACLE_PERIOD = 10 minutes;
 
@@ -37,10 +41,10 @@ library LiquidationLogic {
             _context
         );
 
-        // check liquidation
+        // check that the vault is liquidatable
         require(_checkLiquidatable(_context, _params, sqrtPrice), "L0");
 
-        // calculate penalty
+        // calculate debt value to calculate penalty amount
         (, , uint256 debtValue) = PositionCalculator.calculateCollateralAndDebtValue(
             _params,
             sqrtPrice,
@@ -48,7 +52,7 @@ library LiquidationLogic {
             false
         );
 
-        // close position
+        // close all positions in the vault
         uint256 penaltyAmount = reducePosition(
             _vault,
             _subVaults,
@@ -59,6 +63,7 @@ library LiquidationLogic {
             debtValue / 200
         );
 
+        // check that all debts are repaid
         require(VaultLib.isDebtZero(_vault, _subVaults, _context), "L1");
 
         sendReward(_context, msg.sender, penaltyAmount);

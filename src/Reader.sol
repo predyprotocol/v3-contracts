@@ -7,28 +7,47 @@ import "./libraries/BaseToken.sol";
 import "./libraries/LPTMath.sol";
 import "./libraries/PositionCalculator.sol";
 
+/**
+ * @title Reader contract
+ * @notice Reader contract with an controller
+ **/
 contract Reader {
     Controller public controller;
     bool public isMarginZero;
     address public uniswapPool;
     address public positionManager;
 
+    /**
+     * @notice Reader constructor
+     * @param _controller controller address
+     */
     constructor(Controller _controller) {
         controller = _controller;
 
         (isMarginZero, , uniswapPool, positionManager, , ) = controller.getContext();
     }
 
+    /**
+     * @notice Gets current underlying asset price.
+     * @return price
+     **/
     function getPrice() public view returns (uint256) {
         return LPTMath.decodeSqrtPriceX96(isMarginZero, controller.getSqrtPrice());
     }
 
+    /**
+     * @notice Gets time weighted average price of underlying asset.
+     * @return twap
+     **/
     function getTWAP() external view returns (uint256) {
         uint160 sqrtPrice = LiquidationLogic.getSqrtTWAP(uniswapPool);
 
         return LPTMath.decodeSqrtPriceX96(isMarginZero, sqrtPrice);
     }
 
+    /**
+     * @notice Gets asset status
+     **/
     function getAssetStatus()
         external
         view
@@ -53,6 +72,9 @@ contract Reader {
         );
     }
 
+    /**
+     * @notice Gets liquidity provider token status
+     **/
     function getLPTStatus(bytes32 _rangeId)
         external
         view
