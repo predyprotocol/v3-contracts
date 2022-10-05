@@ -273,12 +273,19 @@ contract Controller is IController, Initializable {
         return subVaults[_subVaultId];
     }
 
-    function calculateYearlyPremium(bytes32 _rangeId) external view returns (uint256) {
+    function calculateYearlyPremium(bytes32 _rangeId, uint256 _utilizationRatio) external view returns (uint256) {
         if (ranges[_rangeId].tokenId == 0) {
             return 0;
         }
 
-        return InterestCalculator.calculateYearlyPremium(ypParams, context, ranges[_rangeId], getSqrtPrice());
+        return
+            InterestCalculator.calculateYearlyPremium(
+                ypParams,
+                context,
+                ranges[_rangeId],
+                getSqrtPrice(),
+                _utilizationRatio
+            );
     }
 
     // Private Functions

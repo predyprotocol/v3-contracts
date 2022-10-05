@@ -120,8 +120,10 @@ library InterestCalculator {
         }
 
         if (_perpState.borrowedLiquidity > 0) {
+            uint256 perpUr = LPTStateLib.getPerpUR(_context.positionManager, _perpState);
+
             uint256 premium = ((block.timestamp - _perpState.lastTouchedTimestamp) *
-                calculateYearlyPremium(_params, _context, _perpState, _sqrtPrice)) / 365 days;
+                calculateYearlyPremium(_params, _context, _perpState, _sqrtPrice, perpUr)) / 365 days;
 
             _perpState.premiumGrowthForBorrower = _perpState.premiumGrowthForBorrower.add(premium);
 
@@ -160,29 +162,24 @@ library InterestCalculator {
         YearlyPremiumParams storage _params,
         DataType.Context memory _context,
         DataType.PerpStatus storage _perpState,
-        uint160 _sqrtPrice
+        uint160 _sqrtPrice,
+        uint256 _perpUr
     ) internal view returns (uint256) {
-        if (_perpState.borrowedLiquidity > 0) {
-            uint256 perpUr = LPTStateLib.getPerpUR(_context.positionManager, _perpState);
-
-            return
-                calculateValueByStableToken(
-                    _context.isMarginZero,
-                    calculateRangeVariance(
-                        _params,
-                        IUniswapV3Pool(_context.uniswapPool),
-                        _perpState.lowerTick,
-                        _perpState.upperTick,
-                        perpUr
-                    ),
-                    calculateInterestRate(_params.irmParams, perpUr),
-                    _sqrtPrice,
+        return
+            calculateValueByStableToken(
+                _context.isMarginZero,
+                calculateRangeVariance(
+                    _params,
+                    IUniswapV3Pool(_context.uniswapPool),
                     _perpState.lowerTick,
-                    _perpState.upperTick
-                );
-        }
-
-        return 0;
+                    _perpState.upperTick,
+                    _perpUr
+                ),
+                calculateInterestRate(_params.irmParams, _perpUr),
+                _sqrtPrice,
+                _perpState.lowerTick,
+                _perpState.upperTick
+            );
     }
 
     function calculateValueByStableToken(
