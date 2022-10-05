@@ -438,7 +438,8 @@ contract PositionUpdaterTest is TestDeployer, Test {
         DataType.PositionUpdate memory positionUpdate = PositionUpdater.swapAnyway(
             requiredAmount0,
             requiredAmount1,
-            context.isMarginZero
+            context.isMarginZero,
+            500
         );
 
         assertEq(uint256(positionUpdate.positionUpdateType), uint256(DataType.PositionUpdateType.SWAP_EXACT_OUT));
@@ -454,7 +455,8 @@ contract PositionUpdaterTest is TestDeployer, Test {
         DataType.PositionUpdate memory positionUpdate = PositionUpdater.swapAnyway(
             requiredAmount0,
             requiredAmount1,
-            context.isMarginZero
+            context.isMarginZero,
+            500
         );
 
         assertEq(uint256(positionUpdate.positionUpdateType), uint256(DataType.PositionUpdateType.SWAP_EXACT_IN));
@@ -470,7 +472,8 @@ contract PositionUpdaterTest is TestDeployer, Test {
         DataType.PositionUpdate memory positionUpdate = PositionUpdater.swapAnyway(
             requiredAmount0,
             requiredAmount1,
-            context.isMarginZero
+            context.isMarginZero,
+            500
         );
 
         assertEq(uint256(positionUpdate.positionUpdateType), uint256(DataType.PositionUpdateType.SWAP_EXACT_IN));
@@ -486,7 +489,8 @@ contract PositionUpdaterTest is TestDeployer, Test {
         DataType.PositionUpdate memory positionUpdate = PositionUpdater.swapAnyway(
             requiredAmount0,
             requiredAmount1,
-            context.isMarginZero
+            context.isMarginZero,
+            500
         );
 
         assertEq(uint256(positionUpdate.positionUpdateType), uint256(DataType.PositionUpdateType.SWAP_EXACT_OUT));

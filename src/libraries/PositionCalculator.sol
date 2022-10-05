@@ -14,10 +14,10 @@ library PositionCalculator {
     using SignedSafeMath for int256;
 
     uint256 internal constant Q96 = 0x1000000000000000000000000;
-    // sqrt{1.24} = 1.11355287257
-    uint160 internal constant UPPER_E8 = 111355287;
-    // sqrt{1/1.24} = 0.89802651013
-    uint160 internal constant LOWER_E8 = 89802651;
+    // sqrt{1.21} = 1.1
+    uint160 internal constant UPPER_E8 = 110000000;
+    // sqrt{1/1.21} = 0.90909090909
+    uint160 internal constant LOWER_E8 = 90909090;
 
     struct PositionCalculatorParams {
         int256 marginAmount0;

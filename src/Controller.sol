@@ -274,6 +274,10 @@ contract Controller is IController, Initializable {
     }
 
     function calculateYearlyPremium(bytes32 _rangeId) external view returns (uint256) {
+        if (ranges[_rangeId].tokenId == 0) {
+            return 0;
+        }
+
         return InterestCalculator.calculateYearlyPremium(ypParams, context, ranges[_rangeId], getSqrtPrice());
     }
 

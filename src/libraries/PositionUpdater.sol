@@ -151,7 +151,8 @@ library PositionUpdater {
             DataType.PositionUpdate memory positionUpdate = swapAnyway(
                 requiredAmount0,
                 requiredAmount1,
-                _tradeOption.isQuoteZero
+                _tradeOption.isQuoteZero,
+                _context.feeTier
             );
             int256 amount0;
             int256 amount1;
@@ -235,7 +236,8 @@ library PositionUpdater {
     function swapAnyway(
         int256 requiredAmount0,
         int256 requiredAmount1,
-        bool _isQuoteZero
+        bool _isQuoteZero,
+        uint24 _feeTier
     ) internal pure returns (DataType.PositionUpdate memory) {
         bool zeroForOne;
         bool isExactIn;
@@ -266,14 +268,23 @@ library PositionUpdater {
 
         if (isExactIn && amountIn > 0) {
             return
-                DataType.PositionUpdate(DataType.PositionUpdateType.SWAP_EXACT_IN, 0, zeroForOne, 0, 0, 0, amountIn, 0);
+                DataType.PositionUpdate(
+                    DataType.PositionUpdateType.SWAP_EXACT_IN,
+                    0,
+                    zeroForOne,
+                    _feeTier,
+                    0,
+                    0,
+                    amountIn,
+                    0
+                );
         } else if (!isExactIn && amountOut > 0) {
             return
                 DataType.PositionUpdate(
                     DataType.PositionUpdateType.SWAP_EXACT_OUT,
                     0,
                     zeroForOne,
-                    0,
+                    _feeTier,
                     0,
                     0,
                     amountOut,
@@ -525,7 +536,7 @@ library PositionUpdater {
         ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
             tokenIn: _positionUpdate.zeroForOne ? _context.token0 : _context.token1,
             tokenOut: _positionUpdate.zeroForOne ? _context.token1 : _context.token0,
-            fee: _context.feeTier,
+            fee: uint24(_positionUpdate.liquidity),
             recipient: address(this),
             deadline: block.timestamp,
             amountIn: _positionUpdate.param0,
@@ -558,7 +569,7 @@ library PositionUpdater {
         ISwapRouter.ExactOutputSingleParams memory params = ISwapRouter.ExactOutputSingleParams({
             tokenIn: _positionUpdate.zeroForOne ? _context.token0 : _context.token1,
             tokenOut: _positionUpdate.zeroForOne ? _context.token1 : _context.token0,
-            fee: _context.feeTier,
+            fee: uint24(_positionUpdate.liquidity),
             recipient: address(this),
             deadline: block.timestamp,
             amountOut: _positionUpdate.param0,

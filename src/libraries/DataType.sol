@@ -121,19 +121,21 @@ library DataType {
     struct OpenPositionOption {
         uint256 lowerSqrtPrice;
         uint256 upperSqrtPrice;
+        uint24 feeTier;
     }
 
     struct ClosePositionOption {
         uint256 lowerSqrtPrice;
         uint256 upperSqrtPrice;
         uint256 swapRatio;
+        uint24 feeTier;
     }
 
     struct LiquidationOption {
         uint256 lowerSqrtPrice;
         uint256 upperSqrtPrice;
         uint256 swapRatio;
-        bool swapAnyway;
+        uint24 feeTier;
     }
 
     struct SubVaultValue {

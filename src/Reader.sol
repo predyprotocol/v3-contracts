@@ -64,6 +64,10 @@ contract Reader {
     {
         DataType.PerpStatus memory range = controller.getRange(_rangeId);
 
+        if (range.tokenId == 0) {
+            return (0, 0, 0);
+        }
+
         return LPTStateLib.getPerpStatus(positionManager, range);
     }
 

@@ -266,7 +266,7 @@ abstract contract BaseTestHelper {
             _vaultId,
             positions[0],
             DataType.TradeOption(false, false, false, getIsMarginZero(), int256(_margin), -1, EMPTY_METADATA),
-            DataType.OpenPositionOption(getLowerSqrtPrice(), getUpperSqrtPrice())
+            DataType.OpenPositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 500)
         );
     }
 
