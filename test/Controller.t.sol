@@ -174,18 +174,42 @@ contract ControllerTest is TestDeployer, Test {
      *  Test: updatePosition  *
      **************************/
 
+    function testCannotUpdatePositionBecauseVaultIdDoesNotExists() public {
+        (DataType.PositionUpdate[] memory positionUpdates, , ) = createPositionUpdatesForDepositLPT();
+
+        bool isMarginZero = getIsMarginZero();
+
+        vm.expectRevert(bytes("ERC721: owner query for nonexistent token"));
+        controller.updatePosition(
+            1000,
+            positionUpdates,
+            DataType.TradeOption(false, false, false, isMarginZero, -1, -1, EMPTY_METADATA)
+        );
+    }
+
     function testDepositLPT() public {
-        (
-            DataType.PositionUpdate[] memory positionUpdates,
-            uint256 amount0,
-            uint256 amount1
-        ) = createPositionUpdatesForDepositLPT();
+        (DataType.PositionUpdate[] memory positionUpdates, , ) = createPositionUpdatesForDepositLPT();
 
         controller.updatePosition(
             0,
             positionUpdates,
             DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1, EMPTY_METADATA)
         );
+    }
+
+    function testDepositLPTOnExistentVault() public {
+        (DataType.PositionUpdate[] memory positionUpdates, , ) = createPositionUpdatesForDepositLPT();
+
+        controller.updatePosition(
+            lpVaultId,
+            positionUpdates,
+            DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1, EMPTY_METADATA)
+        );
+
+        DataType.Vault memory vault = controller.getVault(lpVaultId);
+        DataType.SubVault memory subVault = controller.getSubVault(vault.subVaults[0]);
+
+        assertEq(subVault.lpts.length, 2);
     }
 
     function testWithdrawLPT() public {
