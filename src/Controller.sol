@@ -5,6 +5,7 @@ pragma abicoder v2;
 import {Initializable} from "@openzeppelin/contracts/proxy/Initializable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/math/SignedSafeMath.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {TransferHelper} from "@uniswap/v3-periphery/libraries/TransferHelper.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "./interfaces/IController.sol";
@@ -26,7 +27,7 @@ import "./libraries/Constants.sol";
  * P3: must not be liquidatable
  * P4: must be liquidatable
  */
-contract Controller is IController, Initializable {
+contract Controller is IController, Initializable, ReentrancyGuard {
     using BaseToken for BaseToken.TokenState;
     using SignedSafeMath for int256;
     using VaultLib for DataType.Vault;
@@ -164,6 +165,7 @@ contract Controller is IController, Initializable {
     )
         public
         override
+        nonReentrant
         returns (
             uint256 vaultId,
             int256 requiredAmount0,
@@ -212,7 +214,7 @@ contract Controller is IController, Initializable {
      * @param _vaultId The id of the vault
      * @param _positionUpdates Operation list to update position
      */
-    function liquidate(uint256 _vaultId, DataType.PositionUpdate[] memory _positionUpdates) internal {
+    function liquidate(uint256 _vaultId, DataType.PositionUpdate[] memory _positionUpdates) internal nonReentrant {
         applyPerpFee(_vaultId, _positionUpdates);
 
         LiquidationLogic.execLiquidation(vaults[_vaultId], subVaults, _positionUpdates, context, ranges);
