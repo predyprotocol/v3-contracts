@@ -54,6 +54,12 @@ contract OptionMarket is ERC20, IERC721Receiver {
         uint256 premium;
     }
 
+    struct OptionTradeParams {
+        bool isPut;
+        bool isLong;
+        bool isOpen;
+    }
+
     uint256 public vaultId;
 
     uint256 private strikeCount;
@@ -85,7 +91,12 @@ contract OptionMarket is ERC20, IERC721Receiver {
         boardCount = 1;
     }
 
-    function onERC721Received(address operator, address from, uint256 tokenId, bytes calldata data) external override returns (bytes4) {
+    function onERC721Received(
+        address operator,
+        address from,
+        uint256 tokenId,
+        bytes calldata data
+    ) external override returns (bytes4) {
         return this.onERC721Received.selector;
     }
 
@@ -182,26 +193,14 @@ contract OptionMarket is ERC20, IERC721Receiver {
             bytes("")
         );
 
-        DataType.OpenPositionOption memory openPositionOption = DataType.OpenPositionOption(
-            0,
-            type(uint256).max,
-            500
-        );
+        // cover
+        (uint256 premium, int256 requiredAmount) = _trade(_strikeId, int256(_amount), tradeOption, _isPut);
 
         if (_isPut) {
             strikes[_strikeId].putPositionAmount += int256(_amount);
         } else {
             strikes[_strikeId].callPositionAmount += int256(_amount);
         }
-
-        // cover
-        (uint256 premium, int256 requiredAmount) = _buy(
-            _strikeId,
-            getPredyPosition(_strikeId, _amount, _isPut),
-            tradeOption,
-            openPositionOption,
-            _isPut
-        );
 
         boards[strikes[_strikeId].boardId].unrealizedProfit += int256(premium) - requiredAmount;
 
@@ -215,8 +214,6 @@ contract OptionMarket is ERC20, IERC721Receiver {
 
         require(optionPosition.owner == msg.sender, "OM0");
 
-        DataType.Position memory position = getPredyPosition(optionPosition.strikeId, _amount, optionPosition.isPut);
-
         DataType.TradeOption memory tradeOption = DataType.TradeOption(
             false,
             true,
@@ -227,11 +224,12 @@ contract OptionMarket is ERC20, IERC721Receiver {
             bytes("")
         );
 
-        DataType.ClosePositionOption memory closePositionOption = DataType.ClosePositionOption(
-            0,
-            type(uint256).max,
-            100,
-            500
+        // cover
+        (uint256 premium, int256 requiredAmount) = _trade(
+            optionPosition.strikeId,
+            -int256(_amount),
+            tradeOption,
+            optionPosition.isPut
         );
 
         if (optionPosition.isPut) {
@@ -240,18 +238,9 @@ contract OptionMarket is ERC20, IERC721Receiver {
             strikes[optionPosition.strikeId].callPositionAmount -= int256(_amount);
         }
 
-        // cover
-        (uint256 premium, ) = _sell(
-            optionPosition.strikeId,
-            position,
-            tradeOption,
-            closePositionOption,
-            optionPosition.isPut
-        );
-
         optionPosition.amount -= _amount;
 
-        boards[strikes[optionPosition.strikeId].boardId].unrealizedProfit -= int256(premium);
+        boards[strikes[optionPosition.strikeId].boardId].unrealizedProfit -= int256(premium) - requiredAmount;
 
         TransferHelper.safeTransfer(usdc, msg.sender, premium);
     }
@@ -320,17 +309,48 @@ contract OptionMarket is ERC20, IERC721Receiver {
         TransferHelper.safeTransfer(usdc, msg.sender, uint256(profit));
     }
 
-    function _buy(
+    function _trade(
         uint256 _strikeId,
-        DataType.Position memory position,
+        int256 _amount,
         DataType.TradeOption memory tradeOption,
-        DataType.OpenPositionOption memory openPositionOption,
         bool _isPut
     ) internal returns (uint256 premium, int256 requiredAmount) {
         Strike memory strike = strikes[_strikeId];
 
+        int256 poolAmount;
+
+        if (_isPut) {
+            poolAmount = strike.putPositionAmount;
+        } else {
+            poolAmount = strike.callPositionAmount;
+        }
+
         uint256 beforeSqrtPrice = controller.getSqrtPrice();
-        (vaultId, requiredAmount, ) = controller.openPosition(vaultId, position, tradeOption, openPositionOption);
+
+        if (0 <= poolAmount && 0 < _amount) {
+            requiredAmount = _addLong(_strikeId, uint256(_amount), tradeOption, _isPut);
+        }
+        if (0 <= poolAmount && 0 > _amount) {
+            if (poolAmount < -_amount) {
+                _removeLong(_strikeId, uint256(poolAmount), tradeOption, _isPut);
+                requiredAmount = _addShort(_strikeId, uint256(-_amount - poolAmount), tradeOption, _isPut);
+            } else {
+                requiredAmount = _removeLong(_strikeId, uint256(-_amount), tradeOption, _isPut);
+            }
+        }
+
+        if (0 > poolAmount && 0 > _amount) {
+            requiredAmount = _addShort(_strikeId, uint256(-_amount), tradeOption, _isPut);
+        }
+        if (0 > poolAmount && 0 < _amount) {
+            if (-poolAmount < _amount) {
+                _removeShort(_strikeId, uint256(-poolAmount), tradeOption, _isPut);
+                requiredAmount = _addLong(_strikeId, uint256(_amount + poolAmount), tradeOption, _isPut);
+            } else {
+                requiredAmount = _removeShort(_strikeId, uint256(_amount), tradeOption, _isPut);
+            }
+        }
+
         uint256 afterSqrtPrice = controller.getSqrtPrice();
 
         uint256 entryPrice = getTradePrice(beforeSqrtPrice, afterSqrtPrice);
@@ -346,34 +366,70 @@ contract OptionMarket is ERC20, IERC721Receiver {
         );
     }
 
-    function _sell(
+    function _addLong(
         uint256 _strikeId,
-        DataType.Position memory position,
+        uint256 _amount,
         DataType.TradeOption memory tradeOption,
-        DataType.ClosePositionOption memory closePositionOption,
         bool _isPut
-    ) internal returns (uint256 premium, int256 requiredAmount) {
-        Strike memory strike = strikes[_strikeId];
+    ) internal returns (int256 requiredAmount) {
+        DataType.Position memory position = getPredyPosition(_strikeId, _amount, _isPut, true);
 
+        DataType.OpenPositionOption memory openPositionOption = DataType.OpenPositionOption(0, type(uint256).max, 500);
+
+        (vaultId, requiredAmount, ) = controller.openPosition(vaultId, position, tradeOption, openPositionOption);
+    }
+
+    function _addShort(
+        uint256 _strikeId,
+        uint256 _amount,
+        DataType.TradeOption memory tradeOption,
+        bool _isPut
+    ) internal returns (int256 requiredAmount) {
+        DataType.Position memory position = getPredyPosition(_strikeId, _amount, _isPut, false);
+
+        DataType.OpenPositionOption memory openPositionOption = DataType.OpenPositionOption(0, type(uint256).max, 500);
+
+        (vaultId, requiredAmount, ) = controller.openPosition(vaultId, position, tradeOption, openPositionOption);
+    }
+
+    function _removeLong(
+        uint256 _strikeId,
+        uint256 _amount,
+        DataType.TradeOption memory tradeOption,
+        bool _isPut
+    ) internal returns (int256 requiredAmount) {
         DataType.Position[] memory positions = new DataType.Position[](1);
 
-        positions[0] = position;
+        positions[0] = getPredyPosition(_strikeId, _amount, _isPut, true);
 
-        uint256 beforeSqrtPrice = controller.getSqrtPrice();
-        (requiredAmount, ) = controller.closePosition(vaultId, positions, tradeOption, closePositionOption);
-        uint256 afterSqrtPrice = controller.getSqrtPrice();
-
-        uint256 entryPrice = getTradePrice(beforeSqrtPrice, afterSqrtPrice);
-
-        uint256 timeToMaturity = boards[strike.boardId].expiration - block.timestamp;
-
-        premium = BlackScholes.calculatePrice(
-            entryPrice,
-            strike.strikePrice,
-            timeToMaturity,
-            getIV(_isPut ? strike.putPositionAmount : strike.callPositionAmount),
-            _isPut
+        DataType.ClosePositionOption memory closePositionOption = DataType.ClosePositionOption(
+            0,
+            type(uint256).max,
+            100,
+            500
         );
+
+        (requiredAmount, ) = controller.closePosition(vaultId, positions, tradeOption, closePositionOption);
+    }
+
+    function _removeShort(
+        uint256 _strikeId,
+        uint256 _amount,
+        DataType.TradeOption memory tradeOption,
+        bool _isPut
+    ) internal returns (int256 requiredAmount) {
+        DataType.Position[] memory positions = new DataType.Position[](1);
+
+        positions[0] = getPredyPosition(_strikeId, _amount, _isPut, false);
+
+        DataType.ClosePositionOption memory closePositionOption = DataType.ClosePositionOption(
+            0,
+            type(uint256).max,
+            100,
+            500
+        );
+
+        (requiredAmount, ) = controller.closePosition(vaultId, positions, tradeOption, closePositionOption);
     }
 
     function _exercise(DataType.TradeOption memory tradeOption, DataType.ClosePositionOption memory closePositionOption)
@@ -390,18 +446,39 @@ contract OptionMarket is ERC20, IERC721Receiver {
     function getPredyPosition(
         uint256 _strikeId,
         uint256 _amount,
-        bool _isPut
+        bool _isPut,
+        bool _isLong
     ) internal view returns (DataType.Position memory) {
         Strike memory strike = strikes[_strikeId];
 
         DataType.LPT[] memory lpts = new DataType.LPT[](1);
 
-        lpts[0] = DataType.LPT(false, uint128((strike.liquidity * _amount) / 1e8), strike.lowerTick, strike.upperTick);
+        if (_isLong) {
+            lpts[0] = DataType.LPT(
+                false,
+                uint128((strike.liquidity * _amount) / 1e8),
+                strike.lowerTick,
+                strike.upperTick
+            );
 
-        if (_isPut) {
-            return DataType.Position(0, (strike.strikePrice * _amount) / 1e8, 0, 0, 0, lpts);
+            if (_isPut) {
+                return DataType.Position(0, (strike.strikePrice * _amount) / 1e8, 0, 0, 0, lpts);
+            } else {
+                return DataType.Position(0, 0, (1e18 * _amount) / 1e8, 0, 0, lpts);
+            }
         } else {
-            return DataType.Position(0, 0, (1e18 * _amount) / 1e8, 0, 0, lpts);
+            lpts[0] = DataType.LPT(
+                true,
+                uint128((strike.liquidity * _amount) / 1e8),
+                strike.lowerTick,
+                strike.upperTick
+            );
+
+            if (_isPut) {
+                return DataType.Position(0, 0, 0, ((strike.strikePrice * _amount) * 75) / 1e10, 0, lpts);
+            } else {
+                return DataType.Position(0, 0, 0, 0, ((1e18 * _amount) * 75) / 1e10, lpts);
+            }
         }
     }
 
