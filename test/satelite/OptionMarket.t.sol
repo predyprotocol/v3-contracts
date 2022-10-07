@@ -49,22 +49,70 @@ contract ControllerHelperTest is TestDeployer, Test {
 
         boardId = optionMarket.createBoard(block.timestamp + 1 days, lowerTicks, upperTicks);
 
-        optionMarket.deposit(1000 * 1e6);
+        optionMarket.deposit(2000 * 1e6);
 
-        optionId = optionMarket.buy(1, 1e8, 100 * 1e6 * 2, false);
+        optionId = optionMarket.openPosition(1, 1e8, false, 0);
     }
 
-    function testBuy() public {
+    /**************************
+     *  Test: openPosition    *
+     **************************/
+
+    function testOpenLongPosition() public {
         uint256 beforeBalance = token0.balanceOf(owner);
-        optionMarket.buy(1, 1e8, 100 * 1e6 * 2, false);
+        optionMarket.openPosition(1, 1e8, false, 0);
         uint256 afterBalance = token0.balanceOf(owner);
 
-        console.log(beforeBalance - afterBalance);
+        assertGt(beforeBalance, afterBalance);
     }
 
-    function testSell() public {
-        optionMarket.sell(optionId, 1e8);
+    function testOpenShortPosition() public {
+        uint256 beforeBalance = token0.balanceOf(owner);
+        optionMarket.openPosition(1, -1e8, false, 500 * 1e6);
+        uint256 afterBalance = token0.balanceOf(owner);
+
+        assertGt(beforeBalance, afterBalance);
     }
+
+    function testOpenPositionLongToShort() public {
+        optionMarket.openPosition(1, -2e8, false, 1000 * 1e6);
+    }
+
+    function testOpenPositionShortToLong() public {
+        optionMarket.openPosition(1, -2e8, false, 1000 * 1e6);
+        optionMarket.openPosition(1, 3e8, false, 0);
+    }
+
+    /**************************
+     *  Test: closePosition   *
+     **************************/
+
+    function testCannotClosePosition() public {
+        vm.expectRevert(bytes("OM4"));
+        optionMarket.closePosition(optionId, 2 * 1e8);
+    }
+
+    function testClosePositionShortToZero() public {
+        uint256 optionId2 = optionMarket.openPosition(1, -2e8, false, 1000 * 1e6);
+
+        uint256 beforeBalance = token0.balanceOf(owner);
+        optionMarket.closePosition(optionId2, 2e8);
+        uint256 afterBalance = token0.balanceOf(owner);
+
+        assertLt(beforeBalance, afterBalance);
+    }
+
+    function testClosePositionLongToZero() public {
+        uint256 beforeBalance = token0.balanceOf(owner);
+        optionMarket.closePosition(optionId, 1e8);
+        uint256 afterBalance = token0.balanceOf(owner);
+
+        assertLt(beforeBalance, afterBalance);
+    }
+
+    /**************************
+     *     Test: exicise      *
+     **************************/
 
     function testCannotExercise() public {
         vm.expectRevert(bytes("OM1"));
@@ -89,11 +137,29 @@ contract ControllerHelperTest is TestDeployer, Test {
         optionMarket.withdraw(1000 * 1e6);
     }
 
+    /**************************
+     *     Test: deposit      *
+     **************************/
+
     function testDeposit() public {
         uint256 beforeBalance = optionMarket.balanceOf(owner);
         optionMarket.deposit(1000 * 1e6);
         uint256 afterBalance = optionMarket.balanceOf(owner);
 
         assertEq(afterBalance - beforeBalance, 1000 * 1e6);
+    }
+
+    /**************************
+     *     Test: withdraw      *
+     **************************/
+
+    function testWithdraw() public {
+        optionMarket.closePosition(optionId, 1e8);
+
+        uint256 beforeBalance = optionMarket.balanceOf(owner);
+        optionMarket.withdraw(1000 * 1e6);
+        uint256 afterBalance = optionMarket.balanceOf(owner);
+
+        assertEq(beforeBalance - afterBalance, 1000 * 1e6);
     }
 }

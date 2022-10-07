@@ -11,6 +11,8 @@ import "../libraries/LPTMath.sol";
 import "../libraries/Constants.sol";
 import "./BlackScholes.sol";
 
+import "forge-std/console.sol";
+
 /**
  * OM0: caller is not option holder
  * OM1: board has not been expired
@@ -48,10 +50,11 @@ contract OptionMarket is ERC20, IERC721Receiver {
     struct OptionPosition {
         uint256 id;
         uint256 strikeId;
-        uint256 amount;
+        int256 amount;
         bool isPut;
         address owner;
         uint256 premium;
+        uint256 collateralAmount;
     }
 
     struct OptionTradeParams {
@@ -173,15 +176,14 @@ contract OptionMarket is ERC20, IERC721Receiver {
         _burn(msg.sender, burnAmount);
     }
 
-    function buy(
+    // TODO: open position
+    function openPosition(
         uint256 _strikeId,
-        uint256 _amount,
-        uint256 _buffer,
-        bool _isPut
+        int256 _amount,
+        bool _isPut,
+        uint256 _collateralAmount
     ) external returns (uint256 optionId) {
-        TransferHelper.safeTransferFrom(usdc, msg.sender, address(this), _buffer);
-
-        uint256 marginValue = getMarginValue(strikes[_strikeId].strikePrice, _amount, _isPut);
+        uint256 marginValue = getMarginValue(strikes[_strikeId], _amount, _isPut);
 
         DataType.TradeOption memory tradeOption = DataType.TradeOption(
             false,
@@ -194,22 +196,29 @@ contract OptionMarket is ERC20, IERC721Receiver {
         );
 
         // cover
-        (uint256 premium, int256 requiredAmount) = _trade(_strikeId, int256(_amount), tradeOption, _isPut);
+        (uint256 premium, int256 requiredAmount) = _trade(_strikeId, _amount, tradeOption, _isPut);
 
         if (_isPut) {
-            strikes[_strikeId].putPositionAmount += int256(_amount);
+            strikes[_strikeId].putPositionAmount += _amount;
         } else {
-            strikes[_strikeId].callPositionAmount += int256(_amount);
+            strikes[_strikeId].callPositionAmount += _amount;
         }
 
         boards[strikes[_strikeId].boardId].unrealizedProfit += int256(premium) - requiredAmount;
 
-        optionId = createOptionPosition(_strikeId, _amount, _isPut, premium);
+        optionId = createOptionPosition(_strikeId, _amount, _isPut, premium, _collateralAmount);
 
-        TransferHelper.safeTransfer(usdc, msg.sender, _buffer - premium);
+        if (_amount > 0) {
+            TransferHelper.safeTransferFrom(usdc, msg.sender, address(this), premium);
+        } else if (_amount < 0) {
+            // TODO: optimize
+            TransferHelper.safeTransferFrom(usdc, msg.sender, address(this), _collateralAmount);
+            TransferHelper.safeTransfer(usdc, msg.sender, premium);
+        }
     }
 
-    function sell(uint256 _positionId, uint256 _amount) external {
+    // close position
+    function closePosition(uint256 _positionId, uint256 _amount) external {
         OptionPosition storage optionPosition = optionPositions[_positionId];
 
         require(optionPosition.owner == msg.sender, "OM0");
@@ -224,10 +233,24 @@ contract OptionMarket is ERC20, IERC721Receiver {
             bytes("")
         );
 
+        int256 tradeAmount;
+
+        if (optionPosition.amount > 0) {
+            tradeAmount = -int256(_amount);
+
+            require(optionPosition.amount >= -tradeAmount, "OM4");
+        } else if (optionPosition.amount < 0) {
+            tradeAmount = int256(_amount);
+
+            require(-optionPosition.amount >= tradeAmount, "OM4");
+        } else {
+            revert("OM5");
+        }
+
         // cover
         (uint256 premium, int256 requiredAmount) = _trade(
             optionPosition.strikeId,
-            -int256(_amount),
+            tradeAmount,
             tradeOption,
             optionPosition.isPut
         );
@@ -238,11 +261,15 @@ contract OptionMarket is ERC20, IERC721Receiver {
             strikes[optionPosition.strikeId].callPositionAmount -= int256(_amount);
         }
 
-        optionPosition.amount -= _amount;
+        optionPosition.amount += tradeAmount;
 
         boards[strikes[optionPosition.strikeId].boardId].unrealizedProfit -= int256(premium) - requiredAmount;
 
-        TransferHelper.safeTransfer(usdc, msg.sender, premium);
+        if (tradeAmount > 0) {
+            TransferHelper.safeTransfer(usdc, msg.sender, optionPosition.collateralAmount - premium);
+        } else if (tradeAmount < 0) {
+            TransferHelper.safeTransfer(usdc, msg.sender, premium);
+        }
     }
 
     function exicise(uint256 _boardId, uint256 _swapRatio) external {
@@ -453,6 +480,8 @@ contract OptionMarket is ERC20, IERC721Receiver {
 
         DataType.LPT[] memory lpts = new DataType.LPT[](1);
 
+        console.log(5, uint128((strike.liquidity * _amount) / 1e8));
+
         if (_isLong) {
             lpts[0] = DataType.LPT(
                 false,
@@ -484,13 +513,14 @@ contract OptionMarket is ERC20, IERC721Receiver {
 
     function createOptionPosition(
         uint256 _strikeId,
-        uint256 _amount,
+        int256 _amount,
         bool _isPut,
-        uint256 _premium
+        uint256 _premium,
+        uint256 _collateralAmount
     ) internal returns (uint256) {
         uint256 id = optionPositionCount;
 
-        optionPositions[id] = OptionPosition(id, _strikeId, _amount, _isPut, msg.sender, _premium);
+        optionPositions[id] = OptionPosition(id, _strikeId, _amount, _isPut, msg.sender, _premium, _collateralAmount);
 
         optionPositionCount += 1;
 
@@ -510,23 +540,31 @@ contract OptionMarket is ERC20, IERC721Receiver {
     }
 
     function getMarginValue(
-        uint256 strikePrice,
-        uint256 _amount,
+        Strike memory _strike,
+        int256 _amount,
         bool _isPut
     ) internal view returns (uint256 marginValue) {
         uint256 currentPrice = reader.getPrice();
 
         uint256 instinctValue;
 
-        if (_isPut && strikePrice > currentPrice) {
-            instinctValue = strikePrice - currentPrice;
+        if (_isPut && _strike.strikePrice > currentPrice) {
+            instinctValue = _strike.strikePrice - currentPrice;
         }
 
-        if (!_isPut && strikePrice < currentPrice) {
-            instinctValue = currentPrice - strikePrice;
+        if (!_isPut && _strike.strikePrice < currentPrice) {
+            instinctValue = currentPrice - _strike.strikePrice;
         }
 
-        marginValue = (currentPrice * _amount) / 1e8 / 5;
+        int256 poolAmount;
+
+        if (_isPut) {
+            poolAmount = _strike.putPositionAmount;
+        } else {
+            poolAmount = _strike.callPositionAmount;
+        }
+
+        marginValue = (currentPrice * PredyMath.abs(poolAmount + _amount)) / 1e8 / 2;
     }
 
     function getProfit(
