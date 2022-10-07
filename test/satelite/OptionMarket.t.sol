@@ -111,6 +111,26 @@ contract ControllerHelperTest is TestDeployer, Test {
     }
 
     /**************************
+     *  Test: liquidationCall *
+     **************************/
+
+    function testCannotLiquidationCall() public {
+        uint256 optionId2 = optionMarket.openPosition(1, -2e8, false, 100 * 1e6);
+
+        vm.expectRevert(bytes("OM6"));
+        optionMarket.liquidationCall(optionId2);
+    }
+
+    function testLiquidationCall() public {
+        uint256 optionId2 = optionMarket.openPosition(1, -2e8, false, 100 * 1e6);
+
+        slip(owner, true, 7 * 1e18);
+        vm.warp(block.timestamp + 10 minutes);
+
+        optionMarket.liquidationCall(optionId2);
+    }
+
+    /**************************
      *     Test: exicise      *
      **************************/
 

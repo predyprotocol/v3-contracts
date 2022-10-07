@@ -3,4 +3,6 @@ pragma solidity ^0.7.6;
 
 interface IReader {
     function getPrice() external view returns (uint256);
+
+    function getTWAP() external view returns (uint256);
 }
