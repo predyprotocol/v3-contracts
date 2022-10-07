@@ -272,6 +272,70 @@ contract OptionMarket is ERC20, IERC721Receiver {
         }
     }
 
+    function liquidationCall(uint256 _positionId) external {
+        OptionPosition storage optionPosition = optionPositions[_positionId];
+
+        require(!isVaultSafe(optionPosition), "OM6");
+
+        DataType.TradeOption memory tradeOption = DataType.TradeOption(
+            false,
+            true,
+            false,
+            true,
+            Constants.MARGIN_STAY,
+            Constants.MARGIN_STAY,
+            bytes("")
+        );
+
+        int256 tradeAmount = -optionPosition.amount;
+
+        (uint256 premium, int256 requiredAmount) = _trade(
+            optionPosition.strikeId,
+            tradeAmount,
+            tradeOption,
+            optionPosition.isPut
+        );
+
+        if (optionPosition.isPut) {
+            strikes[optionPosition.strikeId].putPositionAmount += tradeAmount;
+        } else {
+            strikes[optionPosition.strikeId].callPositionAmount += tradeAmount;
+        }
+
+        optionPosition.amount = 0;
+
+        boards[strikes[optionPosition.strikeId].boardId].unrealizedProfit -= int256(premium) - requiredAmount;
+
+        // TODO: safeMath
+        {
+            if (optionPosition.collateralAmount >= premium) {
+                TransferHelper.safeTransfer(usdc, optionPosition.owner, optionPosition.collateralAmount - premium);
+            }
+        }
+
+        // TODO: liquidation reward
+    }
+
+    function isVaultSafe(OptionPosition memory _optionPosition) internal view returns (bool) {
+        uint256 twap = reader.getTWAP();
+
+        Strike memory strike = strikes[_optionPosition.strikeId];
+
+        uint256 timeToMaturity = boards[strike.boardId].expiration - block.timestamp;
+
+        uint256 premium = BlackScholes.calculatePrice(
+            twap,
+            strike.strikePrice,
+            timeToMaturity,
+            getIV(_optionPosition.isPut ? strike.putPositionAmount : strike.callPositionAmount),
+            _optionPosition.isPut
+        );
+
+        console.log(twap, premium, _optionPosition.collateralAmount);
+
+        return (premium * 3) / 2 < _optionPosition.collateralAmount;
+    }
+
     function exicise(uint256 _boardId, uint256 _swapRatio) external {
         require(boards[_boardId].expiration <= block.timestamp, "OM1");
 
