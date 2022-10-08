@@ -131,12 +131,12 @@ contract ControllerHelperTest is TestDeployer, Test {
     }
 
     /**************************
-     *     Test: exicise      *
+     *     Test: exercise      *
      **************************/
 
     function testCannotExercise() public {
         vm.expectRevert(bytes("OM1"));
-        optionMarket.exicise(boardId, 100);
+        optionMarket.exercise(boardId, 100);
     }
 
     function testExercise() public {
@@ -146,7 +146,7 @@ contract ControllerHelperTest is TestDeployer, Test {
 
         assertFalse(controller.checkLiquidatable(optionMarket.vaultId()));
 
-        optionMarket.exicise(boardId, 100);
+        optionMarket.exercise(boardId, 100);
 
         uint256 beforeBalance = token0.balanceOf(owner);
         optionMarket.claimProfit(optionId);
