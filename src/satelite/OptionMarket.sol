@@ -103,6 +103,12 @@ contract OptionMarket is ERC20, IERC721Receiver {
         return this.onERC721Received.selector;
     }
 
+    /**
+     * @notice Creates new option board.
+     * @param _expiration The timestamp when the board expires.
+     * @param _lowerTicks The array of lower ticks indicates strike prices.
+     * @param _upperTicks The array of upper ticks indicates strike prices.
+     */
     function createBoard(
         uint256 _expiration,
         int24[] memory _lowerTicks,
@@ -176,7 +182,13 @@ contract OptionMarket is ERC20, IERC721Receiver {
         _burn(msg.sender, burnAmount);
     }
 
-    // TODO: open position
+    /**
+     * @notice Opens new position
+     * @param _strikeId The id of the option series
+     * @param _amount amount of options
+     * @param _isPut is put option or call option
+     * @param _collateralAmount amount of collateral
+     */
     function openPosition(
         uint256 _strikeId,
         int256 _amount,
@@ -207,6 +219,8 @@ contract OptionMarket is ERC20, IERC721Receiver {
         boards[strikes[_strikeId].boardId].unrealizedProfit += int256(premium) - requiredAmount;
 
         optionId = createOptionPosition(_strikeId, _amount, _isPut, premium, _collateralAmount);
+
+        require(isVaultSafe(optionPositions[optionId]), "OM8");
 
         if (_amount > 0) {
             TransferHelper.safeTransferFrom(usdc, msg.sender, address(this), premium);
@@ -272,6 +286,10 @@ contract OptionMarket is ERC20, IERC721Receiver {
         }
     }
 
+    /**
+     * @notice Anyone can liquidate an unsafe short position.
+     * @param _positionId The id of the position.
+     */
     function liquidationCall(uint256 _positionId) external {
         OptionPosition storage optionPosition = optionPositions[_positionId];
 
@@ -307,16 +325,18 @@ contract OptionMarket is ERC20, IERC721Receiver {
         boards[strikes[optionPosition.strikeId].boardId].unrealizedProfit -= int256(premium) - requiredAmount;
 
         // TODO: safeMath
-        {
-            if (optionPosition.collateralAmount >= premium) {
-                TransferHelper.safeTransfer(usdc, optionPosition.owner, optionPosition.collateralAmount - premium);
-            }
+        if (optionPosition.collateralAmount >= premium) {
+            TransferHelper.safeTransfer(usdc, optionPosition.owner, optionPosition.collateralAmount - premium);
         }
 
         // TODO: liquidation reward
     }
 
     function isVaultSafe(OptionPosition memory _optionPosition) internal view returns (bool) {
+        if (_optionPosition.amount >= 0) {
+            return true;
+        }
+
         uint256 twap = reader.getTWAP();
 
         Strike memory strike = strikes[_optionPosition.strikeId];
@@ -336,7 +356,13 @@ contract OptionMarket is ERC20, IERC721Receiver {
         return (premium * 3) / 2 < _optionPosition.collateralAmount;
     }
 
-    function exicise(uint256 _boardId, uint256 _swapRatio) external {
+    /**
+     * @notice Exercise option board
+     * anyone can exercise option board after expiration.
+     * @param _boardId The id of the option board
+     * @param _swapRatio todo
+     */
+    function exercise(uint256 _boardId, uint256 _swapRatio) external {
         require(boards[_boardId].expiration <= block.timestamp, "OM1");
 
         DataType.TradeOption memory tradeOption = DataType.TradeOption(false, true, false, true, 0, 0, bytes(""));
