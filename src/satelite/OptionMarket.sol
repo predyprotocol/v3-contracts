@@ -10,6 +10,7 @@ import "../interfaces/IReader.sol";
 import "../libraries/LPTMath.sol";
 import "../libraries/Constants.sol";
 import "./BlackScholes.sol";
+import "./OptionMarketLib.sol";
 
 import "forge-std/console.sol";
 
@@ -384,14 +385,14 @@ contract OptionMarket is ERC20, IERC721Receiver {
             for (uint256 i = 0; i < boards[_boardId].strikeIds.length; i++) {
                 uint256 strikeId = boards[_boardId].strikeIds[i];
 
-                totalProfit += getProfit(
+                totalProfit += OptionMarketLib.getProfit(
                     indexPrice,
                     strikes[strikeId].strikePrice,
                     strikes[strikeId].callPositionAmount,
                     false
                 );
 
-                totalProfit += getProfit(
+                totalProfit += OptionMarketLib.getProfit(
                     indexPrice,
                     strikes[strikeId].strikePrice,
                     strikes[strikeId].putPositionAmount,
@@ -414,16 +415,20 @@ contract OptionMarket is ERC20, IERC721Receiver {
         require(optionPosition.owner == msg.sender, "OM0");
         require(board.isExpired, "OM2");
 
-        int256 profit = getProfit(
+        int256 profit = OptionMarketLib.getProfit(
             board.indexPrice,
             strikes[optionPosition.strikeId].strikePrice,
-            int256(optionPosition.amount),
+            optionPosition.amount,
             optionPosition.isPut
         );
 
-        optionPosition.amount = 0;
+        uint256 collateralAmount = optionPosition.collateralAmount;
 
-        TransferHelper.safeTransfer(usdc, msg.sender, uint256(profit));
+        optionPosition.amount = 0;
+        optionPosition.collateralAmount = 0;
+
+        // TODO: SafeMath
+        TransferHelper.safeTransfer(usdc, msg.sender, uint256(int256(collateralAmount) + profit));
     }
 
     function _trade(
@@ -570,8 +575,6 @@ contract OptionMarket is ERC20, IERC721Receiver {
 
         DataType.LPT[] memory lpts = new DataType.LPT[](1);
 
-        console.log(5, uint128((strike.liquidity * _amount) / 1e8));
-
         if (_isLong) {
             lpts[0] = DataType.LPT(
                 false,
@@ -655,25 +658,6 @@ contract OptionMarket is ERC20, IERC721Receiver {
         }
 
         marginValue = (currentPrice * PredyMath.abs(poolAmount + _amount)) / 1e8 / 2;
-    }
-
-    function getProfit(
-        uint256 indexPrice,
-        uint256 strikePrice,
-        int256 _amount,
-        bool _isPut
-    ) internal pure returns (int256) {
-        uint256 instinctValue;
-
-        if (_isPut && strikePrice > indexPrice) {
-            instinctValue = strikePrice - indexPrice;
-        }
-
-        if (!_isPut && strikePrice < indexPrice) {
-            instinctValue = indexPrice - strikePrice;
-        }
-
-        return (int256(instinctValue) * _amount) / 1e8;
     }
 
     function getIV(int256 _poolPositionAmount) internal pure returns (uint256) {
