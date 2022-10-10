@@ -428,6 +428,188 @@ contract PositionUpdaterTest is TestDeployer, Test {
     }
 
     /**************************
+     *   Test: depositLPT     *
+     **************************/
+
+    function testDepositLPT(uint256 _liquidity) public {
+        uint128 liquidity = uint128(bound(_liquidity, 1e15, 1e20));
+        DataType.PositionUpdate memory positionUpdate = DataType.PositionUpdate(
+            DataType.PositionUpdateType.DEPOSIT_LPT,
+            0,
+            false,
+            liquidity,
+            100,
+            200,
+            0,
+            0
+        );
+
+        // mint
+        PositionUpdater.depositLPT(subVaults[1], context, ranges, positionUpdate);
+
+        bytes32 rangeKey = LPTStateLib.getRangeKey(100, 200);
+
+        assertGt(ranges[rangeKey].tokenId, 0);
+        assertEq(subVaults[1].lpts[0].rangeId, rangeKey);
+
+        // increase
+        PositionUpdater.depositLPT(subVaults[1], context, ranges, positionUpdate);
+
+        assertGt(uint256(subVaults[1].lpts[0].liquidityAmount), liquidity);
+        assertLt(uint256(subVaults[1].lpts[0].liquidityAmount), liquidity * 2);
+    }
+
+    /**************************
+     *    Test: withdrawLPT   *
+     **************************/
+
+    function testWithdrawLPT(uint256 _liquidity) public {
+        uint128 liquidity = uint128(bound(_liquidity, 1000, 1e20));
+
+        {
+            // deposit LPT
+            DataType.PositionUpdate memory positionUpdate = DataType.PositionUpdate(
+                DataType.PositionUpdateType.DEPOSIT_LPT,
+                0,
+                false,
+                1000,
+                100,
+                200,
+                0,
+                0
+            );
+
+            PositionUpdater.depositLPT(subVaults[1], context, ranges, positionUpdate);
+        }
+
+        {
+            // withdraw LPT
+            DataType.PositionUpdate memory positionUpdate = DataType.PositionUpdate(
+                DataType.PositionUpdateType.WITHDRAW_LPT,
+                0,
+                false,
+                liquidity,
+                100,
+                200,
+                0,
+                0
+            );
+
+            PositionUpdater.withdrawLPT(subVaults[1], context, ranges, positionUpdate);
+        }
+
+        bytes32 rangeKey = LPTStateLib.getRangeKey(100, 200);
+
+        uint256 liquidityAmount = PositionUpdater.getTotalLiquidityAmount(
+            INonfungiblePositionManager(context.positionManager),
+            ranges[rangeKey].tokenId
+        );
+
+        assertEq(liquidityAmount, 0);
+    }
+
+    /**************************
+     *    Test: borrowLPT     *
+     **************************/
+
+    function testBorrowLPT() public {
+        {
+            // deposit LPT
+            DataType.PositionUpdate memory positionUpdate = DataType.PositionUpdate(
+                DataType.PositionUpdateType.DEPOSIT_LPT,
+                0,
+                false,
+                1000,
+                100,
+                200,
+                0,
+                0
+            );
+
+            PositionUpdater.depositLPT(subVaults[1], context, ranges, positionUpdate);
+        }
+
+        {
+            // borrow LPT
+            DataType.PositionUpdate memory positionUpdate = DataType.PositionUpdate(
+                DataType.PositionUpdateType.BORROW_LPT,
+                0,
+                false,
+                500,
+                100,
+                200,
+                0,
+                0
+            );
+
+            PositionUpdater.borrowLPT(subVaults[2], context, ranges, positionUpdate);
+        }
+
+        bytes32 rangeKey = LPTStateLib.getRangeKey(100, 200);
+
+        assertEq(uint256(ranges[rangeKey].borrowedLiquidity), 500);
+    }
+
+    /**************************
+     *    Test: repayLPT      *
+     **************************/
+
+    function testRepayLPT(uint256 _liquidity) public {
+        uint128 liquidity = uint128(bound(_liquidity, 500, 1e20));
+
+        {
+            // deposit LPT
+            DataType.PositionUpdate memory positionUpdate = DataType.PositionUpdate(
+                DataType.PositionUpdateType.DEPOSIT_LPT,
+                0,
+                false,
+                1000,
+                100,
+                200,
+                0,
+                0
+            );
+
+            PositionUpdater.depositLPT(subVaults[1], context, ranges, positionUpdate);
+        }
+
+        {
+            // borrow LPT
+            DataType.PositionUpdate memory positionUpdate = DataType.PositionUpdate(
+                DataType.PositionUpdateType.BORROW_LPT,
+                0,
+                false,
+                500,
+                100,
+                200,
+                0,
+                0
+            );
+
+            PositionUpdater.borrowLPT(subVaults[2], context, ranges, positionUpdate);
+        }
+
+        {
+            DataType.PositionUpdate memory positionUpdate = DataType.PositionUpdate(
+                DataType.PositionUpdateType.REPAY_LPT,
+                0,
+                false,
+                liquidity,
+                100,
+                200,
+                0,
+                0
+            );
+
+            PositionUpdater.repayLPT(subVaults[2], context, ranges, positionUpdate);
+        }
+
+        bytes32 rangeKey = LPTStateLib.getRangeKey(100, 200);
+
+        assertEq(uint256(ranges[rangeKey].borrowedLiquidity), 0);
+    }
+
+    /**************************
      *   Test: swapAnyway     *
      **************************/
 
