@@ -122,20 +122,33 @@ library VaultLib {
         bytes32 _rangeId,
         uint128 _liquidityAmount,
         bool _isMarginZero
-    ) internal returns (uint256 fee0, uint256 fee1) {
+    )
+        internal
+        returns (
+            uint256 fee0,
+            uint256 fee1,
+            uint128 liquidityAmount
+        )
+    {
         for (uint256 i = 0; i < _subVault.lpts.length; i++) {
             DataType.LPTState storage lpt = _subVault.lpts[i];
 
             if (lpt.rangeId == _rangeId && lpt.isCollateral) {
-                fee0 = calculateProfit(lpt.fee0Last, _range.fee0Growth, _liquidityAmount, Constants.ONE);
+                liquidityAmount = _liquidityAmount;
 
-                fee1 = calculateProfit(lpt.fee1Last, _range.fee1Growth, _liquidityAmount, Constants.ONE);
+                if (_liquidityAmount > lpt.liquidityAmount) {
+                    liquidityAmount = lpt.liquidityAmount;
+                }
+
+                fee0 = calculateProfit(lpt.fee0Last, _range.fee0Growth, liquidityAmount, Constants.ONE);
+
+                fee1 = calculateProfit(lpt.fee1Last, _range.fee1Growth, liquidityAmount, Constants.ONE);
 
                 {
                     uint256 profit = calculateProfit(
                         lpt.premiumGrowthLast,
                         _range.premiumGrowthForLender,
-                        _liquidityAmount,
+                        liquidityAmount,
                         Constants.ONE
                     );
 
@@ -146,14 +159,14 @@ library VaultLib {
                     }
                 }
 
-                lpt.liquidityAmount = lpt.liquidityAmount.sub(_liquidityAmount).toUint128();
+                lpt.liquidityAmount = lpt.liquidityAmount.sub(liquidityAmount).toUint128();
 
                 if (lpt.liquidityAmount == 0) {
                     _subVault.lpts[i] = _subVault.lpts[_subVault.lpts.length - 1];
                     _subVault.lpts.pop();
                 }
 
-                return (fee0, fee1);
+                return (fee0, fee1, liquidityAmount);
             }
         }
     }
@@ -192,16 +205,29 @@ library VaultLib {
         bytes32 _rangeId,
         uint128 _liquidityAmount,
         bool _isMarginZero
-    ) internal returns (uint256 fee0, uint256 fee1) {
+    )
+        internal
+        returns (
+            uint256 fee0,
+            uint256 fee1,
+            uint128 liquidityAmount
+        )
+    {
         for (uint256 i = 0; i < _subVault.lpts.length; i++) {
             DataType.LPTState storage lpt = _subVault.lpts[i];
 
             if (lpt.rangeId == _rangeId && !lpt.isCollateral) {
+                liquidityAmount = _liquidityAmount;
+
+                if (_liquidityAmount > lpt.liquidityAmount) {
+                    liquidityAmount = lpt.liquidityAmount;
+                }
+
                 {
                     uint256 profit = calculateProfit(
                         lpt.premiumGrowthLast,
                         _range.premiumGrowthForBorrower,
-                        _liquidityAmount,
+                        liquidityAmount,
                         Constants.ONE
                     );
 
@@ -212,14 +238,14 @@ library VaultLib {
                     }
                 }
 
-                lpt.liquidityAmount = lpt.liquidityAmount.sub(_liquidityAmount).toUint128();
+                lpt.liquidityAmount = lpt.liquidityAmount.sub(liquidityAmount).toUint128();
 
                 if (lpt.liquidityAmount == 0) {
                     _subVault.lpts[i] = _subVault.lpts[_subVault.lpts.length - 1];
                     _subVault.lpts.pop();
                 }
 
-                return (fee0, fee1);
+                return (fee0, fee1, liquidityAmount);
             }
         }
     }

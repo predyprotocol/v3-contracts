@@ -409,37 +409,33 @@ library PositionUpdater {
     ) internal returns (uint256 withdrawAmount0, uint256 withdrawAmount1) {
         bytes32 rangeId = LPTStateLib.getRangeKey(_positionUpdate.lowerTick, _positionUpdate.upperTick);
 
-        {
-            (withdrawAmount0, withdrawAmount1) = decreaseLiquidityFromUni(
-                _context,
-                _ranges[rangeId],
-                _positionUpdate.liquidity,
-                _positionUpdate.param0,
-                _positionUpdate.param1
-            );
-        }
+        (uint256 fee0, uint256 fee1, uint128 liquidityAmount) = _subVault.withdrawLPT(
+            _ranges[rangeId],
+            rangeId,
+            _positionUpdate.liquidity,
+            _context.isMarginZero
+        );
 
-        {
-            (uint256 fee0, uint256 fee1) = _subVault.withdrawLPT(
-                _ranges[rangeId],
-                rangeId,
-                _positionUpdate.liquidity,
-                _context.isMarginZero
-            );
+        (withdrawAmount0, withdrawAmount1) = decreaseLiquidityFromUni(
+            _context,
+            _ranges[rangeId],
+            liquidityAmount,
+            _positionUpdate.param0,
+            _positionUpdate.param1
+        );
 
-            emit LPTWithdrawn(
-                _subVault.id,
-                rangeId,
-                _positionUpdate.liquidity,
-                withdrawAmount0,
-                withdrawAmount1,
-                int256(fee0),
-                int256(fee1)
-            );
+        emit LPTWithdrawn(
+            _subVault.id,
+            rangeId,
+            liquidityAmount,
+            withdrawAmount0,
+            withdrawAmount1,
+            int256(fee0),
+            int256(fee1)
+        );
 
-            withdrawAmount0 = withdrawAmount0.add(fee0);
-            withdrawAmount1 = withdrawAmount1.add(fee1);
-        }
+        withdrawAmount0 = withdrawAmount0.add(fee0);
+        withdrawAmount1 = withdrawAmount1.add(fee1);
     }
 
     function borrowLPT(
@@ -476,12 +472,19 @@ library PositionUpdater {
     ) internal returns (uint256 requiredAmount0, uint256 requiredAmount1) {
         bytes32 rangeId = LPTStateLib.getRangeKey(_positionUpdate.lowerTick, _positionUpdate.upperTick);
 
+        (uint256 fee0, uint256 fee1, uint128 liquidity) = _subVault.repayLPT(
+            _ranges[rangeId],
+            rangeId,
+            _positionUpdate.liquidity,
+            _context.isMarginZero
+        );
+
         {
             (uint256 amount0, uint256 amount1) = LPTMath.getAmountsForLiquidityRoundUp(
                 getSqrtPrice(IUniswapV3Pool(_context.uniswapPool)),
                 _positionUpdate.lowerTick,
                 _positionUpdate.upperTick,
-                _positionUpdate.liquidity
+                liquidity
             );
 
             // liquidity amount actually deposited
@@ -496,27 +499,16 @@ library PositionUpdater {
                 _positionUpdate.param1
             );
 
-            require(finalLiquidityAmount >= _positionUpdate.liquidity, "PU2");
+            require(finalLiquidityAmount >= liquidity, "PU2");
         }
 
-        _ranges[rangeId].borrowedLiquidity = _ranges[rangeId]
-            .borrowedLiquidity
-            .toUint256()
-            .sub(_positionUpdate.liquidity)
-            .toUint128();
+        _ranges[rangeId].borrowedLiquidity = _ranges[rangeId].borrowedLiquidity.toUint256().sub(liquidity).toUint128();
 
         {
-            (uint256 fee0, uint256 fee1) = _subVault.repayLPT(
-                _ranges[rangeId],
-                rangeId,
-                _positionUpdate.liquidity,
-                _context.isMarginZero
-            );
-
             emit LPTRepaid(
                 _subVault.id,
                 rangeId,
-                _positionUpdate.liquidity,
+                liquidity,
                 requiredAmount0,
                 requiredAmount1,
                 -int256(fee0),
