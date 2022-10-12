@@ -11,7 +11,7 @@ import "../../src/ControllerHelper.sol";
 
 import "../../src/satelite/OptionMarket.sol";
 
-contract ControllerHelperTest is TestDeployer, Test {
+contract OptionMarketTest is TestDeployer, Test {
     address owner;
     bool isQuoteZero;
 

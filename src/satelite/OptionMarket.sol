@@ -2,6 +2,7 @@
 pragma solidity ^0.7.6;
 pragma abicoder v2;
 
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import {TransferHelper} from "@uniswap/v3-periphery/libraries/TransferHelper.sol";
@@ -10,23 +11,19 @@ import "../interfaces/IReader.sol";
 import "../libraries/LPTMath.sol";
 import "../libraries/Constants.sol";
 import "./BlackScholes.sol";
-import "./OptionMarketLib.sol";
-
-import "forge-std/console.sol";
+import "./SateliteLib.sol";
 
 /**
  * OM0: caller is not option holder
  * OM1: board has not been expired
  * OM2: board has not been exercised
  */
-contract OptionMarket is ERC20, IERC721Receiver {
+contract OptionMarket is ERC20, IERC721Receiver, Ownable {
     IControllerHelper internal controller;
 
     IReader internal reader;
 
     address internal usdc;
-
-    uint256 private constant Q96 = 0x1000000000000000000000000;
 
     struct Strike {
         uint256 id;
@@ -114,7 +111,7 @@ contract OptionMarket is ERC20, IERC721Receiver {
         uint256 _expiration,
         int24[] memory _lowerTicks,
         int24[] memory _upperTicks
-    ) external returns (uint256) {
+    ) external onlyOwner returns (uint256) {
         uint256 id = boardCount;
 
         uint256[] memory strikeIds = new uint256[](_lowerTicks.length);
@@ -137,7 +134,7 @@ contract OptionMarket is ERC20, IERC721Receiver {
     ) internal returns (uint256) {
         uint256 id = strikeCount;
 
-        (uint128 liquidity, , ) = LPTMath.getLiquidityAndAmountToBorrow(true, 1e18, _lowerTick, _lowerTick, _upperTick);
+        uint128 liquidity = SateliteLib.getBaseLiquidity(reader.isMarginZero(), _lowerTick, _upperTick);
 
         strikes[id] = Strike(
             id,
@@ -352,8 +349,6 @@ contract OptionMarket is ERC20, IERC721Receiver {
             _optionPosition.isPut
         );
 
-        console.log(twap, premium, _optionPosition.collateralAmount);
-
         return (premium * 3) / 2 < _optionPosition.collateralAmount;
     }
 
@@ -385,14 +380,14 @@ contract OptionMarket is ERC20, IERC721Receiver {
             for (uint256 i = 0; i < boards[_boardId].strikeIds.length; i++) {
                 uint256 strikeId = boards[_boardId].strikeIds[i];
 
-                totalProfit += OptionMarketLib.getProfit(
+                totalProfit += SateliteLib.getProfit(
                     indexPrice,
                     strikes[strikeId].strikePrice,
                     strikes[strikeId].callPositionAmount,
                     false
                 );
 
-                totalProfit += OptionMarketLib.getProfit(
+                totalProfit += SateliteLib.getProfit(
                     indexPrice,
                     strikes[strikeId].strikePrice,
                     strikes[strikeId].putPositionAmount,
@@ -415,7 +410,7 @@ contract OptionMarket is ERC20, IERC721Receiver {
         require(optionPosition.owner == msg.sender, "OM0");
         require(board.isExpired, "OM2");
 
-        int256 profit = OptionMarketLib.getProfit(
+        int256 profit = SateliteLib.getProfit(
             board.indexPrice,
             strikes[optionPosition.strikeId].strikePrice,
             optionPosition.amount,
@@ -475,7 +470,7 @@ contract OptionMarket is ERC20, IERC721Receiver {
 
         uint256 afterSqrtPrice = controller.getSqrtPrice();
 
-        uint256 entryPrice = getTradePrice(beforeSqrtPrice, afterSqrtPrice);
+        uint256 entryPrice = SateliteLib.getTradePrice(reader.isMarginZero(), beforeSqrtPrice, afterSqrtPrice);
 
         uint256 timeToMaturity = boards[strike.boardId].expiration - block.timestamp;
 
@@ -562,7 +557,7 @@ contract OptionMarket is ERC20, IERC721Receiver {
         (requiredAmount, ) = controller.closeSubVault(vaultId, 0, tradeOption, closePositionOption);
         uint256 afterSqrtPrice = controller.getSqrtPrice();
 
-        indexPrice = getTradePrice(beforeSqrtPrice, afterSqrtPrice);
+        indexPrice = SateliteLib.getTradePrice(reader.isMarginZero(), beforeSqrtPrice, afterSqrtPrice);
     }
 
     function getPredyPosition(
@@ -575,6 +570,8 @@ contract OptionMarket is ERC20, IERC721Receiver {
 
         DataType.LPT[] memory lpts = new DataType.LPT[](1);
 
+        uint256 baseUsdcAmount = calculateUSDValue(strike.lowerTick, strike.upperTick, strike.liquidity);
+
         if (_isLong) {
             lpts[0] = DataType.LPT(
                 false,
@@ -584,9 +581,9 @@ contract OptionMarket is ERC20, IERC721Receiver {
             );
 
             if (_isPut) {
-                return DataType.Position(0, (strike.strikePrice * _amount) / 1e8, 0, 0, 0, lpts);
+                return getPosition(0, (baseUsdcAmount * _amount) / 1e8, 0, 0, 0, lpts);
             } else {
-                return DataType.Position(0, 0, (1e18 * _amount) / 1e8, 0, 0, lpts);
+                return getPosition(0, 0, (1e18 * _amount) / 1e8, 0, 0, lpts);
             }
         } else {
             lpts[0] = DataType.LPT(
@@ -597,9 +594,9 @@ contract OptionMarket is ERC20, IERC721Receiver {
             );
 
             if (_isPut) {
-                return DataType.Position(0, 0, 0, ((strike.strikePrice * _amount) * 75) / 1e10, 0, lpts);
+                return getPosition(0, 0, 0, ((baseUsdcAmount * _amount) * 75) / 1e10, 0, lpts);
             } else {
-                return DataType.Position(0, 0, 0, 0, ((1e18 * _amount) * 75) / 1e10, lpts);
+                return getPosition(0, ((baseUsdcAmount * _amount) * 25) / 1e10, 0, 0, (1e18 * _amount) / 1e8, lpts);
             }
         }
     }
@@ -621,15 +618,30 @@ contract OptionMarket is ERC20, IERC721Receiver {
     }
 
     function getTradePrice(uint256 beforeSqrtPrice, uint256 afterSqrtPrice) internal pure returns (uint256) {
-        uint256 entryPrice = (1e18 * Q96) / afterSqrtPrice;
+        uint256 entryPrice = (1e18 * Constants.Q96) / afterSqrtPrice;
 
-        return (entryPrice * Q96) / beforeSqrtPrice;
+        return (entryPrice * Constants.Q96) / beforeSqrtPrice;
     }
 
     function calculateStrikePrice(int24 _lowerTick, int24 _upperTick) internal pure returns (uint256) {
         uint160 sqrtPrice = TickMath.getSqrtRatioAtTick((_lowerTick + _upperTick) / 2);
 
         return LPTMath.decodeSqrtPriceX96(true, sqrtPrice);
+    }
+
+    function calculateUSDValue(
+        int24 _lowerTick,
+        int24 _upperTick,
+        uint128 _liquidity
+    ) internal view returns (uint256 amount) {
+        uint160 lowerSqrtPrice = TickMath.getSqrtRatioAtTick(_lowerTick);
+        uint160 upperSqrtPrice = TickMath.getSqrtRatioAtTick(_upperTick);
+
+        if (reader.isMarginZero()) {
+            amount = LiquidityAmounts.getAmount0ForLiquidity(lowerSqrtPrice, upperSqrtPrice, _liquidity);
+        } else {
+            amount = LiquidityAmounts.getAmount1ForLiquidity(lowerSqrtPrice, upperSqrtPrice, _liquidity);
+        }
     }
 
     function getMarginValue(
@@ -662,5 +674,20 @@ contract OptionMarket is ERC20, IERC721Receiver {
 
     function getIV(int256 _poolPositionAmount) internal pure returns (uint256) {
         return 100 * 1e6;
+    }
+
+    function getPosition(
+        uint256 subVaultIndex,
+        uint256 asset0,
+        uint256 asset1,
+        uint256 debt0,
+        uint256 debt1,
+        DataType.LPT[] memory lpts
+    ) internal view returns (DataType.Position memory) {
+        if (reader.isMarginZero()) {
+            return DataType.Position(subVaultIndex, asset0, asset1, debt0, debt1, lpts);
+        } else {
+            return DataType.Position(subVaultIndex, asset0, asset1, debt0, debt1, lpts);
+        }
     }
 }

@@ -19,6 +19,19 @@ interface IControllerHelper {
             uint256
         );
 
+    function updatePosition(
+        uint256 _vaultId,
+        DataType.PositionUpdate[] memory positionUpdates,
+        DataType.TradeOption memory _tradeOption,
+        DataType.OpenPositionOption memory _openPositionOptions
+    )
+        external
+        returns (
+            uint256 vaultId,
+            int256 requiredAmount0,
+            int256 requiredAmount1
+        );
+
     function closeSubVault(
         uint256 _vaultId,
         uint256 _subVaultIndex,
