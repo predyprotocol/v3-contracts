@@ -17,4 +17,7 @@ library Constants {
     uint256 internal constant MAX_MARGIN_AMOUNT = 1e32;
 
     uint256 internal constant Q96 = 0x1000000000000000000000000;
+
+    // 3% scaled by 1e4
+    uint256 internal constant LIQUIDATION_SLIPPAGE_SQRT_TOLERANCE = 150;
 }

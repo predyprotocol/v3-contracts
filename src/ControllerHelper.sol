@@ -103,6 +103,7 @@ contract ControllerHelper is Controller {
             _tradeOption.isQuoteZero,
             _closePositionOptions.feeTier,
             _closePositionOptions.swapRatio,
+            _closePositionOptions.closeRatio,
             getSqrtPrice()
         );
 
@@ -124,12 +125,11 @@ contract ControllerHelper is Controller {
             context.isMarginZero,
             _liquidationOption.feeTier,
             _liquidationOption.swapRatio,
+            _liquidationOption.closeRatio,
             getSqrtPrice()
         );
 
         liquidate(_vaultId, positionUpdates);
-
-        _checkPrice(_liquidationOption.lowerSqrtPrice, _liquidationOption.upperSqrtPrice);
     }
 
     function _checkPrice(uint256 _lowerSqrtPrice, uint256 _upperSqrtPrice) internal view {
