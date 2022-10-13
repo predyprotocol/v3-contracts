@@ -6,6 +6,7 @@ import "./Controller.sol";
 import "./libraries/BaseToken.sol";
 import "./libraries/LPTMath.sol";
 import "./libraries/PositionCalculator.sol";
+import "./libraries/UniHelper.sol";
 
 /**
  * @title Reader contract
@@ -40,7 +41,7 @@ contract Reader {
      * @return twap
      **/
     function getTWAP() external view returns (uint256) {
-        uint160 sqrtPrice = LiquidationLogic.getSqrtTWAP(uniswapPool);
+        uint160 sqrtPrice = UniHelper.getSqrtTWAP(uniswapPool);
 
         return LPTMath.decodeSqrtPriceX96(isMarginZero, sqrtPrice);
     }

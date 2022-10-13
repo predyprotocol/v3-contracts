@@ -2,6 +2,7 @@
 pragma solidity =0.7.6;
 pragma abicoder v2;
 
+import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@uniswap/v3-periphery/libraries/LiquidityAmounts.sol";
 import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
@@ -16,12 +17,13 @@ import "../PositionUpdater.sol";
  * @notice Implements the base logic for all the actions related to liquidation call.
  */
 library LiquidationLogic {
-    uint256 internal constant ORACLE_PERIOD = 10 minutes;
+    using SafeMath for uint256;
 
     event Liquidated(uint256 indexed vaultId, address liquidator, uint256 debtValue, uint256 penaltyAmount);
 
     /**
      * @notice Anyone can liquidates the vault if its vault value is less than Min. Deposit.
+     * Up to 100% of debt is repaid.
      * @param _vault vault
      * @param _positionUpdates parameters to update position
      */
@@ -32,7 +34,7 @@ library LiquidationLogic {
         DataType.Context storage _context,
         mapping(bytes32 => DataType.PerpStatus) storage _ranges
     ) external {
-        uint160 sqrtPrice = getSqrtTWAP(_context.uniswapPool);
+        uint160 sqrtTwap = UniHelper.getSqrtTWAP(_context.uniswapPool);
 
         PositionCalculator.PositionCalculatorParams memory _params = VaultLib.getPositionCalculatorParams(
             _vault,
@@ -42,12 +44,12 @@ library LiquidationLogic {
         );
 
         // check that the vault is liquidatable
-        require(_checkLiquidatable(_context, _params, sqrtPrice), "L0");
+        require(_checkLiquidatable(_context, _params, sqrtTwap), "L0");
 
         // calculate debt value to calculate penalty amount
         (, , uint256 debtValue) = PositionCalculator.calculateCollateralAndDebtValue(
             _params,
-            sqrtPrice,
+            sqrtTwap,
             _context.isMarginZero,
             false
         );
@@ -63,10 +65,30 @@ library LiquidationLogic {
             debtValue / 200
         );
 
-        // check that all debts are repaid
-        require(VaultLib.isDebtZero(_vault, _subVaults, _context), "L1");
+        // check that the vault is safe
+        {
+            require(
+                !_checkLiquidatable(
+                    _context,
+                    VaultLib.getPositionCalculatorParams(_vault, _subVaults, _ranges, _context),
+                    sqrtTwap
+                ),
+                "L1"
+            );
+        }
 
         sendReward(_context, msg.sender, penaltyAmount);
+
+        {
+            // reverts if price is out of slippage threshold
+            uint256 sqrtPrice = UniHelper.getSqrtPrice(_context.uniswapPool);
+
+            require(
+                uint256(sqrtTwap).mul(1e4 - Constants.LIQUIDATION_SLIPPAGE_SQRT_TOLERANCE).div(1e4) <= sqrtPrice &&
+                    sqrtPrice <= uint256(sqrtTwap).mul(1e4 + Constants.LIQUIDATION_SLIPPAGE_SQRT_TOLERANCE).div(1e4),
+                "L4"
+            );
+        }
 
         emit Liquidated(_vault.vaultId, msg.sender, debtValue, penaltyAmount);
     }
@@ -82,7 +104,7 @@ library LiquidationLogic {
         DataType.Context memory _context,
         mapping(bytes32 => DataType.PerpStatus) storage _ranges
     ) public view returns (bool) {
-        uint160 sqrtPrice = getSqrtTWAP(_context.uniswapPool);
+        uint160 sqrtPrice = UniHelper.getSqrtTWAP(_context.uniswapPool);
 
         PositionCalculator.PositionCalculatorParams memory _params = VaultLib.getPositionCalculatorParams(
             _vault,
@@ -148,12 +170,5 @@ library LiquidationLogic {
         uint256 _reward
     ) internal {
         TransferHelper.safeTransfer(_context.isMarginZero ? _context.token0 : _context.token1, _liquidator, _reward);
-    }
-
-    /**
-     * Gets square root of time Wweighted average price.
-     */
-    function getSqrtTWAP(address _uniswapPool) internal view returns (uint160 sqrtPriceX96) {
-        (sqrtPriceX96, ) = LPTMath.callUniswapObserve(IUniswapV3Pool(_uniswapPool), ORACLE_PERIOD);
     }
 }

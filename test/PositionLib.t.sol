@@ -128,7 +128,7 @@ contract PositionLibTest is Test {
         positions[0] = getPosition1();
 
         (DataType.PositionUpdate[] memory positionUpdates, uint256 swapIndex) = PositionLib
-            .calculatePositionUpdatesToClose(positions);
+            .calculatePositionUpdatesToClose(positions, 1e4);
 
         assertEq(positionUpdates.length, 2);
 

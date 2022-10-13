@@ -4,6 +4,7 @@ pragma abicoder v2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/math/SignedSafeMath.sol";
+import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@uniswap/v3-periphery/libraries/LiquidityAmounts.sol";
 import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import "./DataType.sol";
@@ -11,6 +12,7 @@ import "./DataType.sol";
 library PositionLib {
     using SafeMath for uint256;
     using SignedSafeMath for int256;
+    using SafeCast for uint256;
 
     function getPositionUpdatesToOpen(
         DataType.Position memory _position,
@@ -80,11 +82,12 @@ library PositionLib {
         bool _isQuoteZero,
         uint24 _feeTier,
         uint256 _swapRatio,
+        uint256 _closeRatio,
         uint160 _sqrtPrice
     ) external pure returns (DataType.PositionUpdate[] memory positionUpdates) {
         uint256 swapIndex;
 
-        (positionUpdates, swapIndex) = calculatePositionUpdatesToClose(_positions);
+        (positionUpdates, swapIndex) = calculatePositionUpdatesToClose(_positions, _closeRatio);
 
         (int256 requiredAmount0, int256 requiredAmount1) = getRequiredTokenAmountsToClose(_positions, _sqrtPrice);
 
@@ -357,7 +360,7 @@ library PositionLib {
         }
     }
 
-    function calculatePositionUpdatesToClose(DataType.Position[] memory _positions)
+    function calculatePositionUpdatesToClose(DataType.Position[] memory _positions, uint256 _closeRatio)
         internal
         pure
         returns (DataType.PositionUpdate[] memory positionUpdates, uint256 swapIndex)
@@ -374,7 +377,7 @@ library PositionLib {
                         DataType.PositionUpdateType.WITHDRAW_LPT,
                         _positions[i].subVaultIndex,
                         false,
-                        lpt.liquidity,
+                        uint256(lpt.liquidity).mul(_closeRatio).div(1e4).toUint128(),
                         lpt.lowerTick,
                         lpt.upperTick,
                         0,
@@ -396,7 +399,7 @@ library PositionLib {
                         DataType.PositionUpdateType.REPAY_LPT,
                         _positions[i].subVaultIndex,
                         false,
-                        lpt.liquidity,
+                        uint256(lpt.liquidity).mul(_closeRatio).div(1e4).toUint128(),
                         lpt.lowerTick,
                         lpt.upperTick,
                         0,
@@ -416,8 +419,8 @@ library PositionLib {
                     0,
                     0,
                     0,
-                    _positions[i].asset0,
-                    _positions[i].asset1
+                    _positions[i].asset0.mul(_closeRatio).div(1e4),
+                    _positions[i].asset1.mul(_closeRatio).div(1e4)
                 );
                 index++;
             }
@@ -432,8 +435,8 @@ library PositionLib {
                     0,
                     0,
                     0,
-                    _positions[i].debt0,
-                    _positions[i].debt1
+                    _positions[i].debt0.mul(_closeRatio).div(1e4),
+                    _positions[i].debt1.mul(_closeRatio).div(1e4)
                 );
             }
         }
