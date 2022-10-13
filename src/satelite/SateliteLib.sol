@@ -1,11 +1,15 @@
 // SPDX-License-Identifier: agpl-3.0
 pragma solidity ^0.7.6;
 
+import "@openzeppelin/contracts/math/SignedSafeMath.sol";
 import "@uniswap/v3-periphery/libraries/LiquidityAmounts.sol";
 import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import "../libraries/Constants.sol";
+import "../libraries/PredyMath.sol";
 
 library SateliteLib {
+    using SignedSafeMath for int256;
+
     function getProfit(
         uint256 indexPrice,
         uint256 strikePrice,
@@ -60,6 +64,34 @@ library SateliteLib {
             uint256 entryPrice = (afterSqrtPrice * 1e18) / Constants.Q96;
 
             return (entryPrice * beforeSqrtPrice) / Constants.Q96;
+        }
+    }
+
+    function updateEntryPrice(
+        int256 _entryPrice,
+        int256 _position,
+        int256 _tradePrice,
+        int256 _positionTrade
+    ) internal pure returns (int256 newEntryPrice, int256 profitValue) {
+        int256 newPosition = _position.add(_positionTrade);
+        if (_position == 0 || (_position > 0 && _positionTrade > 0) || (_position < 0 && _positionTrade < 0)) {
+            newEntryPrice = (
+                _entryPrice.mul(int256(PredyMath.abs(_position))).add(
+                    _tradePrice.mul(int256(PredyMath.abs(_positionTrade)))
+                )
+            ).div(int256(PredyMath.abs(_position.add(_positionTrade))));
+        } else if (
+            (_position > 0 && _positionTrade < 0 && newPosition > 0) ||
+            (_position < 0 && _positionTrade > 0 && newPosition < 0)
+        ) {
+            newEntryPrice = _entryPrice;
+            profitValue = (-_positionTrade).mul(_tradePrice.sub(_entryPrice)) / 1e18;
+        } else {
+            if (newPosition != 0) {
+                newEntryPrice = _tradePrice;
+            }
+
+            profitValue = _position.mul(_tradePrice.sub(_entryPrice)) / 1e18;
         }
     }
 }

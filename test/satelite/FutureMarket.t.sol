@@ -82,6 +82,31 @@ contract FutureMarketTest is TestDeployer, Test {
     }
 
     /**************************
+     *  Test: updateMargin    *
+     **************************/
+
+    function testDepositMargin() public {
+        uint256 beforeBalance = token0.balanceOf(owner);
+        futureMarket.updateMargin(futureVaultId1, 100);
+        uint256 afterBalance = token0.balanceOf(owner);
+
+        assertEq(beforeBalance - afterBalance, 100);
+    }
+
+    function testWithdrawMargin() public {
+        uint256 beforeBalance = token0.balanceOf(owner);
+        futureMarket.updateMargin(futureVaultId1, -100);
+        uint256 afterBalance = token0.balanceOf(owner);
+
+        assertEq(afterBalance - beforeBalance, 100);
+    }
+
+    function testCannotWithdrawMargin() public {
+        vm.expectRevert(bytes("FM1"));
+        futureMarket.updateMargin(futureVaultId1, -300 * 1e6);
+    }
+
+    /**************************
      *  Test: liquidationCall *
      **************************/
 
@@ -109,8 +134,6 @@ contract FutureMarketTest is TestDeployer, Test {
         uint256 beforeBalance = token0.balanceOf(owner);
         futureMarket.deposit(1000 * 1e6);
         uint256 afterBalance = token0.balanceOf(owner);
-
-        console.log(beforeBalance, afterBalance);
 
         assertEq(beforeBalance - afterBalance, 1000 * 1e6);
     }
