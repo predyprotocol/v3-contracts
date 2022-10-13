@@ -92,6 +92,23 @@ contract PositionCalculatorTest is Test {
         assertGe(PositionCalculator.calculateMinDeposit(position, uint160(sqrtPrice), false), 0);
     }
 
+    /*********************************************
+     * Test: calculateRequiredCollateralWithDebt *
+     *********************************************/
+
+    function testCalculateRequiredCollateralWithDebt1(uint256 _debtValue) public {
+        uint256 debtValue = bound(_debtValue, 1, 150000 * 1e6);
+
+        assertLe(PositionCalculator.calculateRequiredCollateralWithDebt(debtValue), 2 * 1e4);
+    }
+
+    function testCalculateRequiredCollateralWithDebt2(uint256 _debtValue) public {
+        uint256 debtValue = bound(_debtValue, 170000 * 1e6, 900000 * 1e6);
+
+        assertLe(PositionCalculator.calculateRequiredCollateralWithDebt(debtValue), 5 * 1e4);
+        assertGe(PositionCalculator.calculateRequiredCollateralWithDebt(debtValue), 2 * 1e4);
+    }
+
     function getLiquidity(
         uint256 _amount,
         int24 _lower,

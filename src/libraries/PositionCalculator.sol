@@ -35,7 +35,7 @@ library PositionCalculator {
 
     /**
      * @notice Calculates Min. Deposit for a vault.
-     * MinDeposit = vaultPositionValue - minValue + 0.02 * DebtValue
+     * MinDeposit = vaultPositionValue - minValue + Max{0.00006 * Sqrt{DebtValue}, 0.02} * DebtValue
      * @param _params position object
      * @param _sqrtPrice square root price to calculate
      * @param _isMarginZero whether the stable token is token0 or token1
@@ -51,7 +51,18 @@ library PositionCalculator {
 
         (, , uint256 debtValue) = calculateCollateralAndDebtValue(_params, _sqrtPrice, _isMarginZero, false);
 
-        return int256(debtValue).div(50).add(vaultPositionValue).sub(minValue);
+        return
+            int256(calculateRequiredCollateralWithDebt(debtValue).mul(debtValue).div(1e6)).add(vaultPositionValue).sub(
+                minValue
+            );
+    }
+
+    function calculateRequiredCollateralWithDebt(uint256 _debtValue) internal pure returns (uint256) {
+        return
+            PredyMath.max(
+                Constants.MIN_COLLATERAL_WITH_DEBT_SLOPE.mul(PredyMath.sqrt(_debtValue * 1e6)).div(1e6),
+                Constants.BASE_MIN_COLLATERAL_WITH_DEBT
+            );
     }
 
     /**
