@@ -123,6 +123,10 @@ library PredyMath {
         return a > b ? a : b;
     }
 
+    function min(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a > b ? b : a;
+    }
+
     function subReward(uint256 a, uint256 b) internal pure returns (uint256, uint256) {
         if (a >= b) {
             return (a - b, b);

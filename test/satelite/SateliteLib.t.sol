@@ -42,29 +42,4 @@ contract SateliteLibTest is Test {
             1606854063
         );
     }
-
-    /**************************
-     * Test: updateEntryPrice *
-     **************************/
-
-    function testUpdateEntryPriceOpen() public {
-        (int256 entryPrice, int256 profitValue) = SateliteLib.updateEntryPrice(1000, 1e18, 2000, 1e18);
-
-        assertEq(entryPrice, 1500);
-        assertEq(profitValue, 0);
-    }
-
-    function testUpdateEntryPriceClose() public {
-        (int256 entryPrice, int256 profitValue) = SateliteLib.updateEntryPrice(1000, 1e18, 2000, -1e17);
-
-        assertEq(entryPrice, 1000);
-        assertEq(profitValue, 100);
-    }
-
-    function testUpdateEntryPriceCloseAll() public {
-        (int256 entryPrice, int256 profitValue) = SateliteLib.updateEntryPrice(1000, 1e18, 2000, -1e18);
-
-        assertEq(entryPrice, 0);
-        assertEq(profitValue, 1000);
-    }
 }

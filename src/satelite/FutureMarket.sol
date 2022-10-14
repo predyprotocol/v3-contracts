@@ -13,8 +13,8 @@ import "../interfaces/IControllerHelper.sol";
 import "../interfaces/IReader.sol";
 import "../libraries/LPTMath.sol";
 import "../libraries/Constants.sol";
-import "./BlackScholes.sol";
 import "./SateliteLib.sol";
+import "./FutureMarketLib.sol";
 
 /**
  * FM0: caller is not vault owner
@@ -43,15 +43,6 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
         int24 upperTick;
     }
 
-    struct FutureVault {
-        uint256 id;
-        address owner;
-        int256 positionAmount;
-        uint256 entryPrice;
-        int256 entryFundingFee;
-        uint256 marginAmount;
-    }
-
     struct PoolPosition {
         int256 positionAmount;
         uint256 entryPrice;
@@ -61,7 +52,7 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
 
     mapping(uint256 => Range) private ranges;
 
-    mapping(uint256 => FutureVault) private futureVaults;
+    mapping(uint256 => FutureMarketLib.FutureVault) private futureVaults;
 
     uint256 public futureVaultCount;
 
@@ -181,7 +172,7 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
     function updateMargin(uint256 _vaultId, int256 _marginAmount) external returns (uint256 traderVaultId) {
         require(_marginAmount != 0);
 
-        FutureVault storage futureVault;
+        FutureMarketLib.FutureVault storage futureVault;
 
         (traderVaultId, futureVault) = _createOrGetVault(_vaultId, false);
 
@@ -203,7 +194,7 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
 
         uint256 entryPrice = _updatePoolPosition(_amount);
 
-        FutureVault storage futureVault;
+        FutureMarketLib.FutureVault storage futureVault;
 
         (traderVaultId, futureVault) = _createOrGetVault(_vaultId, false);
 
@@ -215,7 +206,7 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
     function liquidationCall(uint256 _vaultId) external {
         updateFundingPaidPerPosition();
 
-        FutureVault storage futureVault = futureVaults[_vaultId];
+        FutureMarketLib.FutureVault storage futureVault = futureVaults[_vaultId];
 
         require(!isVaultSafe(futureVault), "FM2");
 
@@ -259,7 +250,7 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
             int256 deltaMarginAmount;
 
             {
-                (int256 newEntryPrice, int256 profitValue) = SateliteLib.updateEntryPrice(
+                (int256 newEntryPrice, int256 profitValue) = FutureMarketLib.updateEntryPrice(
                     int256(poolPosition.entryPrice),
                     poolPosition.positionAmount,
                     int256(entryPrice),
@@ -271,7 +262,7 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
             }
 
             {
-                (int256 entryFundingFee, int256 profitValue) = SateliteLib.updateEntryPrice(
+                (int256 entryFundingFee, int256 profitValue) = FutureMarketLib.updateEntryPrice(
                     int256(poolPosition.entryFundingFee),
                     poolPosition.positionAmount,
                     int256(fundingFeePerPosition),
@@ -289,12 +280,12 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
     }
 
     function _updateTraderPosition(
-        FutureVault storage _futureVault,
+        FutureMarketLib.FutureVault storage _futureVault,
         int256 _amount,
         uint256 _entryPrice
     ) internal returns (int256 deltaMarginAmount) {
         {
-            (int256 newEntryPrice, int256 profitValue) = SateliteLib.updateEntryPrice(
+            (int256 newEntryPrice, int256 profitValue) = FutureMarketLib.updateEntryPrice(
                 int256(_futureVault.entryPrice),
                 _futureVault.positionAmount,
                 int256(_entryPrice),
@@ -306,7 +297,7 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
         }
 
         {
-            (int256 entryFundingFee, int256 profitValue) = SateliteLib.updateEntryPrice(
+            (int256 entryFundingFee, int256 profitValue) = FutureMarketLib.updateEntryPrice(
                 int256(_futureVault.entryFundingFee),
                 _futureVault.positionAmount,
                 int256(fundingFeePerPosition),
@@ -324,7 +315,7 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
         require(isVaultSafe(_futureVault), "FM1");
     }
 
-    function isVaultSafe(FutureVault memory _futureVault) internal view returns (bool) {
+    function isVaultSafe(FutureMarketLib.FutureVault memory _futureVault) internal view returns (bool) {
         if (_futureVault.positionAmount == 0) {
             return true;
         }
@@ -332,15 +323,18 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
         // TODO: use chainlink
         uint256 twap = reader.getTWAP();
 
-        // MinCollateral = 0.1 * TWAP * PositionAmount
-        uint256 minCollateral = (twap * PredyMath.abs(_futureVault.positionAmount)) / 1e19;
+        uint256 minCollateral = FutureMarketLib.calculateMinCollateral(_futureVault, twap);
 
         int256 vaultValue = getVaultValue(_futureVault, twap);
 
         return vaultValue > int256(minCollateral);
     }
 
-    function getVaultValue(FutureVault memory _futureVault, uint256 _price) internal view returns (int256) {
+    function getVaultValue(FutureMarketLib.FutureVault memory _futureVault, uint256 _price)
+        internal
+        view
+        returns (int256)
+    {
         int256 positionValue = int256(_price)
             .sub(int256(_futureVault.entryPrice).add(fundingFeePerPosition.sub(_futureVault.entryFundingFee)))
             .mul(_futureVault.positionAmount) / 1e18;
@@ -350,7 +344,7 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
 
     function _createOrGetVault(uint256 _vaultId, bool _quoterMode)
         internal
-        returns (uint256 futureVaultId, FutureVault storage)
+        returns (uint256 futureVaultId, FutureMarketLib.FutureVault storage)
     {
         if (_vaultId == 0) {
             futureVaultId = futureVaultCount;
