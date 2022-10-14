@@ -70,7 +70,7 @@ library UniHelper {
         return INonfungiblePositionManager(_context.positionManager).mint(params);
     }
 
-    function getSqrtPrice(address _uniswapPool) public view returns (uint160 sqrtPriceX96) {
+    function getSqrtPrice(address _uniswapPool) internal view returns (uint160 sqrtPriceX96) {
         (sqrtPriceX96, , , , , , ) = IUniswapV3Pool(_uniswapPool).slot0();
     }
 
