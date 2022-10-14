@@ -137,7 +137,7 @@ library LiquidationLogic {
         DataType.Context memory _context,
         mapping(bytes32 => DataType.PerpStatus) storage _ranges
     ) external view returns (int256) {
-        uint160 sqrtPrice = getSqrtTWAP(_context.uniswapPool);
+        uint160 sqrtPrice = UniHelper.getSqrtTWAP(_context.uniswapPool);
 
         PositionCalculator.PositionCalculatorParams memory _params = VaultLib.getPositionCalculatorParams(
             _vault,

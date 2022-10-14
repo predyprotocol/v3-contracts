@@ -372,6 +372,7 @@ contract OptionMarket is ERC20, IERC721Receiver, Ownable {
             0,
             type(uint256).max,
             _swapRatio,
+            1e6,
             500
         );
 
@@ -528,6 +529,7 @@ contract OptionMarket is ERC20, IERC721Receiver, Ownable {
             0,
             type(uint256).max,
             100,
+            1e6,
             500
         );
 
@@ -548,6 +550,7 @@ contract OptionMarket is ERC20, IERC721Receiver, Ownable {
             0,
             type(uint256).max,
             100,
+            1e6,
             500
         );
 
