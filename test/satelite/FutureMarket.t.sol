@@ -53,7 +53,7 @@ contract FutureMarketTest is TestDeployer, Test {
         futureVaultId1 = futureMarket.updateMargin(0, 400 * 1e6);
         futureVaultId2 = futureMarket.updateMargin(0, 400 * 1e6);
 
-        futureMarket.trade(futureVaultId1, 1e18);
+        futureMarket.trade(futureVaultId1, 1e18, false);
     }
 
     /**************************
@@ -61,11 +61,11 @@ contract FutureMarketTest is TestDeployer, Test {
      **************************/
 
     function testOpenLongPosition() public {
-        futureMarket.trade(futureVaultId1, 1e18);
+        futureMarket.trade(futureVaultId1, 1e18, false);
     }
 
     function testOpenShortPosition() public {
-        futureMarket.trade(futureVaultId2, -1e18);
+        futureMarket.trade(futureVaultId2, -1e18, false);
     }
 
     /**************************
@@ -73,12 +73,12 @@ contract FutureMarketTest is TestDeployer, Test {
      **************************/
 
     function testCloseLongPosition() public {
-        futureMarket.trade(futureVaultId1, -1e18);
+        futureMarket.trade(futureVaultId1, -1e18, false);
     }
 
     function testCloseShortPosition() public {
-        futureMarket.trade(futureVaultId2, -1e18);
-        futureMarket.trade(futureVaultId2, 1e18);
+        futureMarket.trade(futureVaultId2, -1e18, false);
+        futureMarket.trade(futureVaultId2, 1e18, false);
     }
 
     /**************************
@@ -111,14 +111,14 @@ contract FutureMarketTest is TestDeployer, Test {
      **************************/
 
     function testCannotLiquidationCall() public {
-        futureMarket.trade(futureVaultId2, -1e18);
+        futureMarket.trade(futureVaultId2, -1e18, false);
 
         vm.expectRevert(bytes("FM2"));
         futureMarket.liquidationCall(futureVaultId2);
     }
 
     function testLiquidationCall() public {
-        futureMarket.trade(futureVaultId2, -2 * 1e18);
+        futureMarket.trade(futureVaultId2, -2 * 1e18, false);
 
         slip(owner, true, 10 * 1e18);
         vm.warp(block.timestamp + 10 minutes);
