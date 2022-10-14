@@ -83,14 +83,29 @@ library LiquidationLogic {
             // reverts if price is out of slippage threshold
             uint256 sqrtPrice = UniHelper.getSqrtPrice(_context.uniswapPool);
 
+            uint256 liquidationSlippageSqrtTolerance = calculateLiquidationSlippageTolerance(debtValue);
+
             require(
-                uint256(sqrtTwap).mul(1e4 - Constants.LIQUIDATION_SLIPPAGE_SQRT_TOLERANCE).div(1e4) <= sqrtPrice &&
-                    sqrtPrice <= uint256(sqrtTwap).mul(1e4 + Constants.LIQUIDATION_SLIPPAGE_SQRT_TOLERANCE).div(1e4),
+                uint256(sqrtTwap).mul(1e6 - liquidationSlippageSqrtTolerance).div(1e6) <= sqrtPrice &&
+                    sqrtPrice <= uint256(sqrtTwap).mul(1e6 + liquidationSlippageSqrtTolerance).div(1e6),
                 "L4"
             );
         }
 
         emit Liquidated(_vault.vaultId, msg.sender, debtValue, penaltyAmount);
+    }
+
+    function calculateLiquidationSlippageTolerance(uint256 _debtValue) internal pure returns (uint256) {
+        uint256 liquidationSlippageSqrtTolerance = PredyMath.max(
+            (Constants.LIQ_SLIPPAGE_SQRT_SLOPE * PredyMath.sqrt(_debtValue * 1e6)) / 1e6,
+            Constants.BASE_LIQ_SLIPPAGE_SQRT_TOLERANCE
+        );
+
+        if (liquidationSlippageSqrtTolerance > 1e6) {
+            return 1e6;
+        }
+
+        return liquidationSlippageSqrtTolerance;
     }
 
     /**
