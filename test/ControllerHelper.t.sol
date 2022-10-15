@@ -506,6 +506,37 @@ contract ControllerHelperTest is TestDeployer, Test {
         DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);
 
         assertEq(vaultStatus.subVaults.length, 0);
+
+        assertFalse(controller.checkLiquidatable(vaultId));
+    }
+
+    function testLiquidateBecauseMarginIsNegative() public {
+        uint256 vaultId = borrowLPT(0, 0, 202600, 202500, 202600, 1e18, 100 * 1e6);
+        depositToken(vaultId, 1e11, 0);
+
+        swapToSamePrice(owner);
+
+        vm.warp(block.timestamp + 2 days);
+
+        DataType.VaultStatus memory vaultStatus1 = controller.getVaultStatus(vaultId);
+
+        assertLt(vaultStatus1.marginValue, 0);
+
+        assertTrue(controller.checkLiquidatable(vaultId));
+
+        uint256 beforeBalance0 = token0.balanceOf(owner);
+        controller.liquidate(vaultId, DataType.LiquidationOption(100, 1e4, 500));
+        uint256 afterBalance0 = token0.balanceOf(owner);
+
+        // get penalty amount
+        console.log(afterBalance0 - beforeBalance0);
+        assertGt(afterBalance0, beforeBalance0);
+
+        DataType.VaultStatus memory vaultStatus2 = controller.getVaultStatus(vaultId);
+
+        assertEq(vaultStatus2.subVaults.length, 0);
+
+        assertFalse(controller.checkLiquidatable(vaultId));
     }
 
     function testLiquidatePartially() public {
