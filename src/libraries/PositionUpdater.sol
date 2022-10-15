@@ -5,15 +5,17 @@ pragma abicoder v2;
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/math/SignedSafeMath.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
-import "@uniswap/v3-periphery/interfaces/INonfungiblePositionManager.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-periphery/interfaces/ISwapRouter.sol";
+import "@uniswap/v3-periphery/libraries/PositionKey.sol";
 import "./BaseToken.sol";
 import "./Constants.sol";
 import "./DataType.sol";
 import "./VaultLib.sol";
 import "./LPTStateLib.sol";
 import "./UniHelper.sol";
+
+import "forge-std/console.sol";
 
 /*
  * Error Codes
@@ -185,6 +187,8 @@ library PositionUpdater {
             } else if (_tradeOption.targetMarginAmount0 == Constants.MARGIN_USE) {
                 // use margin of token0 to make required amount 0
                 deltaMarginAmount0 = requiredAmount0.mul(-1);
+
+                console.log(1, _vault.marginAmount0, uint256(-deltaMarginAmount0));
 
                 _vault.marginAmount0 = PredyMath.addDelta(_vault.marginAmount0, deltaMarginAmount0);
 
@@ -359,46 +363,21 @@ library PositionUpdater {
     ) internal returns (uint256 requiredAmount0, uint256 requiredAmount1) {
         bytes32 rangeId = LPTStateLib.getRangeKey(_positionUpdate.lowerTick, _positionUpdate.upperTick);
 
-        (uint256 amount0, uint256 amount1) = LPTMath.getAmountsForLiquidity(
-            getSqrtPrice(IUniswapV3Pool(_context.uniswapPool)),
+        (requiredAmount0, requiredAmount1) = IUniswapV3Pool(_context.uniswapPool).mint(
+            address(this),
             _positionUpdate.lowerTick,
             _positionUpdate.upperTick,
-            _positionUpdate.liquidity
+            _positionUpdate.liquidity,
+            ""
         );
 
-        // liquidity amount actually deposited
-        uint128 finalLiquidityAmount;
-
-        if (_ranges[rangeId].tokenId > 0) {
-            (, finalLiquidityAmount, requiredAmount0, requiredAmount1) = UniHelper.increaseLiquidity(
-                _context,
-                _ranges[rangeId].tokenId,
-                amount0,
-                amount1,
-                _positionUpdate.param0,
-                _positionUpdate.param1
-            );
-        } else {
-            uint256 tokenId = 0;
-
-            (tokenId, finalLiquidityAmount, requiredAmount0, requiredAmount1) = UniHelper.mint(
-                _context,
-                _positionUpdate.lowerTick,
-                _positionUpdate.upperTick,
-                amount0,
-                amount1,
-                _positionUpdate.param0,
-                _positionUpdate.param1
-            );
-
-            _ranges[rangeId].registerNewLPTState(tokenId, _positionUpdate.lowerTick, _positionUpdate.upperTick);
+        if (_ranges[rangeId].lastTouchedTimestamp == 0) {
+            _ranges[rangeId].registerNewLPTState(_positionUpdate.lowerTick, _positionUpdate.upperTick);
         }
 
-        require(finalLiquidityAmount <= _positionUpdate.liquidity, "PU3");
+        _subVault.depositLPT(_ranges[rangeId], rangeId, _positionUpdate.liquidity);
 
-        _subVault.depositLPT(_ranges[rangeId], rangeId, finalLiquidityAmount);
-
-        emit LPTDeposited(_subVault.id, rangeId, finalLiquidityAmount, requiredAmount0, requiredAmount1);
+        emit LPTDeposited(_subVault.id, rangeId, _positionUpdate.liquidity, requiredAmount0, requiredAmount1);
     }
 
     function withdrawLPT(
@@ -416,13 +395,7 @@ library PositionUpdater {
             _context.isMarginZero
         );
 
-        (withdrawAmount0, withdrawAmount1) = decreaseLiquidityFromUni(
-            _context,
-            _ranges[rangeId],
-            liquidityAmount,
-            _positionUpdate.param0,
-            _positionUpdate.param1
-        );
+        (withdrawAmount0, withdrawAmount1) = decreaseLiquidityFromUni(_context, _ranges[rangeId], liquidityAmount);
 
         emit LPTWithdrawn(
             _subVault.id,
@@ -449,9 +422,7 @@ library PositionUpdater {
         (requiredAmount0, requiredAmount1) = decreaseLiquidityFromUni(
             _context,
             _ranges[rangeId],
-            _positionUpdate.liquidity,
-            _positionUpdate.param0,
-            _positionUpdate.param1
+            _positionUpdate.liquidity
         );
 
         _ranges[rangeId].borrowedLiquidity = _ranges[rangeId]
@@ -479,28 +450,13 @@ library PositionUpdater {
             _context.isMarginZero
         );
 
-        {
-            (uint256 amount0, uint256 amount1) = LPTMath.getAmountsForLiquidityRoundUp(
-                getSqrtPrice(IUniswapV3Pool(_context.uniswapPool)),
-                _positionUpdate.lowerTick,
-                _positionUpdate.upperTick,
-                liquidity
-            );
-
-            // liquidity amount actually deposited
-            uint128 finalLiquidityAmount;
-
-            (, finalLiquidityAmount, requiredAmount0, requiredAmount1) = UniHelper.increaseLiquidity(
-                _context,
-                _ranges[rangeId].tokenId,
-                amount0,
-                amount1,
-                _positionUpdate.param0,
-                _positionUpdate.param1
-            );
-
-            require(finalLiquidityAmount >= liquidity, "PU2");
-        }
+        (requiredAmount0, requiredAmount1) = IUniswapV3Pool(_context.uniswapPool).mint(
+            address(this),
+            _positionUpdate.lowerTick,
+            _positionUpdate.upperTick,
+            liquidity,
+            ""
+        );
 
         _ranges[rangeId].borrowedLiquidity = _ranges[rangeId].borrowedLiquidity.toUint256().sub(liquidity).toUint128();
 
@@ -611,14 +567,9 @@ library PositionUpdater {
     function decreaseLiquidityFromUni(
         DataType.Context memory _context,
         DataType.PerpStatus storage _range,
-        uint128 _liquidity,
-        uint256 _amount0Min,
-        uint256 _amount1Min
+        uint128 _liquidity
     ) internal returns (uint256 amount0, uint256 amount1) {
-        INonfungiblePositionManager.DecreaseLiquidityParams memory params = INonfungiblePositionManager
-            .DecreaseLiquidityParams(_range.tokenId, _liquidity, _amount0Min, _amount1Min, block.timestamp);
-
-        (amount0, amount1) = INonfungiblePositionManager(_context.positionManager).decreaseLiquidity(params);
+        (amount0, amount1) = IUniswapV3Pool(_context.uniswapPool).burn(_range.lowerTick, _range.upperTick, _liquidity);
 
         collectTokenAmountsFromUni(_context, _range, amount0.toUint128(), amount1.toUint128());
     }
@@ -629,61 +580,50 @@ library PositionUpdater {
         uint128 _amount0,
         uint128 _amount1
     ) internal {
-        INonfungiblePositionManager.CollectParams memory params = INonfungiblePositionManager.CollectParams(
-            _range.tokenId,
+        (uint256 a0, uint256 a1) = IUniswapV3Pool(_context.uniswapPool).collect(
             address(this),
+            _range.lowerTick,
+            _range.upperTick,
             _amount0,
             _amount1
         );
 
-        (uint256 a0, uint256 a1) = INonfungiblePositionManager(_context.positionManager).collect(params);
-
-        require(_amount0 == a0 && _amount1 == a1);
+        require(_amount0 == a0 && _amount1 == a1, "AAA");
     }
 
     function collectTradeFeeFromUni(DataType.Context memory _context, DataType.PerpStatus storage _range) internal {
-        uint256 liquidityAmount = getTotalLiquidityAmount(
-            INonfungiblePositionManager(_context.positionManager),
-            _range.tokenId
-        );
+        uint256 liquidityAmount = LPTStateLib.getAvailableLiquidityAmount(_context.uniswapPool, _range);
 
-        INonfungiblePositionManager.CollectParams memory params = INonfungiblePositionManager.CollectParams(
-            _range.tokenId,
+        (uint256 a0, uint256 a1) = IUniswapV3Pool(_context.uniswapPool).collect(
             address(this),
+            _range.lowerTick,
+            _range.upperTick,
             type(uint128).max,
             type(uint128).max
         );
 
-        (uint256 a0, uint256 a1) = INonfungiblePositionManager(_context.positionManager).collect(params);
-
         // Update cumulative trade fee
         /*
         (_range.fee0Growth, _range.fee1Growth) = getFeeGrowth(
-            INonfungiblePositionManager(_context.positionManager),
-            _range.tokenId
+            IUniswapV3Pool(_context.uniswapPool),
+            _range.lowerTick,
+            _range.upperTick
         );
         */
         _range.fee0Growth = _range.fee0Growth.add(PredyMath.mulDiv(a0, Constants.ONE, liquidityAmount));
         _range.fee1Growth = _range.fee1Growth.add(PredyMath.mulDiv(a1, Constants.ONE, liquidityAmount));
     }
 
-    function getTotalLiquidityAmount(INonfungiblePositionManager _positionManager, uint256 _tokenId)
-        internal
-        view
-        returns (uint256)
-    {
-        (, , , , , , , uint128 liquidity, , , , ) = _positionManager.positions(_tokenId);
+    function getFeeGrowth(
+        IUniswapV3Pool _uniswapPool,
+        int24 _tickLower,
+        int24 _tickUpper
+    ) internal view returns (uint256, uint256) {
+        bytes32 positionKey = PositionKey.compute(address(this), _tickLower, _tickUpper);
 
-        return liquidity;
-    }
-
-    function getFeeGrowth(INonfungiblePositionManager _positionManager, uint256 _tokenId)
-        internal
-        view
-        returns (uint256, uint256)
-    {
-        (, , , , , , , , uint256 feeGrowthInside0LastX128, uint256 feeGrowthInside1LastX128, , ) = _positionManager
-            .positions(_tokenId);
+        (, uint256 feeGrowthInside0LastX128, uint256 feeGrowthInside1LastX128, , ) = _uniswapPool.positions(
+            positionKey
+        );
 
         return (feeGrowthInside0LastX128, feeGrowthInside1LastX128);
     }

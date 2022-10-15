@@ -16,7 +16,6 @@ contract Reader {
     Controller public controller;
     bool public isMarginZero;
     address public uniswapPool;
-    address public positionManager;
 
     /**
      * @notice Reader constructor
@@ -25,7 +24,7 @@ contract Reader {
     constructor(Controller _controller) {
         controller = _controller;
 
-        (isMarginZero, , uniswapPool, positionManager, , ) = controller.getContext();
+        (isMarginZero, , uniswapPool, , ) = controller.getContext();
     }
 
     /**
@@ -87,11 +86,11 @@ contract Reader {
     {
         DataType.PerpStatus memory range = controller.getRange(_rangeId);
 
-        if (range.tokenId == 0) {
+        if (range.lastTouchedTimestamp == 0) {
             return (0, 0, 0);
         }
 
-        return LPTStateLib.getPerpStatus(positionManager, range);
+        return LPTStateLib.getPerpStatus(uniswapPool, range);
     }
 
     /**

@@ -7,7 +7,6 @@ import "./BaseToken.sol";
 library DataType {
     // Storage Data Type
     struct PerpStatus {
-        uint256 tokenId;
         int24 lowerTick;
         int24 upperTick;
         uint128 borrowedLiquidity;
@@ -45,7 +44,6 @@ library DataType {
         address token0;
         address token1;
         uint24 feeTier;
-        address positionManager;
         address swapRouter;
         address uniswapPool;
         bool isMarginZero;

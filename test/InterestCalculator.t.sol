@@ -40,23 +40,36 @@ contract InterestCalculatorTest is TestDeployer, Test {
         ypParams.irmParams = InterestCalculator.IRMParams(1e12, 30 * 1e16, 20 * 1e16, 50 * 1e16);
         ypParams.premiumParams = InterestCalculator.IRMParams(4 * 1e16, 30 * 1e16, 16 * 1e16, 100 * 1e16);
 
-        INonfungiblePositionManager.MintParams memory params = INonfungiblePositionManager.MintParams(
-            address(token0),
-            address(token1),
-            500,
-            perpStatus.lowerTick,
-            perpStatus.upperTick,
+        liquidity = LiquidityAmounts.getLiquidityForAmounts(
+            getSqrtPrice(),
+            TickMath.getSqrtRatioAtTick(perpStatus.lowerTick),
+            TickMath.getSqrtRatioAtTick(perpStatus.upperTick),
             ((1e20 * 1005) / 1e12),
-            1e20,
-            1,
-            1,
-            owner,
-            block.timestamp
+            1e20
         );
 
-        (perpStatus.tokenId, liquidity, , ) = positionManager.mint(params);
+        vm.stopPrank();
+
+        IUniswapV3Pool(context.uniswapPool).mint(
+            address(this),
+            perpStatus.lowerTick,
+            perpStatus.upperTick,
+            liquidity,
+            ""
+        );
+
+        vm.startPrank(owner);
 
         perpStatus.borrowedLiquidity = liquidity;
+    }
+
+    function uniswapV3MintCallback(
+        uint256 amount0,
+        uint256 amount1,
+        bytes calldata data
+    ) external {
+        if (amount0 > 0) TransferHelper.safeTransfer(context.token0, msg.sender, amount0);
+        if (amount1 > 0) TransferHelper.safeTransfer(context.token1, msg.sender, amount1);
     }
 
     function testApplyInterest() public {

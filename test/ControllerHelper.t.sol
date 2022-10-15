@@ -370,7 +370,7 @@ contract ControllerHelperTest is TestDeployer, Test {
         );
     }
 
-    function testWithdrawLPT(uint256 _swapAmount) public {
+    function testWithdrawLPT1(uint256 _swapAmount) public {
         uint256 swapAmount = bound(_swapAmount, 1e16, 5 * 1e18);
 
         uint256 vaultId = depositLPT(0, 0, 202500, 202600, 1e18);
@@ -380,11 +380,15 @@ contract ControllerHelperTest is TestDeployer, Test {
 
         vm.warp(block.timestamp + 5 minutes);
 
+        console.log(1);
+
         controller.closeVault(
             vaultId,
             DataType.TradeOption(false, true, false, getIsMarginZero(), 0, -1, EMPTY_METADATA),
             DataType.ClosePositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 100, 1e4, 500)
         );
+
+        console.log(2);
 
         DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);
 
@@ -455,11 +459,11 @@ contract ControllerHelperTest is TestDeployer, Test {
             DataType.ClosePositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 100, 1e4, 500)
         );
 
-        (, , , , uint256 protocolFee0, uint256 protocolFee1) = controller.getContext();
+        (, , , uint256 protocolFee0, uint256 protocolFee1) = controller.getContext();
 
         controller.withdrawProtocolFee(protocolFee0, protocolFee1);
 
-        (, , , , uint256 protocolFee0After, uint256 protocolFee1After) = controller.getContext();
+        (, , , uint256 protocolFee0After, uint256 protocolFee1After) = controller.getContext();
 
         assertEq(protocolFee0After, 0);
         assertEq(protocolFee1After, 0);
