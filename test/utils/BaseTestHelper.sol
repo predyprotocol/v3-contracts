@@ -8,6 +8,7 @@ import {NonfungiblePositionManager} from "v3-periphery/NonfungiblePositionManage
 import "../../src/Controller.sol";
 import "../../src/ControllerHelper.sol";
 import "../../src/Reader.sol";
+import "../../src/VaultNFT.sol";
 import "../../src/mocks/MockERC20.sol";
 import "../../src/libraries/LPTMath.sol";
 import "../../src/libraries/VaultLib.sol";
@@ -23,6 +24,7 @@ abstract contract BaseTestHelper {
 
     ControllerHelper internal controller;
     Reader internal reader;
+    VaultNFT vaultNFT;
 
     NonfungiblePositionManager internal positionManager;
     SwapRouter internal swapRouter;

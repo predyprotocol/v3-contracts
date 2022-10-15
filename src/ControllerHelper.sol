@@ -62,10 +62,15 @@ contract ControllerHelper is Controller {
         returns (
             uint256 vaultId,
             int256 requiredAmount0,
-            int256 requiredAmount1
+            int256 requiredAmount1,
+            uint256 averagePrice
         )
     {
-        (vaultId, requiredAmount0, requiredAmount1) = updatePosition(_vaultId, positionUpdates, _tradeOption);
+        (vaultId, requiredAmount0, requiredAmount1, averagePrice) = updatePosition(
+            _vaultId,
+            positionUpdates,
+            _tradeOption
+        );
 
         _checkPrice(_openPositionOptions.lowerSqrtPrice, _openPositionOptions.upperSqrtPrice);
     }

@@ -29,7 +29,8 @@ interface IControllerHelper {
         returns (
             uint256 vaultId,
             int256 requiredAmount0,
-            int256 requiredAmount1
+            int256 requiredAmount1,
+            uint256 averagePrice
         );
 
     function closeSubVault(

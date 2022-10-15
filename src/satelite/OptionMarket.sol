@@ -499,7 +499,7 @@ contract OptionMarket is ERC20, IERC721Receiver, Ownable {
 
         DataType.OpenPositionOption memory openPositionOption = DataType.OpenPositionOption(0, type(uint256).max, 500);
 
-        (vaultId, requiredAmount, ) = controller.openPosition(vaultId, position, tradeOption, openPositionOption);
+        (vaultId, requiredAmount, , ) = controller.openPosition(vaultId, position, tradeOption, openPositionOption);
     }
 
     function _addShort(
@@ -512,7 +512,7 @@ contract OptionMarket is ERC20, IERC721Receiver, Ownable {
 
         DataType.OpenPositionOption memory openPositionOption = DataType.OpenPositionOption(0, type(uint256).max, 500);
 
-        (vaultId, requiredAmount, ) = controller.openPosition(vaultId, position, tradeOption, openPositionOption);
+        (vaultId, requiredAmount, , ) = controller.openPosition(vaultId, position, tradeOption, openPositionOption);
     }
 
     function _removeLong(
@@ -533,7 +533,7 @@ contract OptionMarket is ERC20, IERC721Receiver, Ownable {
             500
         );
 
-        (requiredAmount, ) = controller.closePosition(vaultId, positions, tradeOption, closePositionOption);
+        (requiredAmount, , ) = controller.closePosition(vaultId, positions, tradeOption, closePositionOption);
     }
 
     function _removeShort(
@@ -554,7 +554,7 @@ contract OptionMarket is ERC20, IERC721Receiver, Ownable {
             500
         );
 
-        (requiredAmount, ) = controller.closePosition(vaultId, positions, tradeOption, closePositionOption);
+        (requiredAmount, , ) = controller.closePosition(vaultId, positions, tradeOption, closePositionOption);
     }
 
     function _exercise(DataType.TradeOption memory tradeOption, DataType.ClosePositionOption memory closePositionOption)
@@ -562,7 +562,7 @@ contract OptionMarket is ERC20, IERC721Receiver, Ownable {
         returns (uint256 indexPrice, int256 requiredAmount)
     {
         uint256 beforeSqrtPrice = controller.getSqrtPrice();
-        (requiredAmount, ) = controller.closeSubVault(vaultId, 0, tradeOption, closePositionOption);
+        (requiredAmount, , ) = controller.closeSubVault(vaultId, 0, tradeOption, closePositionOption);
         uint256 afterSqrtPrice = controller.getSqrtPrice();
 
         indexPrice = SateliteLib.getTradePrice(reader.isMarginZero(), beforeSqrtPrice, afterSqrtPrice);

@@ -11,6 +11,7 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import {TransferHelper} from "@uniswap/v3-periphery/libraries/TransferHelper.sol";
 import "../interfaces/IControllerHelper.sol";
 import "../interfaces/IReader.sol";
+import "../interfaces/IVaultNFT.sol";
 import "../libraries/LPTMath.sol";
 import "../libraries/Constants.sol";
 import "./SateliteLib.sol";
@@ -33,6 +34,8 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
     IReader internal immutable reader;
 
     address internal immutable usdc;
+
+    address private vaultNFT;
 
     uint256 public vaultId;
 
@@ -88,11 +91,13 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
     constructor(
         address _controller,
         address _reader,
-        address _usdc
+        address _usdc,
+        address _vaultNFT
     ) ERC20("PredyFutureLP", "PFLP") {
         controller = IControllerHelper(_controller);
         reader = IReader(_reader);
         usdc = _usdc;
+        vaultNFT = _vaultNFT;
 
         ERC20(_usdc).approve(address(_controller), type(uint256).max);
 
@@ -258,16 +263,20 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
 
         positionUpdates[positionUpdates.length - 1] = _cover(poolPosition.positionAmount);
 
-        int256 requiredAmount;
+        int256 requiredAmount0;
+        int256 requiredAmount1;
 
-        (vaultId, requiredAmount, ) = controller.updatePosition(
+        (vaultId, requiredAmount0, requiredAmount1, ) = controller.updatePosition(
             vaultId,
             positionUpdates,
             tradeOption,
             openPositionOption
         );
 
-        poolPosition.usdcAmount = PredyMath.addDelta(poolPosition.usdcAmount, -requiredAmount);
+        poolPosition.usdcAmount = PredyMath.addDelta(
+            poolPosition.usdcAmount,
+            reader.isMarginZero() ? -requiredAmount0 : -requiredAmount1
+        );
     }
 
     function getVaultStatus(uint256 _vaultId)
@@ -308,13 +317,7 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
                 bytes("")
             );
 
-            uint256 beforeSqrtPrice = controller.getSqrtPrice();
-
-            _coverAndRebalance(poolPosition.positionAmount, _amount, tradeOption);
-
-            uint256 afterSqrtPrice = controller.getSqrtPrice();
-
-            entryPrice = SateliteLib.getTradePrice(reader.isMarginZero(), beforeSqrtPrice, afterSqrtPrice);
+            entryPrice = _coverAndRebalance(poolPosition.positionAmount, _amount, tradeOption);
         }
 
         {
@@ -428,15 +431,11 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
         returns (uint256 futureVaultId, FutureMarketLib.FutureVault storage)
     {
         if (_vaultId == 0) {
-            futureVaultId = futureVaultCount;
-
-            futureVaults[futureVaultId].owner = msg.sender;
-
-            futureVaultCount += 1;
+            futureVaultId = IVaultNFT(vaultNFT).mintNFT(msg.sender);
         } else {
             futureVaultId = _vaultId;
 
-            require(futureVaults[futureVaultId].owner == msg.sender || _quoterMode, "FM0");
+            require(IVaultNFT(vaultNFT).ownerOf(futureVaultId) == msg.sender || _quoterMode, "FM0");
         }
 
         return (futureVaultId, futureVaults[futureVaultId]);
@@ -446,7 +445,7 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
         int256 _poolPosition,
         int256 _amount,
         DataType.TradeOption memory tradeOption
-    ) internal returns (int256 requiredAmount) {
+    ) internal returns (uint256 entryPrice) {
         DataType.OpenPositionOption memory openPositionOption = DataType.OpenPositionOption(0, type(uint256).max, 500);
 
         DataType.PositionUpdate[] memory positionUpdates = _rebalanceUpdate(
@@ -455,14 +454,20 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
 
         positionUpdates[positionUpdates.length - 1] = _cover(poolPosition.positionAmount);
 
-        (vaultId, requiredAmount, ) = controller.updatePosition(
+        int256 requiredAmount0;
+        int256 requiredAmount1;
+
+        (vaultId, requiredAmount0, requiredAmount1, entryPrice) = controller.updatePosition(
             vaultId,
             positionUpdates,
             tradeOption,
             openPositionOption
         );
 
-        poolPosition.usdcAmount = PredyMath.addDelta(poolPosition.usdcAmount, -requiredAmount);
+        poolPosition.usdcAmount = PredyMath.addDelta(
+            poolPosition.usdcAmount,
+            reader.isMarginZero() ? -requiredAmount0 : -requiredAmount1
+        );
     }
 
     function _cover(int256 _poolPosition) internal view returns (DataType.PositionUpdate memory) {
