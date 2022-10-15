@@ -47,8 +47,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     },
   })
 
-  // const baseUri = getVaultTokenBaseURI(network.name)
-  // await deploy('VaultNFT', { from: deployer, args: [vaultTokenName, vaultTokenSymbol, baseUri], log: true })
+  const baseUri = getVaultTokenBaseURI(network.name)
+  await deploy('VaultNFT', { from: deployer, args: [vaultTokenName, vaultTokenSymbol, baseUri], log: true })
 }
 
 export default func

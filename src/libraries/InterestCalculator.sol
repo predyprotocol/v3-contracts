@@ -123,7 +123,7 @@ library InterestCalculator {
         }
 
         if (_perpState.borrowedLiquidity > 0) {
-            uint256 perpUr = LPTStateLib.getPerpUR(_context.uniswapPool, _perpState);
+            uint256 perpUr = LPTStateLib.getPerpUR(address(this), _context.uniswapPool, _perpState);
 
             uint256 premium = ((block.timestamp - _perpState.lastTouchedTimestamp) *
                 calculateYearlyPremium(_params, _context, _perpState, _sqrtPrice, perpUr)) / 365 days;
@@ -136,7 +136,7 @@ library InterestCalculator {
                 PredyMath.mulDiv(
                     premium.sub(protocolFeePerLiquidity),
                     _perpState.borrowedLiquidity,
-                    LPTStateLib.getTotalLiquidityAmount(_context.uniswapPool, _perpState)
+                    LPTStateLib.getTotalLiquidityAmount(address(this), _context.uniswapPool, _perpState)
                 )
             );
 

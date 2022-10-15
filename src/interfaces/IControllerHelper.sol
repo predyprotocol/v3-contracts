@@ -19,7 +19,7 @@ interface IControllerHelper {
             uint256
         );
 
-    function updatePosition(
+    function updatePositionInVault(
         uint256 _vaultId,
         DataType.PositionUpdate[] memory positionUpdates,
         DataType.TradeOption memory _tradeOption,

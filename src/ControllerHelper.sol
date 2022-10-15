@@ -52,7 +52,7 @@ contract ControllerHelper is Controller {
         _checkPrice(_openPositionOptions.lowerSqrtPrice, _openPositionOptions.upperSqrtPrice);
     }
 
-    function updatePosition(
+    function updatePositionInVault(
         uint256 _vaultId,
         DataType.PositionUpdate[] memory positionUpdates,
         DataType.TradeOption memory _tradeOption,

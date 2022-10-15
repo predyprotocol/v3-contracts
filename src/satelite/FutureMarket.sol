@@ -266,7 +266,7 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
         int256 requiredAmount0;
         int256 requiredAmount1;
 
-        (vaultId, requiredAmount0, requiredAmount1, ) = controller.updatePosition(
+        (vaultId, requiredAmount0, requiredAmount1, ) = controller.updatePositionInVault(
             vaultId,
             positionUpdates,
             tradeOption,
@@ -457,7 +457,7 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
         int256 requiredAmount0;
         int256 requiredAmount1;
 
-        (vaultId, requiredAmount0, requiredAmount1, entryPrice) = controller.updatePosition(
+        (vaultId, requiredAmount0, requiredAmount1, entryPrice) = controller.updatePositionInVault(
             vaultId,
             positionUpdates,
             tradeOption,

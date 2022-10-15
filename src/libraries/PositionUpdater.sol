@@ -592,7 +592,7 @@ library PositionUpdater {
     }
 
     function collectTradeFeeFromUni(DataType.Context memory _context, DataType.PerpStatus storage _range) internal {
-        uint256 liquidityAmount = LPTStateLib.getAvailableLiquidityAmount(_context.uniswapPool, _range);
+        uint256 liquidityAmount = LPTStateLib.getAvailableLiquidityAmount(address(this), _context.uniswapPool, _range);
 
         (uint256 a0, uint256 a1) = IUniswapV3Pool(_context.uniswapPool).collect(
             address(this),

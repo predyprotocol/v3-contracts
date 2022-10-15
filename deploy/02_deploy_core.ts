@@ -64,7 +64,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
               token1: getUsdcAddress(network.name),
               isMarginZero,
             },
-            uniswapPositionManager,
             uniswapFactoryAddress,
             swapRouterAddress,
             vaultNFT.address,
@@ -77,7 +76,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   if (result.newlyDeployed) {
     const controller = await ethers.getContract('ControllerHelper', deployer)
 
-    await vaultNFT.init(controller.address)
+    await vaultNFT.allow(controller.address)
 
     await controller.updateIRMParams({
       baseRate: '5000000000000000',

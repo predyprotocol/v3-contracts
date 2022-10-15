@@ -90,7 +90,7 @@ contract Reader {
             return (0, 0, 0);
         }
 
-        return LPTStateLib.getPerpStatus(uniswapPool, range);
+        return LPTStateLib.getPerpStatus(address(controller), uniswapPool, range);
     }
 
     /**
