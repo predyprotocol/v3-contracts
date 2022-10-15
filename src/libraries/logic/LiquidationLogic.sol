@@ -131,6 +131,24 @@ library LiquidationLogic {
         return _checkLiquidatable(_context, _params, sqrtPrice);
     }
 
+    function getVaultValue(
+        DataType.Vault memory _vault,
+        mapping(uint256 => DataType.SubVault) storage _subVaults,
+        DataType.Context memory _context,
+        mapping(bytes32 => DataType.PerpStatus) storage _ranges
+    ) external view returns (int256) {
+        uint160 sqrtPrice = UniHelper.getSqrtTWAP(_context.uniswapPool);
+
+        PositionCalculator.PositionCalculatorParams memory _params = VaultLib.getPositionCalculatorParams(
+            _vault,
+            _subVaults,
+            _ranges,
+            _context
+        );
+
+        return VaultLib.getVaultValue(_context, _params, sqrtPrice);
+    }
+
     function _checkLiquidatable(
         DataType.Context memory _context,
         PositionCalculator.PositionCalculatorParams memory _params,

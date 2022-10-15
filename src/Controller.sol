@@ -311,6 +311,10 @@ contract Controller is IController, Initializable, IUniswapV3MintCallback {
         return vaults[_vaultId].getVaultStatus(subVaults, ranges, context, sqrtPriceX96);
     }
 
+    function getVaultValue(uint256 _vaultId) external view returns (int256) {
+        return LiquidationLogic.getVaultValue(vaults[_vaultId], subVaults, context, ranges);
+    }
+
     /**
      * @notice Returns a vault data
      * @param _vaultId The id of the vault

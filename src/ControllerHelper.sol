@@ -52,6 +52,29 @@ contract ControllerHelper is Controller {
         _checkPrice(_openPositionOptions.lowerSqrtPrice, _openPositionOptions.upperSqrtPrice);
     }
 
+    function updatePosition(
+        uint256 _vaultId,
+        DataType.PositionUpdate[] memory positionUpdates,
+        DataType.TradeOption memory _tradeOption,
+        DataType.OpenPositionOption memory _openPositionOptions
+    )
+        external
+        returns (
+            uint256 vaultId,
+            int256 requiredAmount0,
+            int256 requiredAmount1,
+            uint256 averagePrice
+        )
+    {
+        (vaultId, requiredAmount0, requiredAmount1, averagePrice) = updatePosition(
+            _vaultId,
+            positionUpdates,
+            _tradeOption
+        );
+
+        _checkPrice(_openPositionOptions.lowerSqrtPrice, _openPositionOptions.upperSqrtPrice);
+    }
+
     /**
      * @notice Closes all positions in a vault.
      * @param _vaultId The id of the vault
