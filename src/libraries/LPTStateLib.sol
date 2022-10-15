@@ -2,7 +2,8 @@
 pragma solidity =0.7.6;
 pragma abicoder v2;
 
-import "@uniswap/v3-periphery/interfaces/INonfungiblePositionManager.sol";
+import "@uniswap/v3-periphery/libraries/PositionKey.sol";
+import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "./DataType.sol";
 
 library LPTStateLib {
@@ -13,11 +14,9 @@ library LPTStateLib {
      */
     function registerNewLPTState(
         DataType.PerpStatus storage _range,
-        uint256 _tokenId,
         int24 _lowerTick,
         int24 _upperTick
     ) internal {
-        _range.tokenId = _tokenId;
         _range.lowerTick = _lowerTick;
         _range.upperTick = _upperTick;
         _range.lastTouchedTimestamp = block.timestamp;
@@ -27,7 +26,7 @@ library LPTStateLib {
         return keccak256(abi.encode(_lower, _upper));
     }
 
-    function getPerpStatus(address _positionManager, DataType.PerpStatus memory _perpState)
+    function getPerpStatus(address _uniswapPool, DataType.PerpStatus memory _perpState)
         internal
         view
         returns (
@@ -37,38 +36,33 @@ library LPTStateLib {
         )
     {
         return (
-            getTotalLiquidityAmount(_positionManager, _perpState),
+            getTotalLiquidityAmount(_uniswapPool, _perpState),
             _perpState.borrowedLiquidity,
-            getPerpUR(_positionManager, _perpState)
+            getPerpUR(_uniswapPool, _perpState)
         );
     }
 
-    function getPerpUR(address _positionManager, DataType.PerpStatus memory _perpState)
+    function getPerpUR(address _uniswapPool, DataType.PerpStatus memory _perpState) internal view returns (uint256) {
+        return PredyMath.mulDiv(_perpState.borrowedLiquidity, 1e18, getTotalLiquidityAmount(_uniswapPool, _perpState));
+    }
+
+    function getAvailableLiquidityAmount(address _uniswapPool, DataType.PerpStatus memory _perpState)
         internal
         view
         returns (uint256)
     {
-        return
-            PredyMath.mulDiv(_perpState.borrowedLiquidity, 1e18, getTotalLiquidityAmount(_positionManager, _perpState));
-    }
+        bytes32 positionKey = PositionKey.compute(address(this), _perpState.lowerTick, _perpState.upperTick);
 
-    function getAvailableLiquidityAmount(address _positionManager, DataType.PerpStatus memory _perpState)
-        internal
-        view
-        returns (uint256)
-    {
-        (, , , , , , , uint128 liquidity, , , , ) = INonfungiblePositionManager(_positionManager).positions(
-            _perpState.tokenId
-        );
+        (uint128 liquidity, , , , ) = IUniswapV3Pool(_uniswapPool).positions(positionKey);
 
         return liquidity;
     }
 
-    function getTotalLiquidityAmount(address _positionManager, DataType.PerpStatus memory _perpState)
+    function getTotalLiquidityAmount(address _uniswapPool, DataType.PerpStatus memory _perpState)
         internal
         view
         returns (uint256)
     {
-        return getAvailableLiquidityAmount(_positionManager, _perpState) + _perpState.borrowedLiquidity;
+        return getAvailableLiquidityAmount(_uniswapPool, _perpState) + _perpState.borrowedLiquidity;
     }
 }

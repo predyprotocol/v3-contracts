@@ -5,7 +5,9 @@ pragma abicoder v2;
 import {Initializable} from "@openzeppelin/contracts/proxy/Initializable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/math/SignedSafeMath.sol";
+import "@uniswap/v3-periphery/libraries/PoolAddress.sol";
 import {TransferHelper} from "@uniswap/v3-periphery/libraries/TransferHelper.sol";
+import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "./interfaces/IController.sol";
 import {IVaultNFT} from "./interfaces/IVaultNFT.sol";
@@ -26,7 +28,7 @@ import "./libraries/Constants.sol";
  * P3: must not be liquidatable
  * P4: must be liquidatable
  */
-contract Controller is IController, Initializable {
+contract Controller is IController, Initializable, IUniswapV3MintCallback {
     using BaseToken for BaseToken.TokenState;
     using SignedSafeMath for int256;
     using VaultLib for DataType.Vault;
@@ -56,9 +58,21 @@ contract Controller is IController, Initializable {
 
     constructor() {}
 
+    /**
+     * @dev Callback for Uniswap V3 pool.
+     */
+    function uniswapV3MintCallback(
+        uint256 amount0,
+        uint256 amount1,
+        bytes calldata data
+    ) external override {
+        require(msg.sender == context.uniswapPool);
+        if (amount0 > 0) TransferHelper.safeTransfer(context.token0, msg.sender, amount0);
+        if (amount1 > 0) TransferHelper.safeTransfer(context.token1, msg.sender, amount1);
+    }
+
     function initialize(
         DataType.InitializationParams memory _initializationParams,
-        address _positionManager,
         address _factory,
         address _swapRouter,
         address _vaultNFT
@@ -67,7 +81,6 @@ contract Controller is IController, Initializable {
         context.token0 = _initializationParams.token0;
         context.token1 = _initializationParams.token1;
         context.isMarginZero = _initializationParams.isMarginZero;
-        context.positionManager = _positionManager;
         context.swapRouter = _swapRouter;
 
         PoolAddress.PoolKey memory poolKey = PoolAddress.PoolKey({
@@ -82,8 +95,6 @@ contract Controller is IController, Initializable {
 
         context.nextSubVaultId = 1;
 
-        ERC20(context.token0).approve(address(_positionManager), type(uint256).max);
-        ERC20(context.token1).approve(address(_positionManager), type(uint256).max);
         ERC20(context.token0).approve(address(_swapRouter), type(uint256).max);
         ERC20(context.token1).approve(address(_swapRouter), type(uint256).max);
 
@@ -249,7 +260,6 @@ contract Controller is IController, Initializable {
             bool,
             uint256,
             address,
-            address,
             uint256,
             uint256
         )
@@ -258,7 +268,6 @@ contract Controller is IController, Initializable {
             context.isMarginZero,
             context.nextSubVaultId,
             context.uniswapPool,
-            context.positionManager,
             context.accumuratedProtocolFee0,
             context.accumuratedProtocolFee1
         );
@@ -325,7 +334,7 @@ contract Controller is IController, Initializable {
      * @param _utilizationRatio Utilization ratio of LPT
      */
     function calculateYearlyPremium(bytes32 _rangeId, uint256 _utilizationRatio) external view returns (uint256) {
-        if (ranges[_rangeId].tokenId == 0) {
+        if (ranges[_rangeId].lastTouchedTimestamp == 0) {
             return 0;
         }
 

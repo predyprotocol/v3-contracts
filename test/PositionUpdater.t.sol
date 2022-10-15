@@ -46,6 +46,15 @@ contract PositionUpdaterTest is TestDeployer, Test {
         borrowToken(vault5, context, ranges, 1e6, 1e18, true, -1);
     }
 
+    function uniswapV3MintCallback(
+        uint256 amount0,
+        uint256 amount1,
+        bytes calldata data
+    ) external {
+        if (amount0 > 0) TransferHelper.safeTransfer(context.token0, msg.sender, amount0);
+        if (amount1 > 0) TransferHelper.safeTransfer(context.token1, msg.sender, amount1);
+    }
+
     /**************************
      *  Test: updatePosition  *
      **************************/
@@ -449,14 +458,14 @@ contract PositionUpdaterTest is TestDeployer, Test {
 
         bytes32 rangeKey = LPTStateLib.getRangeKey(100, 200);
 
-        assertGt(ranges[rangeKey].tokenId, 0);
+        assertGt(ranges[rangeKey].lastTouchedTimestamp, 0);
         assertEq(subVaults[1].lpts[0].rangeId, rangeKey);
 
         // increase
         PositionUpdater.depositLPT(subVaults[1], context, ranges, positionUpdate);
 
         assertGt(uint256(subVaults[1].lpts[0].liquidityAmount), liquidity);
-        assertLt(uint256(subVaults[1].lpts[0].liquidityAmount), liquidity * 2);
+        assertEq(uint256(subVaults[1].lpts[0].liquidityAmount), liquidity * 2);
     }
 
     /**************************
@@ -500,10 +509,7 @@ contract PositionUpdaterTest is TestDeployer, Test {
 
         bytes32 rangeKey = LPTStateLib.getRangeKey(100, 200);
 
-        uint256 liquidityAmount = PositionUpdater.getTotalLiquidityAmount(
-            INonfungiblePositionManager(context.positionManager),
-            ranges[rangeKey].tokenId
-        );
+        uint256 liquidityAmount = LPTStateLib.getAvailableLiquidityAmount(context.uniswapPool, ranges[rangeKey]);
 
         assertEq(liquidityAmount, 0);
     }

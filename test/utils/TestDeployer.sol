@@ -8,7 +8,7 @@ import "../../src/Reader.sol";
 import "../../src/VaultNFT.sol";
 import "../../src/mocks/MockERC20.sol";
 import "../../src/libraries/DataType.sol";
-import {NonfungiblePositionManager} from "v3-periphery/NonfungiblePositionManager.sol";
+import "v3-periphery/NonfungiblePositionManager.sol";
 import {UniswapV3Factory} from "v3-core/contracts/UniswapV3Factory.sol";
 import {SwapRouter} from "v3-periphery/SwapRouter.sol";
 import "v3-periphery/interfaces/external/IWETH9.sol";
@@ -57,13 +57,7 @@ abstract contract TestDeployer is BaseTestHelper {
 
         controller = new ControllerHelper();
 
-        controller.initialize(
-            initializationParam,
-            address(positionManager),
-            factory,
-            address(swapRouter),
-            address(vaultNFT)
-        );
+        controller.initialize(initializationParam, factory, address(swapRouter), address(vaultNFT));
 
         vaultNFT.init(address(controller));
 

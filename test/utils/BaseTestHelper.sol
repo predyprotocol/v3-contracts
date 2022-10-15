@@ -47,7 +47,6 @@ abstract contract BaseTestHelper {
                 address(token0),
                 address(token1),
                 500,
-                address(positionManager),
                 address(swapRouter),
                 address(uniPool),
                 true,
@@ -60,11 +59,11 @@ abstract contract BaseTestHelper {
     }
 
     function getPerpState() internal pure returns (DataType.PerpStatus memory) {
-        return DataType.PerpStatus(0, 0, 0, 0, 0, 0, 0, 0, 0);
+        return DataType.PerpStatus(0, 0, 0, 0, 0, 0, 0, 0);
     }
 
     function getIsMarginZero() internal view returns (bool) {
-        (bool isMarginZero, , , , , ) = controller.getContext();
+        (bool isMarginZero, , , , ) = controller.getContext();
 
         return isMarginZero;
     }

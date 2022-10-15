@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
-import "@uniswap/v3-periphery/interfaces/INonfungiblePositionManager.sol";
 import "@uniswap/v3-periphery/libraries/LiquidityAmounts.sol";
 
 import "./DataType.sol";
@@ -78,7 +77,7 @@ library InterestCalculator {
             bytes32 rangeId = LPTStateLib.getRangeKey(_positionUpdates[i].lowerTick, _positionUpdates[i].upperTick);
 
             // if range is not initialized, skip calculation.
-            if (_ranges[rangeId].tokenId == 0) {
+            if (_ranges[rangeId].lastTouchedTimestamp == 0) {
                 continue;
             }
 
@@ -124,7 +123,7 @@ library InterestCalculator {
         }
 
         if (_perpState.borrowedLiquidity > 0) {
-            uint256 perpUr = LPTStateLib.getPerpUR(_context.positionManager, _perpState);
+            uint256 perpUr = LPTStateLib.getPerpUR(_context.uniswapPool, _perpState);
 
             uint256 premium = ((block.timestamp - _perpState.lastTouchedTimestamp) *
                 calculateYearlyPremium(_params, _context, _perpState, _sqrtPrice, perpUr)) / 365 days;
@@ -137,7 +136,7 @@ library InterestCalculator {
                 PredyMath.mulDiv(
                     premium.sub(protocolFeePerLiquidity),
                     _perpState.borrowedLiquidity,
-                    LPTStateLib.getTotalLiquidityAmount(_context.positionManager, _perpState)
+                    LPTStateLib.getTotalLiquidityAmount(_context.uniswapPool, _perpState)
                 )
             );
 

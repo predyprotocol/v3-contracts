@@ -146,63 +146,6 @@ library LPTMath {
             );
     }
 
-    function getAmountsForLiquidityRoundUp(
-        uint160 currentSqrtPrice,
-        int24 _lower,
-        int24 _upper,
-        uint128 _liquidity
-    ) internal pure returns (uint256, uint256) {
-        return
-            getAmountsForLiquidityRoundUp(
-                currentSqrtPrice,
-                TickMath.getSqrtRatioAtTick(_lower),
-                TickMath.getSqrtRatioAtTick(_upper),
-                _liquidity
-            );
-    }
-
-    function getAmount0ForLiquidityRoundUp(
-        uint160 sqrtRatioAX96,
-        uint160 sqrtRatioBX96,
-        uint128 liquidity
-    ) internal pure returns (uint256 amount0) {
-        if (sqrtRatioAX96 > sqrtRatioBX96) (sqrtRatioAX96, sqrtRatioBX96) = (sqrtRatioBX96, sqrtRatioAX96);
-
-        uint256 intermediate = FullMath.mulDiv(sqrtRatioAX96, sqrtRatioBX96, FixedPoint96.Q96);
-
-        uint256 inter = FullMath.mulDiv(intermediate, FixedPoint96.Q96, sqrtRatioBX96 - sqrtRatioAX96);
-
-        return FullMath.mulDivRoundingUp(liquidity, FixedPoint96.Q96, inter);
-    }
-
-    function getAmount1ForLiquidityRoundUp(
-        uint160 sqrtRatioAX96,
-        uint160 sqrtRatioBX96,
-        uint128 liquidity
-    ) internal pure returns (uint256 amount1) {
-        if (sqrtRatioAX96 > sqrtRatioBX96) (sqrtRatioAX96, sqrtRatioBX96) = (sqrtRatioBX96, sqrtRatioAX96);
-
-        return FullMath.mulDivRoundingUp(liquidity, sqrtRatioBX96 - sqrtRatioAX96, FixedPoint96.Q96);
-    }
-
-    function getAmountsForLiquidityRoundUp(
-        uint160 sqrtRatioX96,
-        uint160 sqrtRatioAX96,
-        uint160 sqrtRatioBX96,
-        uint128 liquidity
-    ) internal pure returns (uint256 amount0, uint256 amount1) {
-        if (sqrtRatioAX96 > sqrtRatioBX96) (sqrtRatioAX96, sqrtRatioBX96) = (sqrtRatioBX96, sqrtRatioAX96);
-
-        if (sqrtRatioX96 <= sqrtRatioAX96) {
-            amount0 = getAmount0ForLiquidityRoundUp(sqrtRatioAX96, sqrtRatioBX96, liquidity);
-        } else if (sqrtRatioX96 < sqrtRatioBX96) {
-            amount0 = getAmount0ForLiquidityRoundUp(sqrtRatioX96, sqrtRatioBX96, liquidity);
-            amount1 = getAmount1ForLiquidityRoundUp(sqrtRatioAX96, sqrtRatioX96, liquidity);
-        } else {
-            amount1 = getAmount1ForLiquidityRoundUp(sqrtRatioAX96, sqrtRatioBX96, liquidity);
-        }
-    }
-
     function getSqrtRatioAtTick(int24 _tick) internal pure returns (uint160) {
         return TickMath.getSqrtRatioAtTick(_tick);
     }
