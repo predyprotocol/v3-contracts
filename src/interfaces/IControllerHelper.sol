@@ -15,7 +15,8 @@ interface IControllerHelper {
         returns (
             uint256 vaultId,
             int256,
-            int256
+            int256,
+            uint256
         );
 
     function closeSubVault(
@@ -23,14 +24,26 @@ interface IControllerHelper {
         uint256 _subVaultIndex,
         DataType.TradeOption memory _tradeOption,
         DataType.ClosePositionOption memory _closePositionOptions
-    ) external returns (int256, int256);
+    )
+        external
+        returns (
+            int256,
+            int256,
+            uint256
+        );
 
     function closePosition(
         uint256 _vaultId,
         DataType.Position[] memory _positions,
         DataType.TradeOption memory _tradeOption,
         DataType.ClosePositionOption memory _closePositionOptions
-    ) external returns (int256, int256);
+    )
+        external
+        returns (
+            int256,
+            int256,
+            uint256
+        );
 
     function getSqrtPrice() external view returns (uint160 sqrtPriceX96);
 }

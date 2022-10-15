@@ -47,7 +47,7 @@ contract Controller is IController, Initializable {
     address private vaultNFT;
 
     event VaultCreated(uint256 vaultId, address owner);
-    event PositionUpdated(uint256 vaultId, int256 a0, int256 a1, uint160 sqrtPrice, bytes metadata);
+    event PositionUpdated(uint256 vaultId, int256 a0, int256 a1, uint256 averagePrice, bytes metadata);
 
     modifier onlyOperator() {
         require(operator == msg.sender, "caller must be operator");
@@ -167,13 +167,16 @@ contract Controller is IController, Initializable {
         returns (
             uint256 vaultId,
             int256 requiredAmount0,
-            int256 requiredAmount1
+            int256 requiredAmount1,
+            uint256 averagePrice
         )
     {
         applyPerpFee(_vaultId, _positionUpdates);
 
         DataType.Vault storage vault;
         (vaultId, vault) = createOrGetVault(_vaultId, _tradeOption.quoterMode);
+
+        uint256 beforeSqrtPrice = getSqrtPrice();
 
         // update position in the vault
         (requiredAmount0, requiredAmount1) = PositionUpdater.updatePosition(
@@ -185,8 +188,10 @@ contract Controller is IController, Initializable {
             _tradeOption
         );
 
+        averagePrice = UniHelper.getAveragePrice(context.isMarginZero, beforeSqrtPrice, getSqrtPrice());
+
         if (_tradeOption.quoterMode) {
-            revertRequiredAmounts(requiredAmount0, requiredAmount1);
+            revertRequiredAmounts(requiredAmount0, requiredAmount1, averagePrice);
         }
 
         // check the vault is safe
@@ -204,7 +209,7 @@ contract Controller is IController, Initializable {
             TransferHelper.safeTransfer(context.token1, msg.sender, uint256(-requiredAmount1));
         }
 
-        emit PositionUpdated(vaultId, requiredAmount0, requiredAmount1, getSqrtPrice(), _tradeOption.metadata);
+        emit PositionUpdated(vaultId, requiredAmount0, requiredAmount1, averagePrice, _tradeOption.metadata);
     }
 
     /**
@@ -425,12 +430,17 @@ contract Controller is IController, Initializable {
             VaultLib.getPositionOfSubVault(_subVaultIndex, subVaults[vault.subVaults[_subVaultIndex]], ranges, context);
     }
 
-    function revertRequiredAmounts(int256 _requiredAmount0, int256 _requiredAmount1) internal pure {
+    function revertRequiredAmounts(
+        int256 _requiredAmount0,
+        int256 _requiredAmount1,
+        uint256 _averagePrice
+    ) internal pure {
         assembly {
             let ptr := mload(0x20)
             mstore(ptr, _requiredAmount0)
             mstore(add(ptr, 0x20), _requiredAmount1)
-            revert(ptr, 64)
+            mstore(add(ptr, 0x40), _averagePrice)
+            revert(ptr, 96)
         }
     }
 }
