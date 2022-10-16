@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/math/SignedSafeMath.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import "@uniswap/v3-core/contracts/libraries/FixedPoint128.sol";
 import "@uniswap/v3-periphery/interfaces/ISwapRouter.sol";
 import "@uniswap/v3-periphery/libraries/PositionKey.sol";
 import "./BaseToken.sol";
@@ -14,8 +15,6 @@ import "./DataType.sol";
 import "./VaultLib.sol";
 import "./LPTStateLib.sol";
 import "./UniHelper.sol";
-
-import "forge-std/console.sol";
 
 /*
  * Error Codes
@@ -187,8 +186,6 @@ library PositionUpdater {
             } else if (_tradeOption.targetMarginAmount0 == Constants.MARGIN_USE) {
                 // use margin of token0 to make required amount 0
                 deltaMarginAmount0 = requiredAmount0.mul(-1);
-
-                console.log(1, _vault.marginAmount0, uint256(-deltaMarginAmount0));
 
                 _vault.marginAmount0 = PredyMath.addDelta(_vault.marginAmount0, deltaMarginAmount0);
 
@@ -553,14 +550,28 @@ library PositionUpdater {
         DataType.Context memory _context,
         DataType.Vault memory _vault,
         mapping(uint256 => DataType.SubVault) storage _subVaults,
-        mapping(bytes32 => DataType.PerpStatus) storage _ranges
+        mapping(bytes32 => DataType.PerpStatus) storage _ranges,
+        DataType.PositionUpdate[] memory _positionUpdates
     ) external {
+        // calculate trade fee for ranges that the vault has
         for (uint256 i = 0; i < _vault.subVaults.length; i++) {
             DataType.SubVault memory subVault = _subVaults[_vault.subVaults[i]];
 
             for (uint256 j = 0; j < subVault.lpts.length; j++) {
                 collectTradeFeeFromUni(_context, _ranges[subVault.lpts[j].rangeId]);
             }
+        }
+
+        // calculate trade fee for ranges that trader would open
+        for (uint256 i = 0; i < _positionUpdates.length; i++) {
+            bytes32 rangeId = LPTStateLib.getRangeKey(_positionUpdates[i].lowerTick, _positionUpdates[i].upperTick);
+
+            // if range is not initialized, skip calculation.
+            if (_ranges[rangeId].lastTouchedTimestamp == 0) {
+                continue;
+            }
+
+            collectTradeFeeFromUni(_context, _ranges[rangeId]);
         }
     }
 
@@ -571,47 +582,29 @@ library PositionUpdater {
     ) internal returns (uint256 amount0, uint256 amount1) {
         (amount0, amount1) = IUniswapV3Pool(_context.uniswapPool).burn(_range.lowerTick, _range.upperTick, _liquidity);
 
-        collectTokenAmountsFromUni(_context, _range, amount0.toUint128(), amount1.toUint128());
+        collectTokenAmountsFromUni(_context, _range);
     }
 
-    function collectTokenAmountsFromUni(
-        DataType.Context memory _context,
-        DataType.PerpStatus storage _range,
-        uint128 _amount0,
-        uint128 _amount1
-    ) internal {
-        (uint256 a0, uint256 a1) = IUniswapV3Pool(_context.uniswapPool).collect(
-            address(this),
-            _range.lowerTick,
-            _range.upperTick,
-            _amount0,
-            _amount1
-        );
-
-        require(_amount0 == a0 && _amount1 == a1, "AAA");
-    }
-
-    function collectTradeFeeFromUni(DataType.Context memory _context, DataType.PerpStatus storage _range) internal {
-        uint256 liquidityAmount = LPTStateLib.getAvailableLiquidityAmount(address(this), _context.uniswapPool, _range);
-
-        (uint256 a0, uint256 a1) = IUniswapV3Pool(_context.uniswapPool).collect(
+    function collectTokenAmountsFromUni(DataType.Context memory _context, DataType.PerpStatus storage _range) internal {
+        IUniswapV3Pool(_context.uniswapPool).collect(
             address(this),
             _range.lowerTick,
             _range.upperTick,
             type(uint128).max,
             type(uint128).max
         );
+    }
 
+    function collectTradeFeeFromUni(DataType.Context memory _context, DataType.PerpStatus storage _range) internal {
         // Update cumulative trade fee
-        /*
-        (_range.fee0Growth, _range.fee1Growth) = getFeeGrowth(
+        (uint256 fee0Growth, uint256 fee1Growth) = getFeeGrowth(
             IUniswapV3Pool(_context.uniswapPool),
             _range.lowerTick,
             _range.upperTick
         );
-        */
-        _range.fee0Growth = _range.fee0Growth.add(PredyMath.mulDiv(a0, Constants.ONE, liquidityAmount));
-        _range.fee1Growth = _range.fee1Growth.add(PredyMath.mulDiv(a1, Constants.ONE, liquidityAmount));
+
+        _range.fee0Growth = PredyMath.mulDiv(fee0Growth, Constants.ONE, FixedPoint128.Q128);
+        _range.fee1Growth = PredyMath.mulDiv(fee1Growth, Constants.ONE, FixedPoint128.Q128);
     }
 
     function getFeeGrowth(

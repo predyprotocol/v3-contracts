@@ -398,7 +398,7 @@ contract Controller is IController, Initializable, IUniswapV3MintCallback {
 
         lastTouchedTimestamp = InterestCalculator.applyInterest(context, irmParams, lastTouchedTimestamp);
 
-        PositionUpdater.updateFeeGrowth(context, vault, subVaults, ranges);
+        PositionUpdater.updateFeeGrowth(context, vault, subVaults, ranges, _positionUpdates);
     }
 
     function applyInterest() internal {

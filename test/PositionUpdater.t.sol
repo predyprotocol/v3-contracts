@@ -509,7 +509,11 @@ contract PositionUpdaterTest is TestDeployer, Test {
 
         bytes32 rangeKey = LPTStateLib.getRangeKey(100, 200);
 
-        uint256 liquidityAmount = LPTStateLib.getAvailableLiquidityAmount(address(this), context.uniswapPool, ranges[rangeKey]);
+        uint256 liquidityAmount = LPTStateLib.getAvailableLiquidityAmount(
+            address(this),
+            context.uniswapPool,
+            ranges[rangeKey]
+        );
 
         assertEq(liquidityAmount, 0);
     }

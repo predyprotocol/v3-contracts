@@ -329,11 +329,9 @@ library InterestCalculator {
     }
 
     function getFeeGrowthOutside(IUniswapV3Pool uniPool, int24 _tickId) internal view returns (TickInfo memory) {
-        (, , uint256 feeGrowthOutside0X128, uint256 feeGrowthOutside1X128, , , , bool initialized) = uniPool.ticks(
-            _tickId
-        );
+        (, , uint256 feeGrowthOutside0X128, uint256 feeGrowthOutside1X128, , , , ) = uniPool.ticks(_tickId);
 
-        require(initialized, "initialized");
+        // require(initialized, "initialized");
 
         return TickInfo(feeGrowthOutside0X128, feeGrowthOutside1X128);
     }

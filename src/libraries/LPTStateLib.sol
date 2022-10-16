@@ -26,7 +26,11 @@ library LPTStateLib {
         return keccak256(abi.encode(_lower, _upper));
     }
 
-    function getPerpStatus(address _controllerAddress, address _uniswapPool, DataType.PerpStatus memory _perpState)
+    function getPerpStatus(
+        address _controllerAddress,
+        address _uniswapPool,
+        DataType.PerpStatus memory _perpState
+    )
         internal
         view
         returns (
@@ -42,15 +46,24 @@ library LPTStateLib {
         );
     }
 
-    function getPerpUR(address _controllerAddress, address _uniswapPool, DataType.PerpStatus memory _perpState) internal view returns (uint256) {
-        return PredyMath.mulDiv(_perpState.borrowedLiquidity, 1e18, getTotalLiquidityAmount(_controllerAddress, _uniswapPool, _perpState));
+    function getPerpUR(
+        address _controllerAddress,
+        address _uniswapPool,
+        DataType.PerpStatus memory _perpState
+    ) internal view returns (uint256) {
+        return
+            PredyMath.mulDiv(
+                _perpState.borrowedLiquidity,
+                1e18,
+                getTotalLiquidityAmount(_controllerAddress, _uniswapPool, _perpState)
+            );
     }
 
-    function getAvailableLiquidityAmount(address _controllerAddress, address _uniswapPool, DataType.PerpStatus memory _perpState)
-        internal
-        view
-        returns (uint256)
-    {
+    function getAvailableLiquidityAmount(
+        address _controllerAddress,
+        address _uniswapPool,
+        DataType.PerpStatus memory _perpState
+    ) internal view returns (uint256) {
         bytes32 positionKey = PositionKey.compute(_controllerAddress, _perpState.lowerTick, _perpState.upperTick);
 
         (uint128 liquidity, , , , ) = IUniswapV3Pool(_uniswapPool).positions(positionKey);
@@ -58,11 +71,11 @@ library LPTStateLib {
         return liquidity;
     }
 
-    function getTotalLiquidityAmount(address _controllerAddress, address _uniswapPool, DataType.PerpStatus memory _perpState)
-        internal
-        view
-        returns (uint256)
-    {
+    function getTotalLiquidityAmount(
+        address _controllerAddress,
+        address _uniswapPool,
+        DataType.PerpStatus memory _perpState
+    ) internal view returns (uint256) {
         return getAvailableLiquidityAmount(_controllerAddress, _uniswapPool, _perpState) + _perpState.borrowedLiquidity;
     }
 }
