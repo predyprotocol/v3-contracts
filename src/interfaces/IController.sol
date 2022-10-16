@@ -13,8 +13,7 @@ interface IController {
         external
         returns (
             uint256 vaultId,
-            int256 requiredAmount0,
-            int256 requiredAmount1,
-            uint256 averagePrice
+            DataType.TokenAmounts memory requiredAmounts,
+            DataType.TokenAmounts memory swapAmounts
         );
 }

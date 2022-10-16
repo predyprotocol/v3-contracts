@@ -22,22 +22,6 @@ library UniHelper {
         (sqrtTwapX96, ) = callUniswapObserve(IUniswapV3Pool(_uniswapPool), ORACLE_PERIOD);
     }
 
-    function getAveragePrice(
-        bool _isMarginZero,
-        uint256 beforeSqrtPrice,
-        uint256 afterSqrtPrice
-    ) internal pure returns (uint256) {
-        if (_isMarginZero) {
-            uint256 entryPrice = (1e18 * Constants.Q96) / afterSqrtPrice;
-
-            return (entryPrice * Constants.Q96) / beforeSqrtPrice;
-        } else {
-            uint256 entryPrice = (afterSqrtPrice * 1e18) / Constants.Q96;
-
-            return (entryPrice * beforeSqrtPrice) / Constants.Q96;
-        }
-    }
-
     function callUniswapObserve(IUniswapV3Pool uniswapPool, uint256 ago) internal view returns (uint160, uint256) {
         uint32[] memory secondsAgos = new uint32[](2);
 

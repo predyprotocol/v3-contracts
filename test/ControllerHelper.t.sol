@@ -111,7 +111,7 @@ contract ControllerHelperTest is TestDeployer, Test {
 
         DataType.Position[] memory positions = getBorrowLPTPosition(0, 202600, 202500, 202600, 1e18);
 
-        (uint256 vaultId, , , ) = controller.openPosition(
+        (uint256 vaultId, , ) = controller.openPosition(
             0,
             positions[0],
             DataType.TradeOption(false, true, false, getIsMarginZero(), margin, -1, EMPTY_METADATA),
@@ -139,7 +139,7 @@ contract ControllerHelperTest is TestDeployer, Test {
         lpts[0] = DataType.LPT(false, liquidity, 202500, 202600);
         DataType.Position memory position = DataType.Position(0, margin, 1e18, 0, 0, lpts);
 
-        (uint256 vaultId, , , ) = controller.openPosition(
+        (uint256 vaultId, , ) = controller.openPosition(
             0,
             position,
             DataType.TradeOption(false, true, false, getIsMarginZero(), int256(margin), -1, EMPTY_METADATA),
@@ -176,7 +176,7 @@ contract ControllerHelperTest is TestDeployer, Test {
         uint256 lowerSqrtPrice = getLowerSqrtPrice();
         uint256 upperSqrtPrice = getUpperSqrtPrice();
 
-        vm.expectRevert(abi.encode(1e8, 0, 1596922883));
+        vm.expectRevert(abi.encode(DataType.TokenAmounts(1e8, 0), DataType.TokenAmounts(0, 0)));
         controller.openPosition(
             0,
             position,

@@ -14,9 +14,8 @@ interface IControllerHelper {
         external
         returns (
             uint256 vaultId,
-            int256,
-            int256,
-            uint256
+            DataType.TokenAmounts memory requiredAmounts,
+            DataType.TokenAmounts memory swapAmounts
         );
 
     function updatePositionInVault(
@@ -28,9 +27,8 @@ interface IControllerHelper {
         external
         returns (
             uint256 vaultId,
-            int256 requiredAmount0,
-            int256 requiredAmount1,
-            uint256 averagePrice
+            DataType.TokenAmounts memory requiredAmounts,
+            DataType.TokenAmounts memory swapAmounts
         );
 
     function closeSubVault(
@@ -38,26 +36,14 @@ interface IControllerHelper {
         uint256 _subVaultIndex,
         DataType.TradeOption memory _tradeOption,
         DataType.ClosePositionOption memory _closePositionOptions
-    )
-        external
-        returns (
-            int256,
-            int256,
-            uint256
-        );
+    ) external returns (DataType.TokenAmounts memory requiredAmounts, DataType.TokenAmounts memory swapAmounts);
 
     function closePosition(
         uint256 _vaultId,
         DataType.Position[] memory _positions,
         DataType.TradeOption memory _tradeOption,
         DataType.ClosePositionOption memory _closePositionOptions
-    )
-        external
-        returns (
-            int256,
-            int256,
-            uint256
-        );
+    ) external returns (DataType.TokenAmounts memory requiredAmounts, DataType.TokenAmounts memory swapAmounts);
 
     function getSqrtPrice() external view returns (uint160 sqrtPriceX96);
 

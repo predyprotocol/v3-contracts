@@ -176,4 +176,9 @@ library DataType {
         int256 minCollateral;
         SubVaultStatus[] subVaults;
     }
+
+    struct TokenAmounts {
+        int256 amount0;
+        int256 amount1;
+    }
 }

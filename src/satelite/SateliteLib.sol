@@ -6,6 +6,7 @@ import "@uniswap/v3-periphery/libraries/LiquidityAmounts.sol";
 import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import "../libraries/Constants.sol";
 import "../libraries/PredyMath.sol";
+import "../libraries/DataType.sol";
 
 library SateliteLib {
     using SignedSafeMath for int256;
@@ -65,5 +66,21 @@ library SateliteLib {
 
             return (entryPrice * beforeSqrtPrice) / Constants.Q96;
         }
+    }
+
+    function getEntryPrice(bool _isMarginZero, DataType.TokenAmounts memory swapAmounts)
+        internal
+        pure
+        returns (uint256)
+    {
+        int256 price;
+
+        if (_isMarginZero) {
+            price = (swapAmounts.amount0 * 1e18) / swapAmounts.amount1;
+        } else {
+            price = (swapAmounts.amount1 * 1e18) / swapAmounts.amount0;
+        }
+
+        return PredyMath.abs(price);
     }
 }

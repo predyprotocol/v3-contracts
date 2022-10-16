@@ -49,7 +49,12 @@ contract Controller is IController, Initializable, IUniswapV3MintCallback {
     address private vaultNFT;
 
     event VaultCreated(uint256 vaultId, address owner);
-    event PositionUpdated(uint256 vaultId, int256 a0, int256 a1, uint256 averagePrice, bytes metadata);
+    event PositionUpdated(
+        uint256 vaultId,
+        DataType.TokenAmounts requiredAmounts,
+        DataType.TokenAmounts swapAmounts,
+        bytes metadata
+    );
 
     modifier onlyOperator() {
         require(operator == msg.sender, "caller must be operator");
@@ -177,9 +182,8 @@ contract Controller is IController, Initializable, IUniswapV3MintCallback {
         override
         returns (
             uint256 vaultId,
-            int256 requiredAmount0,
-            int256 requiredAmount1,
-            uint256 averagePrice
+            DataType.TokenAmounts memory requiredAmounts,
+            DataType.TokenAmounts memory swapAmounts
         )
     {
         applyPerpFee(_vaultId, _positionUpdates);
@@ -190,7 +194,7 @@ contract Controller is IController, Initializable, IUniswapV3MintCallback {
         uint256 beforeSqrtPrice = getSqrtPrice();
 
         // update position in the vault
-        (requiredAmount0, requiredAmount1) = PositionUpdater.updatePosition(
+        (requiredAmounts, swapAmounts) = PositionUpdater.updatePosition(
             vault,
             subVaults,
             context,
@@ -199,28 +203,36 @@ contract Controller is IController, Initializable, IUniswapV3MintCallback {
             _tradeOption
         );
 
-        averagePrice = UniHelper.getAveragePrice(context.isMarginZero, beforeSqrtPrice, getSqrtPrice());
-
         if (_tradeOption.quoterMode) {
-            revertRequiredAmounts(requiredAmount0, requiredAmount1, averagePrice);
+            revertRequiredAmounts(requiredAmounts, swapAmounts);
         }
 
         // check the vault is safe
         require(!LiquidationLogic.checkLiquidatable(vault, subVaults, context, ranges), "P3");
 
-        if (requiredAmount0 > 0) {
-            TransferHelper.safeTransferFrom(context.token0, msg.sender, address(this), uint256(requiredAmount0));
-        } else if (requiredAmount0 < 0) {
-            TransferHelper.safeTransfer(context.token0, msg.sender, uint256(-requiredAmount0));
+        if (requiredAmounts.amount0 > 0) {
+            TransferHelper.safeTransferFrom(
+                context.token0,
+                msg.sender,
+                address(this),
+                uint256(requiredAmounts.amount0)
+            );
+        } else if (requiredAmounts.amount0 < 0) {
+            TransferHelper.safeTransfer(context.token0, msg.sender, uint256(-requiredAmounts.amount0));
         }
 
-        if (requiredAmount1 > 0) {
-            TransferHelper.safeTransferFrom(context.token1, msg.sender, address(this), uint256(requiredAmount1));
-        } else if (requiredAmount1 < 0) {
-            TransferHelper.safeTransfer(context.token1, msg.sender, uint256(-requiredAmount1));
+        if (requiredAmounts.amount1 > 0) {
+            TransferHelper.safeTransferFrom(
+                context.token1,
+                msg.sender,
+                address(this),
+                uint256(requiredAmounts.amount1)
+            );
+        } else if (requiredAmounts.amount1 < 0) {
+            TransferHelper.safeTransfer(context.token1, msg.sender, uint256(-requiredAmounts.amount1));
         }
 
-        emit PositionUpdated(vaultId, requiredAmount0, requiredAmount1, averagePrice, _tradeOption.metadata);
+        emit PositionUpdated(vaultId, requiredAmounts, swapAmounts, _tradeOption.metadata);
     }
 
     /**
@@ -444,16 +456,21 @@ contract Controller is IController, Initializable, IUniswapV3MintCallback {
     }
 
     function revertRequiredAmounts(
-        int256 _requiredAmount0,
-        int256 _requiredAmount1,
-        uint256 _averagePrice
+        DataType.TokenAmounts memory requiredAmounts,
+        DataType.TokenAmounts memory swapAmounts
     ) internal pure {
+        int256 r0 = requiredAmounts.amount0;
+        int256 r1 = requiredAmounts.amount1;
+        int256 s0 = swapAmounts.amount0;
+        int256 s1 = swapAmounts.amount1;
+
         assembly {
             let ptr := mload(0x20)
-            mstore(ptr, _requiredAmount0)
-            mstore(add(ptr, 0x20), _requiredAmount1)
-            mstore(add(ptr, 0x40), _averagePrice)
-            revert(ptr, 96)
+            mstore(ptr, r0)
+            mstore(add(ptr, 0x20), r1)
+            mstore(add(ptr, 0x40), s0)
+            mstore(add(ptr, 0x60), s1)
+            revert(ptr, 128)
         }
     }
 }

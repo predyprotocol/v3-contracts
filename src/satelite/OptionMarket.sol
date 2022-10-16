@@ -499,7 +499,15 @@ contract OptionMarket is ERC20, IERC721Receiver, Ownable {
 
         DataType.OpenPositionOption memory openPositionOption = DataType.OpenPositionOption(0, type(uint256).max, 500);
 
-        (vaultId, requiredAmount, , ) = controller.openPosition(vaultId, position, tradeOption, openPositionOption);
+        DataType.TokenAmounts memory requiredAmounts;
+
+        (vaultId, requiredAmounts, ) = controller.openPosition(vaultId, position, tradeOption, openPositionOption);
+
+        if (reader.isMarginZero()) {
+            return requiredAmounts.amount0;
+        } else {
+            return requiredAmounts.amount1;
+        }
     }
 
     function _addShort(
@@ -512,7 +520,15 @@ contract OptionMarket is ERC20, IERC721Receiver, Ownable {
 
         DataType.OpenPositionOption memory openPositionOption = DataType.OpenPositionOption(0, type(uint256).max, 500);
 
-        (vaultId, requiredAmount, , ) = controller.openPosition(vaultId, position, tradeOption, openPositionOption);
+        DataType.TokenAmounts memory requiredAmounts;
+
+        (vaultId, requiredAmounts, ) = controller.openPosition(vaultId, position, tradeOption, openPositionOption);
+
+        if (reader.isMarginZero()) {
+            return requiredAmounts.amount0;
+        } else {
+            return requiredAmounts.amount1;
+        }
     }
 
     function _removeLong(
@@ -533,7 +549,15 @@ contract OptionMarket is ERC20, IERC721Receiver, Ownable {
             500
         );
 
-        (requiredAmount, , ) = controller.closePosition(vaultId, positions, tradeOption, closePositionOption);
+        DataType.TokenAmounts memory requiredAmounts;
+
+        (requiredAmounts, ) = controller.closePosition(vaultId, positions, tradeOption, closePositionOption);
+
+        if (reader.isMarginZero()) {
+            return requiredAmounts.amount0;
+        } else {
+            return requiredAmounts.amount1;
+        }
     }
 
     function _removeShort(
@@ -554,18 +578,33 @@ contract OptionMarket is ERC20, IERC721Receiver, Ownable {
             500
         );
 
-        (requiredAmount, , ) = controller.closePosition(vaultId, positions, tradeOption, closePositionOption);
+        DataType.TokenAmounts memory requiredAmounts;
+
+        (requiredAmounts, ) = controller.closePosition(vaultId, positions, tradeOption, closePositionOption);
+
+        if (reader.isMarginZero()) {
+            return requiredAmounts.amount0;
+        } else {
+            return requiredAmounts.amount1;
+        }
     }
 
     function _exercise(DataType.TradeOption memory tradeOption, DataType.ClosePositionOption memory closePositionOption)
         internal
         returns (uint256 indexPrice, int256 requiredAmount)
     {
-        uint256 beforeSqrtPrice = controller.getSqrtPrice();
-        (requiredAmount, , ) = controller.closeSubVault(vaultId, 0, tradeOption, closePositionOption);
-        uint256 afterSqrtPrice = controller.getSqrtPrice();
+        DataType.TokenAmounts memory requiredAmounts;
+        DataType.TokenAmounts memory swapAmounts;
 
-        indexPrice = SateliteLib.getTradePrice(reader.isMarginZero(), beforeSqrtPrice, afterSqrtPrice);
+        (requiredAmounts, swapAmounts) = controller.closeSubVault(vaultId, 0, tradeOption, closePositionOption);
+
+        indexPrice = SateliteLib.getEntryPrice(reader.isMarginZero(), swapAmounts);
+
+        if (reader.isMarginZero()) {
+            requiredAmount = requiredAmounts.amount0;
+        } else {
+            requiredAmount = requiredAmounts.amount1;
+        }
     }
 
     function getPredyPosition(

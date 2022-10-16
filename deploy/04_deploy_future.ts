@@ -18,6 +18,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const { deploy } = deployments
 
+  return
+
   const ControllerHelper = await ethers.getContract('ControllerHelper', deployer)
   const Reader = await ethers.getContract('Reader', deployer)
   const VaultNFT = await ethers.getContract('VaultNFT', deployer)

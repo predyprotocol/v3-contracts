@@ -228,7 +228,7 @@ abstract contract BaseTestHelper {
             0
         );
 
-        (vaultId, , , ) = controller.updatePosition(
+        (vaultId, , ) = controller.updatePosition(
             _vaultId,
             positionUpdates,
             DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1, EMPTY_METADATA)
@@ -263,7 +263,7 @@ abstract contract BaseTestHelper {
     ) public returns (uint256 vaultId) {
         DataType.Position[] memory positions = getBorrowLPTPosition(_subVaultId, _tick, _lower, _upper, _amount);
 
-        (vaultId, , , ) = controller.openPosition(
+        (vaultId, , ) = controller.openPosition(
             _vaultId,
             positions[0],
             DataType.TradeOption(false, false, false, getIsMarginZero(), int256(_margin), -1, EMPTY_METADATA),

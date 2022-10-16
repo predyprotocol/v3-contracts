@@ -263,10 +263,9 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
 
         positionUpdates[positionUpdates.length - 1] = _cover(poolPosition.positionAmount);
 
-        int256 requiredAmount0;
-        int256 requiredAmount1;
+        DataType.TokenAmounts memory requiredAmounts;
 
-        (vaultId, requiredAmount0, requiredAmount1, ) = controller.updatePositionInVault(
+        (vaultId, requiredAmounts, ) = controller.updatePositionInVault(
             vaultId,
             positionUpdates,
             tradeOption,
@@ -275,7 +274,7 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
 
         poolPosition.usdcAmount = PredyMath.addDelta(
             poolPosition.usdcAmount,
-            reader.isMarginZero() ? -requiredAmount0 : -requiredAmount1
+            reader.isMarginZero() ? -requiredAmounts.amount0 : -requiredAmounts.amount1
         );
     }
 
@@ -454,10 +453,10 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
 
         positionUpdates[positionUpdates.length - 1] = _cover(poolPosition.positionAmount);
 
-        int256 requiredAmount0;
-        int256 requiredAmount1;
+        DataType.TokenAmounts memory requiredAmounts;
+        DataType.TokenAmounts memory swapAmounts;
 
-        (vaultId, requiredAmount0, requiredAmount1, entryPrice) = controller.updatePositionInVault(
+        (vaultId, requiredAmounts, swapAmounts) = controller.updatePositionInVault(
             vaultId,
             positionUpdates,
             tradeOption,
@@ -466,8 +465,10 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
 
         poolPosition.usdcAmount = PredyMath.addDelta(
             poolPosition.usdcAmount,
-            reader.isMarginZero() ? -requiredAmount0 : -requiredAmount1
+            reader.isMarginZero() ? -requiredAmounts.amount0 : -requiredAmounts.amount1
         );
+
+        entryPrice = SateliteLib.getEntryPrice(reader.isMarginZero(), swapAmounts);
     }
 
     function _cover(int256 _poolPosition) internal view returns (DataType.PositionUpdate memory) {

@@ -83,7 +83,7 @@ library PositionUpdater {
         mapping(bytes32 => DataType.PerpStatus) storage _ranges,
         DataType.PositionUpdate[] memory _positionUpdates,
         DataType.TradeOption memory _tradeOption
-    ) external returns (int256 requiredAmount0, int256 requiredAmount1) {
+    ) external returns (DataType.TokenAmounts memory requiredAmounts, DataType.TokenAmounts memory swapAmounts) {
         for (uint256 i = 0; i < _positionUpdates.length; i++) {
             DataType.PositionUpdate memory positionUpdate = _positionUpdates[i];
 
@@ -95,63 +95,69 @@ library PositionUpdater {
 
                 depositTokens(subVault, _context, positionUpdate);
 
-                requiredAmount0 = requiredAmount0.add(int256(positionUpdate.param0));
-                requiredAmount1 = requiredAmount1.add(int256(positionUpdate.param1));
+                requiredAmounts.amount0 = requiredAmounts.amount0.add(int256(positionUpdate.param0));
+                requiredAmounts.amount1 = requiredAmounts.amount1.add(int256(positionUpdate.param1));
             } else if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.WITHDRAW_TOKEN) {
                 (uint256 amount0, uint256 amount1) = withdrawTokens(subVault, _context, positionUpdate);
 
-                requiredAmount0 = requiredAmount0.sub(int256(amount0));
-                requiredAmount1 = requiredAmount1.sub(int256(amount1));
+                requiredAmounts.amount0 = requiredAmounts.amount0.sub(int256(amount0));
+                requiredAmounts.amount1 = requiredAmounts.amount1.sub(int256(amount1));
             } else if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.BORROW_TOKEN) {
                 require(!_tradeOption.reduceOnly, "PU1");
                 borrowTokens(subVault, _context, positionUpdate);
 
-                requiredAmount0 = requiredAmount0.sub(int256(positionUpdate.param0));
-                requiredAmount1 = requiredAmount1.sub(int256(positionUpdate.param1));
+                requiredAmounts.amount0 = requiredAmounts.amount0.sub(int256(positionUpdate.param0));
+                requiredAmounts.amount1 = requiredAmounts.amount1.sub(int256(positionUpdate.param1));
             } else if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.REPAY_TOKEN) {
                 (uint256 amount0, uint256 amount1) = repayTokens(subVault, _context, positionUpdate);
 
-                requiredAmount0 = requiredAmount0.add(int256(amount0));
-                requiredAmount1 = requiredAmount1.add(int256(amount1));
+                requiredAmounts.amount0 = requiredAmounts.amount0.add(int256(amount0));
+                requiredAmounts.amount1 = requiredAmounts.amount1.add(int256(amount1));
             } else if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.DEPOSIT_LPT) {
                 require(!_tradeOption.reduceOnly, "PU1");
                 (uint256 amount0, uint256 amount1) = depositLPT(subVault, _context, _ranges, positionUpdate);
 
-                requiredAmount0 = requiredAmount0.add(int256(amount0));
-                requiredAmount1 = requiredAmount1.add(int256(amount1));
+                requiredAmounts.amount0 = requiredAmounts.amount0.add(int256(amount0));
+                requiredAmounts.amount1 = requiredAmounts.amount1.add(int256(amount1));
             } else if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.WITHDRAW_LPT) {
                 (uint256 amount0, uint256 amount1) = withdrawLPT(subVault, _context, _ranges, positionUpdate);
 
-                requiredAmount0 = requiredAmount0.sub(int256(amount0));
-                requiredAmount1 = requiredAmount1.sub(int256(amount1));
+                requiredAmounts.amount0 = requiredAmounts.amount0.sub(int256(amount0));
+                requiredAmounts.amount1 = requiredAmounts.amount1.sub(int256(amount1));
             } else if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.BORROW_LPT) {
                 require(!_tradeOption.reduceOnly, "PU1");
                 (uint256 amount0, uint256 amount1) = borrowLPT(subVault, _context, _ranges, positionUpdate);
 
-                requiredAmount0 = requiredAmount0.sub(int256(amount0));
-                requiredAmount1 = requiredAmount1.sub(int256(amount1));
+                requiredAmounts.amount0 = requiredAmounts.amount0.sub(int256(amount0));
+                requiredAmounts.amount1 = requiredAmounts.amount1.sub(int256(amount1));
             } else if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.REPAY_LPT) {
                 (uint256 amount0, uint256 amount1) = repayLPT(subVault, _context, _ranges, positionUpdate);
 
-                requiredAmount0 = requiredAmount0.add(int256(amount0));
-                requiredAmount1 = requiredAmount1.add(int256(amount1));
+                requiredAmounts.amount0 = requiredAmounts.amount0.add(int256(amount0));
+                requiredAmounts.amount1 = requiredAmounts.amount1.add(int256(amount1));
             } else if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.SWAP_EXACT_IN) {
                 (int256 amount0, int256 amount1) = swapExactIn(_vault, _context, positionUpdate);
 
-                requiredAmount0 = requiredAmount0.add(amount0);
-                requiredAmount1 = requiredAmount1.add(amount1);
+                requiredAmounts.amount0 = requiredAmounts.amount0.add(amount0);
+                requiredAmounts.amount1 = requiredAmounts.amount1.add(amount1);
+
+                swapAmounts.amount0 = swapAmounts.amount0.add(amount0);
+                swapAmounts.amount1 = swapAmounts.amount1.add(amount1);
             } else if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.SWAP_EXACT_OUT) {
                 (int256 amount0, int256 amount1) = swapExactOut(_vault, _context, positionUpdate);
 
-                requiredAmount0 = requiredAmount0.add(amount0);
-                requiredAmount1 = requiredAmount1.add(amount1);
+                requiredAmounts.amount0 = requiredAmounts.amount0.add(amount0);
+                requiredAmounts.amount1 = requiredAmounts.amount1.add(amount1);
+
+                swapAmounts.amount0 = swapAmounts.amount0.add(amount0);
+                swapAmounts.amount1 = swapAmounts.amount1.add(amount1);
             }
         }
 
         if (_tradeOption.swapAnyway) {
             DataType.PositionUpdate memory positionUpdate = swapAnyway(
-                requiredAmount0,
-                requiredAmount1,
+                requiredAmounts.amount0,
+                requiredAmounts.amount1,
                 _tradeOption.isQuoteZero,
                 _context.feeTier
             );
@@ -164,8 +170,11 @@ library PositionUpdater {
                 (amount0, amount1) = swapExactOut(_vault, _context, positionUpdate);
             }
 
-            requiredAmount0 = requiredAmount0.add(amount0);
-            requiredAmount1 = requiredAmount1.add(amount1);
+            requiredAmounts.amount0 = requiredAmounts.amount0.add(amount0);
+            requiredAmounts.amount1 = requiredAmounts.amount1.add(amount1);
+
+            swapAmounts.amount0 = swapAmounts.amount0.add(amount0);
+            swapAmounts.amount1 = swapAmounts.amount1.add(amount1);
         }
 
         {
@@ -182,14 +191,14 @@ library PositionUpdater {
 
                 _vault.marginAmount0 = uint256(_tradeOption.targetMarginAmount0);
 
-                requiredAmount0 = requiredAmount0.add(deltaMarginAmount0);
+                requiredAmounts.amount0 = requiredAmounts.amount0.add(deltaMarginAmount0);
             } else if (_tradeOption.targetMarginAmount0 == Constants.MARGIN_USE) {
                 // use margin of token0 to make required amount 0
-                deltaMarginAmount0 = requiredAmount0.mul(-1);
+                deltaMarginAmount0 = requiredAmounts.amount0.mul(-1);
 
                 _vault.marginAmount0 = PredyMath.addDelta(_vault.marginAmount0, deltaMarginAmount0);
 
-                requiredAmount0 = 0;
+                requiredAmounts.amount0 = 0;
             }
 
             if (_tradeOption.targetMarginAmount1 >= 0) {
@@ -198,14 +207,14 @@ library PositionUpdater {
 
                 _vault.marginAmount1 = uint256(_tradeOption.targetMarginAmount1);
 
-                requiredAmount1 = requiredAmount1.add(deltaMarginAmount1);
+                requiredAmounts.amount1 = requiredAmounts.amount1.add(deltaMarginAmount1);
             } else if (_tradeOption.targetMarginAmount1 == Constants.MARGIN_USE) {
                 // use margin of token1 to make required amount 0
-                deltaMarginAmount1 = requiredAmount1.mul(-1);
+                deltaMarginAmount1 = requiredAmounts.amount1.mul(-1);
 
                 _vault.marginAmount1 = PredyMath.addDelta(_vault.marginAmount1, deltaMarginAmount1);
 
-                requiredAmount1 = 0;
+                requiredAmounts.amount1 = 0;
             }
 
             // emit event if needed
@@ -565,11 +574,6 @@ library PositionUpdater {
         // calculate trade fee for ranges that trader would open
         for (uint256 i = 0; i < _positionUpdates.length; i++) {
             bytes32 rangeId = LPTStateLib.getRangeKey(_positionUpdates[i].lowerTick, _positionUpdates[i].upperTick);
-
-            // if range is not initialized, skip calculation.
-            if (_ranges[rangeId].lastTouchedTimestamp == 0) {
-                continue;
-            }
 
             collectTradeFeeFromUni(_context, _ranges[rangeId]);
         }

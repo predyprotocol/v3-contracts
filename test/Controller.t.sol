@@ -243,7 +243,7 @@ contract ControllerTest is TestDeployer, Test {
 
         DataType.PositionUpdate[] memory positionUpdates = createPositionUpdatesForBorrowLPT(margin);
 
-        (uint256 vaultId, , , ) = controller.updatePosition(
+        (uint256 vaultId, , ) = controller.updatePosition(
             0,
             positionUpdates,
             DataType.TradeOption(false, false, false, getIsMarginZero(), int256(margin), -1, EMPTY_METADATA)
@@ -276,7 +276,7 @@ contract ControllerTest is TestDeployer, Test {
 
         DataType.PositionUpdate[] memory positionUpdates = createPositionUpdatesForBorrowLPT(margin);
 
-        (uint256 vaultId, , , ) = controller.updatePosition(
+        (uint256 vaultId, , ) = controller.updatePosition(
             0,
             positionUpdates,
             DataType.TradeOption(false, false, false, getIsMarginZero(), int256(margin), -1, EMPTY_METADATA)
