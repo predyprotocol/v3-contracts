@@ -5,6 +5,7 @@ pragma abicoder v2;
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/math/SignedSafeMath.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
+import "@uniswap/v3-core/contracts/libraries/FixedPoint128.sol";
 import "./PredyMath.sol";
 import "./Constants.sol";
 import "./LPTMath.sol";
@@ -140,9 +141,9 @@ library VaultLib {
                     liquidityAmount = lpt.liquidityAmount;
                 }
 
-                fee0 = calculateProfit(lpt.fee0Last, _range.fee0Growth, liquidityAmount, Constants.ONE);
+                fee0 = calculateProfit(lpt.fee0Last, _range.fee0Growth, liquidityAmount, FixedPoint128.Q128);
 
-                fee1 = calculateProfit(lpt.fee1Last, _range.fee1Growth, liquidityAmount, Constants.ONE);
+                fee1 = calculateProfit(lpt.fee1Last, _range.fee1Growth, liquidityAmount, FixedPoint128.Q128);
 
                 {
                     uint256 profit = calculateProfit(
@@ -523,10 +524,10 @@ library VaultLib {
     {
         if (_lpt.isCollateral) {
             totalAmount0 = (
-                PredyMath.mulDiv(_range.fee0Growth.sub(_lpt.fee0Last), _lpt.liquidityAmount, Constants.ONE)
+                PredyMath.mulDiv(_range.fee0Growth.sub(_lpt.fee0Last), _lpt.liquidityAmount, FixedPoint128.Q128)
             );
             totalAmount1 = (
-                PredyMath.mulDiv(_range.fee1Growth.sub(_lpt.fee1Last), _lpt.liquidityAmount, Constants.ONE)
+                PredyMath.mulDiv(_range.fee1Growth.sub(_lpt.fee1Last), _lpt.liquidityAmount, FixedPoint128.Q128)
             );
         }
     }

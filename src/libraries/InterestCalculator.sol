@@ -308,14 +308,10 @@ library InterestCalculator {
         uint256 feeGrowthGlobal0X128 = uniPool.feeGrowthGlobal0X128();
         uint256 feeGrowthGlobal1X128 = uniPool.feeGrowthGlobal1X128();
 
-        (, int24 tickCurrent, , , , , ) = uniPool.slot0();
-
         (uint256 feeGrowthInside0X128, uint256 feeGrowthInside1X128) = getFeeGrowthInside(
-            getFeeGrowthOutside(uniPool, _lowerTick),
-            getFeeGrowthOutside(uniPool, _upperTick),
+            uniPool,
             _lowerTick,
             _upperTick,
-            tickCurrent,
             feeGrowthGlobal0X128,
             feeGrowthGlobal1X128
         );
@@ -326,6 +322,27 @@ library InterestCalculator {
         _params.snapshots[key].lastFeeGrowthInside1X128 = feeGrowthInside1X128;
         _params.snapshots[key].lastFeeGrowthGlobal0X128 = feeGrowthGlobal0X128;
         _params.snapshots[key].lastFeeGrowthGlobal1X128 = feeGrowthGlobal1X128;
+    }
+
+    function getFeeGrowthInside(
+        IUniswapV3Pool uniPool,
+        int24 _lowerTick,
+        int24 _upperTick,
+        uint256 feeGrowthGlobal0X128,
+        uint256 feeGrowthGlobal1X128
+    ) internal view returns (uint256 feeGrowthInside0X128, uint256 feeGrowthInside1X128) {
+        (, int24 tickCurrent, , , , , ) = uniPool.slot0();
+
+        return
+            getFeeGrowthInside(
+                getFeeGrowthOutside(uniPool, _lowerTick),
+                getFeeGrowthOutside(uniPool, _upperTick),
+                _lowerTick,
+                _upperTick,
+                tickCurrent,
+                feeGrowthGlobal0X128,
+                feeGrowthGlobal1X128
+            );
     }
 
     function getFeeGrowthOutside(IUniswapV3Pool uniPool, int24 _tickId) internal view returns (TickInfo memory) {

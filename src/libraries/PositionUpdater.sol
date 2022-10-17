@@ -6,13 +6,13 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/math/SignedSafeMath.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import "@uniswap/v3-core/contracts/libraries/FixedPoint128.sol";
 import "@uniswap/v3-periphery/interfaces/ISwapRouter.sol";
 import "@uniswap/v3-periphery/libraries/PositionKey.sol";
 import "./BaseToken.sol";
 import "./Constants.sol";
 import "./DataType.sol";
 import "./VaultLib.sol";
+import "./InterestCalculator.sol";
 import "./LPTStateLib.sol";
 import "./UniHelper.sol";
 
@@ -601,27 +601,21 @@ library PositionUpdater {
 
     function collectTradeFeeFromUni(DataType.Context memory _context, DataType.PerpStatus storage _range) internal {
         // Update cumulative trade fee
-        (uint256 fee0Growth, uint256 fee1Growth) = getFeeGrowth(
+        (uint256 fee0GrowthGlobal, uint256 fee1GrowthGlobal) = getFeeGrowth(IUniswapV3Pool(_context.uniswapPool));
+
+        (uint256 feeGrowthInside0X128, uint256 feeGrowthInside1X128) = InterestCalculator.getFeeGrowthInside(
             IUniswapV3Pool(_context.uniswapPool),
             _range.lowerTick,
-            _range.upperTick
+            _range.upperTick,
+            fee0GrowthGlobal,
+            fee1GrowthGlobal
         );
 
-        _range.fee0Growth = PredyMath.mulDiv(fee0Growth, Constants.ONE, FixedPoint128.Q128);
-        _range.fee1Growth = PredyMath.mulDiv(fee1Growth, Constants.ONE, FixedPoint128.Q128);
+        _range.fee0Growth = feeGrowthInside0X128;
+        _range.fee1Growth = feeGrowthInside1X128;
     }
 
-    function getFeeGrowth(
-        IUniswapV3Pool _uniswapPool,
-        int24 _tickLower,
-        int24 _tickUpper
-    ) internal view returns (uint256, uint256) {
-        bytes32 positionKey = PositionKey.compute(address(this), _tickLower, _tickUpper);
-
-        (, uint256 feeGrowthInside0LastX128, uint256 feeGrowthInside1LastX128, , ) = _uniswapPool.positions(
-            positionKey
-        );
-
-        return (feeGrowthInside0LastX128, feeGrowthInside1LastX128);
+    function getFeeGrowth(IUniswapV3Pool _uniswapPool) internal view returns (uint256, uint256) {
+        return (_uniswapPool.feeGrowthGlobal0X128(), _uniswapPool.feeGrowthGlobal1X128());
     }
 }
