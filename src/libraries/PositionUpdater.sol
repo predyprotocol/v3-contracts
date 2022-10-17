@@ -553,7 +553,7 @@ library PositionUpdater {
     }
 
     /**
-     * @notice Collects trade fee and premium.
+     * @notice Collects trade fee and updates fee growth.
      */
     function updateFeeGrowth(
         DataType.Context memory _context,
@@ -567,7 +567,7 @@ library PositionUpdater {
             DataType.SubVault memory subVault = _subVaults[_vault.subVaults[i]];
 
             for (uint256 j = 0; j < subVault.lpts.length; j++) {
-                collectTradeFeeFromUni(_context, _ranges[subVault.lpts[j].rangeId]);
+                updateFeeGrowthForRange(_context, _ranges[subVault.lpts[j].rangeId]);
             }
         }
 
@@ -579,7 +579,7 @@ library PositionUpdater {
                 continue;
             }
 
-            collectTradeFeeFromUni(_context, _ranges[rangeId]);
+            updateFeeGrowthForRange(_context, _ranges[rangeId]);
         }
     }
 
@@ -590,6 +590,7 @@ library PositionUpdater {
     ) internal returns (uint256 amount0, uint256 amount1) {
         (amount0, amount1) = IUniswapV3Pool(_context.uniswapPool).burn(_range.lowerTick, _range.upperTick, _liquidity);
 
+        // collect burned token amounts
         IUniswapV3Pool(_context.uniswapPool).collect(
             address(this),
             _range.lowerTick,
@@ -599,10 +600,11 @@ library PositionUpdater {
         );
     }
 
-    function collectTradeFeeFromUni(DataType.Context memory _context, DataType.PerpStatus storage _range) internal {
-        // Update cumulative trade fee
+    function updateFeeGrowthForRange(DataType.Context memory _context, DataType.PerpStatus storage _range) internal {
+        // burn 0 amount of LPT to collect trade fee from Uniswap pool.
         IUniswapV3Pool(_context.uniswapPool).burn(_range.lowerTick, _range.upperTick, 0);
 
+        // collect trade fee
         (uint256 collect0, uint256 collect1) = IUniswapV3Pool(_context.uniswapPool).collect(
             address(this),
             _range.lowerTick,
