@@ -601,6 +601,12 @@ library PositionUpdater {
     }
 
     function updateFeeGrowthForRange(DataType.Context memory _context, DataType.PerpStatus storage _range) internal {
+        uint256 totalLiquidity = LPTStateLib.getTotalLiquidityAmount(address(this), _context.uniswapPool, _range);
+
+        if (totalLiquidity == 0) {
+            return;
+        }
+
         // burn 0 amount of LPT to collect trade fee from Uniswap pool.
         IUniswapV3Pool(_context.uniswapPool).burn(_range.lowerTick, _range.upperTick, 0);
 
@@ -612,8 +618,6 @@ library PositionUpdater {
             type(uint128).max,
             type(uint128).max
         );
-
-        uint256 totalLiquidity = LPTStateLib.getTotalLiquidityAmount(address(this), _context.uniswapPool, _range);
 
         _range.fee0Growth = _range.fee0Growth.add(PredyMath.mulDiv(collect0, Constants.ONE, totalLiquidity));
         _range.fee1Growth = _range.fee1Growth.add(PredyMath.mulDiv(collect1, Constants.ONE, totalLiquidity));
