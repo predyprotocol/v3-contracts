@@ -53,13 +53,13 @@ abstract contract TestDeployer is BaseTestHelper {
             true
         );
 
-        vaultNFT = new VaultNFT("", "", "");
+        VaultNFT vaultNFT = new VaultNFT("", "", "");
 
         controller = new ControllerHelper();
 
         controller.initialize(initializationParam, factory, address(swapRouter), address(vaultNFT));
 
-        vaultNFT.allow(address(controller));
+        vaultNFT.init(address(controller));
 
         reader = new Reader(controller);
 

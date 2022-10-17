@@ -9,14 +9,14 @@ import "../vendors/IUniswapV3PoolOracle.sol";
 import "./DataType.sol";
 
 library UniHelper {
-    uint256 internal constant ORACLE_PERIOD = 10 minutes;
+    uint256 internal constant ORACLE_PERIOD = 30 minutes;
 
     function getSqrtPrice(address _uniswapPool) internal view returns (uint160 sqrtPriceX96) {
         (sqrtPriceX96, , , , , , ) = IUniswapV3Pool(_uniswapPool).slot0();
     }
 
     /**
-     * Gets square root of time Wweighted average price.
+     * Gets square root of time weighted average price.
      */
     function getSqrtTWAP(address _uniswapPool) internal view returns (uint160 sqrtTwapX96) {
         (sqrtTwapX96, ) = callUniswapObserve(IUniswapV3Pool(_uniswapPool), ORACLE_PERIOD);

@@ -38,9 +38,11 @@ contract FutureMarketTest is TestDeployer, Test {
 
         isQuoteZero = getIsMarginZero();
 
+        VaultNFT vaultNFT = new VaultNFT("", "", "");
+
         futureMarket = new FutureMarket(address(controller), address(reader), address(token0), address(vaultNFT));
 
-        vaultNFT.allow(address(futureMarket));
+        vaultNFT.init(address(futureMarket));
 
         token0.approve(address(futureMarket), type(uint256).max);
 

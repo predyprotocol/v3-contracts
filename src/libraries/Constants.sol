@@ -15,6 +15,7 @@ library Constants {
     int256 internal constant MARGIN_USE = -2;
 
     uint256 internal constant MAX_MARGIN_AMOUNT = 1e32;
+    int256 internal constant MIN_MARGIN_AMOUNT = 1e6;
 
     uint256 internal constant Q96 = 0x1000000000000000000000000;
 

@@ -16,8 +16,8 @@ contract VaultNFT is ERC721, IVaultNFT, Initializable {
 
     mapping(address => bool) public allowlist;
 
-    modifier onlyAllowedAddress() {
-        require(allowlist[msg.sender], "Not Allowed");
+    modifier onlyController() {
+        require(msg.sender == controller, "Not Controller");
         _;
     }
 
@@ -38,13 +38,12 @@ contract VaultNFT is ERC721, IVaultNFT, Initializable {
 
     /**
      * @notice Initializes Vault NFT
-     * @param _minter Perpetual Market address
+     * @param _controller Perpetual Market address
      */
-    function allow(address _minter) public {
+    function init(address _controller) public initializer {
         require(msg.sender == deployer, "Caller is not deployer");
-        require(_minter != address(0), "Zero address");
-
-        allowlist[_minter] = true;
+        require(_controller != address(0), "Zero address");
+        controller = _controller;
     }
 
     /**
@@ -52,7 +51,7 @@ contract VaultNFT is ERC721, IVaultNFT, Initializable {
      * @dev auto increment tokenId starts from 1
      * @param _recipient recipient address for NFT
      */
-    function mintNFT(address _recipient) external override onlyAllowedAddress returns (uint256 tokenId) {
+    function mintNFT(address _recipient) external override onlyController returns (uint256 tokenId) {
         _safeMint(_recipient, (tokenId = nextId++));
     }
 }

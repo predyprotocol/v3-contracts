@@ -76,7 +76,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   if (result.newlyDeployed) {
     const controller = await ethers.getContract('ControllerHelper', deployer)
 
-    await vaultNFT.allow(controller.address)
+    await vaultNFT.init(controller.address)
 
     await controller.updateIRMParams({
       baseRate: '5000000000000000',

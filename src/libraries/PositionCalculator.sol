@@ -18,10 +18,10 @@ library PositionCalculator {
     using SignedSafeMath for int256;
 
     uint256 internal constant Q96 = 0x1000000000000000000000000;
-    // sqrt{1.21} = 1.1
-    uint160 internal constant UPPER_E8 = 110000000;
-    // sqrt{1/1.21} = 0.90909090909
-    uint160 internal constant LOWER_E8 = 90909090;
+    // sqrt{1.18} = 1.08627804912
+    uint160 internal constant UPPER_E8 = 108627805;
+    // sqrt{1/1.18} = 0.92057461789
+    uint160 internal constant LOWER_E8 = 92057462;
 
     struct PositionCalculatorParams {
         int256 marginAmount0;
@@ -44,17 +44,20 @@ library PositionCalculator {
         PositionCalculatorParams memory _params,
         uint160 _sqrtPrice,
         bool _isMarginZero
-    ) internal pure returns (int256) {
+    ) internal pure returns (int256 minDeposit) {
         int256 vaultPositionValue = calculateValue(_params, _sqrtPrice, _isMarginZero);
 
         int256 minValue = calculateMinValue(_params, _sqrtPrice, _isMarginZero);
 
         (, , uint256 debtValue) = calculateCollateralAndDebtValue(_params, _sqrtPrice, _isMarginZero, false);
 
-        return
-            int256(calculateRequiredCollateralWithDebt(debtValue).mul(debtValue).div(1e6)).add(vaultPositionValue).sub(
-                minValue
-            );
+        minDeposit = int256(calculateRequiredCollateralWithDebt(debtValue).mul(debtValue).div(1e6))
+            .add(vaultPositionValue)
+            .sub(minValue);
+
+        if (minDeposit < Constants.MIN_MARGIN_AMOUNT && debtValue > 0) {
+            minDeposit = Constants.MIN_MARGIN_AMOUNT;
+        }
     }
 
     function calculateRequiredCollateralWithDebt(uint256 _debtValue) internal pure returns (uint256) {

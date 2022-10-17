@@ -24,7 +24,6 @@ abstract contract BaseTestHelper {
 
     ControllerHelper internal controller;
     Reader internal reader;
-    VaultNFT vaultNFT;
 
     NonfungiblePositionManager internal positionManager;
     SwapRouter internal swapRouter;
