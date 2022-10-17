@@ -17,7 +17,6 @@ library PositionLib {
     function getPositionUpdatesToOpen(
         DataType.Position memory _position,
         bool _isQuoteZero,
-        uint24 _feeTier,
         uint160 _sqrtPrice
     ) external pure returns (DataType.PositionUpdate[] memory positionUpdates) {
         uint256 swapIndex;
@@ -32,7 +31,7 @@ library PositionLib {
                     DataType.PositionUpdateType.SWAP_EXACT_OUT,
                     0,
                     true,
-                    _feeTier,
+                    0,
                     0,
                     0,
                     uint256(requiredAmount1),
@@ -43,7 +42,7 @@ library PositionLib {
                     DataType.PositionUpdateType.SWAP_EXACT_IN,
                     0,
                     false,
-                    _feeTier,
+                    0,
                     0,
                     0,
                     uint256(-requiredAmount1),
@@ -56,7 +55,7 @@ library PositionLib {
                     DataType.PositionUpdateType.SWAP_EXACT_OUT,
                     0,
                     false,
-                    _feeTier,
+                    0,
                     0,
                     0,
                     uint256(requiredAmount0),
@@ -67,7 +66,7 @@ library PositionLib {
                     DataType.PositionUpdateType.SWAP_EXACT_IN,
                     0,
                     true,
-                    _feeTier,
+                    0,
                     0,
                     0,
                     uint256(-requiredAmount0),
@@ -80,7 +79,6 @@ library PositionLib {
     function getPositionUpdatesToClose(
         DataType.Position[] memory _positions,
         bool _isQuoteZero,
-        uint24 _feeTier,
         uint256 _swapRatio,
         uint256 _closeRatio,
         uint160 _sqrtPrice
@@ -96,7 +94,7 @@ library PositionLib {
                 DataType.PositionUpdateType.SWAP_EXACT_IN,
                 0,
                 true,
-                _feeTier,
+                0,
                 0,
                 0,
                 (uint256(-requiredAmount0) * _swapRatio) / 100,
@@ -107,7 +105,7 @@ library PositionLib {
                 DataType.PositionUpdateType.SWAP_EXACT_IN,
                 0,
                 false,
-                _feeTier,
+                0,
                 0,
                 0,
                 (uint256(-requiredAmount1) * _swapRatio) / 100,
