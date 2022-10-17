@@ -120,6 +120,7 @@ library DataType {
         uint256 lowerSqrtPrice;
         uint256 upperSqrtPrice;
         uint24 feeTier;
+        uint256 deadline;
     }
 
     struct ClosePositionOption {
@@ -128,6 +129,7 @@ library DataType {
         uint256 swapRatio;
         uint256 closeRatio;
         uint24 feeTier;
+        uint256 deadline;
     }
 
     struct LiquidationOption {

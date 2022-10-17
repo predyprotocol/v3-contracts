@@ -13,6 +13,11 @@ contract ControllerHelper is Controller {
     using SafeMath for uint256;
     using SignedSafeMath for int256;
 
+    modifier checkDeadline(uint256 deadline) {
+        require(block.timestamp <= deadline, "CH1");
+        _;
+    }
+
     constructor() {}
 
     /**
@@ -29,6 +34,7 @@ contract ControllerHelper is Controller {
         DataType.OpenPositionOption memory _openPositionOptions
     )
         external
+        checkDeadline(_openPositionOptions.deadline)
         returns (
             uint256 vaultId,
             DataType.TokenAmounts memory requiredAmounts,
@@ -54,6 +60,7 @@ contract ControllerHelper is Controller {
         DataType.OpenPositionOption memory _openPositionOptions
     )
         external
+        checkDeadline(_openPositionOptions.deadline)
         returns (
             uint256 vaultId,
             DataType.TokenAmounts memory requiredAmounts,
@@ -115,7 +122,11 @@ contract ControllerHelper is Controller {
         DataType.Position[] memory _positions,
         DataType.TradeOption memory _tradeOption,
         DataType.ClosePositionOption memory _closePositionOptions
-    ) public returns (DataType.TokenAmounts memory requiredAmounts, DataType.TokenAmounts memory swapAmounts) {
+    )
+        public
+        checkDeadline(_closePositionOptions.deadline)
+        returns (DataType.TokenAmounts memory requiredAmounts, DataType.TokenAmounts memory swapAmounts)
+    {
         DataType.PositionUpdate[] memory positionUpdates = PositionLib.getPositionUpdatesToClose(
             _positions,
             _tradeOption.isQuoteZero,

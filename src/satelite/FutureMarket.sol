@@ -254,7 +254,12 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
             bytes("")
         );
 
-        DataType.OpenPositionOption memory openPositionOption = DataType.OpenPositionOption(0, type(uint256).max, 500);
+        DataType.OpenPositionOption memory openPositionOption = DataType.OpenPositionOption(
+            0,
+            type(uint256).max,
+            500,
+            block.timestamp
+        );
 
         DataType.PositionUpdate[] memory positionUpdates = _rebalance(
             controller.getSqrtPrice(),
@@ -445,7 +450,12 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
         int256 _amount,
         DataType.TradeOption memory tradeOption
     ) internal returns (uint256 entryPrice) {
-        DataType.OpenPositionOption memory openPositionOption = DataType.OpenPositionOption(0, type(uint256).max, 500);
+        DataType.OpenPositionOption memory openPositionOption = DataType.OpenPositionOption(
+            0,
+            type(uint256).max,
+            500,
+            block.timestamp
+        );
 
         DataType.PositionUpdate[] memory positionUpdates = _rebalanceUpdate(
             int256(PredyMath.abs(_poolPosition.add(_amount))).sub(int256(PredyMath.abs(_poolPosition)))
