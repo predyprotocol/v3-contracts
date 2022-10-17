@@ -44,7 +44,6 @@ contract ControllerHelper is Controller {
         DataType.PositionUpdate[] memory positionUpdates = PositionLib.getPositionUpdatesToOpen(
             _position,
             _tradeOption.isQuoteZero,
-            _openPositionOptions.feeTier,
             getSqrtPrice()
         );
 
@@ -130,7 +129,6 @@ contract ControllerHelper is Controller {
         DataType.PositionUpdate[] memory positionUpdates = PositionLib.getPositionUpdatesToClose(
             _positions,
             _tradeOption.isQuoteZero,
-            _closePositionOptions.feeTier,
             _closePositionOptions.swapRatio,
             _closePositionOptions.closeRatio,
             getSqrtPrice()
@@ -152,7 +150,6 @@ contract ControllerHelper is Controller {
         DataType.PositionUpdate[] memory positionUpdates = PositionLib.getPositionUpdatesToClose(
             getPosition(_vaultId),
             context.isMarginZero,
-            _liquidationOption.feeTier,
             _liquidationOption.swapRatio,
             _liquidationOption.closeRatio,
             getSqrtPrice()

@@ -373,7 +373,6 @@ contract OptionMarket is ERC20, IERC721Receiver, Ownable {
             type(uint256).max,
             _swapRatio,
             1e6,
-            500,
             block.timestamp
         );
 
@@ -501,7 +500,6 @@ contract OptionMarket is ERC20, IERC721Receiver, Ownable {
         DataType.OpenPositionOption memory openPositionOption = DataType.OpenPositionOption(
             0,
             type(uint256).max,
-            500,
             block.timestamp
         );
 
@@ -527,7 +525,6 @@ contract OptionMarket is ERC20, IERC721Receiver, Ownable {
         DataType.OpenPositionOption memory openPositionOption = DataType.OpenPositionOption(
             0,
             type(uint256).max,
-            500,
             block.timestamp
         );
 
@@ -557,7 +554,6 @@ contract OptionMarket is ERC20, IERC721Receiver, Ownable {
             type(uint256).max,
             100,
             1e6,
-            500,
             block.timestamp
         );
 
@@ -587,7 +583,6 @@ contract OptionMarket is ERC20, IERC721Receiver, Ownable {
             type(uint256).max,
             100,
             1e6,
-            500,
             block.timestamp
         );
 

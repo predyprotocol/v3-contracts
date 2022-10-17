@@ -490,7 +490,7 @@ library PositionUpdater {
         ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
             tokenIn: _positionUpdate.zeroForOne ? _context.token0 : _context.token1,
             tokenOut: _positionUpdate.zeroForOne ? _context.token1 : _context.token0,
-            fee: uint24(_positionUpdate.liquidity),
+            fee: _context.feeTier,
             recipient: address(this),
             deadline: block.timestamp,
             amountIn: _positionUpdate.param0,
@@ -523,7 +523,7 @@ library PositionUpdater {
         ISwapRouter.ExactOutputSingleParams memory params = ISwapRouter.ExactOutputSingleParams({
             tokenIn: _positionUpdate.zeroForOne ? _context.token0 : _context.token1,
             tokenOut: _positionUpdate.zeroForOne ? _context.token1 : _context.token0,
-            fee: uint24(_positionUpdate.liquidity),
+            fee: _context.feeTier,
             recipient: address(this),
             deadline: block.timestamp,
             amountOut: _positionUpdate.param0,

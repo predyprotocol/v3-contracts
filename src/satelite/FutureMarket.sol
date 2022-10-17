@@ -257,7 +257,6 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
         DataType.OpenPositionOption memory openPositionOption = DataType.OpenPositionOption(
             0,
             type(uint256).max,
-            500,
             block.timestamp
         );
 
@@ -453,7 +452,6 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
         DataType.OpenPositionOption memory openPositionOption = DataType.OpenPositionOption(
             0,
             type(uint256).max,
-            500,
             block.timestamp
         );
 
