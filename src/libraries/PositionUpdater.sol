@@ -575,6 +575,10 @@ library PositionUpdater {
         for (uint256 i = 0; i < _positionUpdates.length; i++) {
             bytes32 rangeId = LPTStateLib.getRangeKey(_positionUpdates[i].lowerTick, _positionUpdates[i].upperTick);
 
+            if (_ranges[rangeId].lastTouchedTimestamp == 0) {
+                continue;
+            }
+
             collectTradeFeeFromUni(_context, _ranges[rangeId]);
         }
     }
@@ -586,36 +590,30 @@ library PositionUpdater {
     ) internal returns (uint256 amount0, uint256 amount1) {
         (amount0, amount1) = IUniswapV3Pool(_context.uniswapPool).burn(_range.lowerTick, _range.upperTick, _liquidity);
 
-        collectTokenAmountsFromUni(_context, _range);
+        IUniswapV3Pool(_context.uniswapPool).collect(
+            address(this),
+            _range.lowerTick,
+            _range.upperTick,
+            amount0.toUint128(),
+            amount1.toUint128()
+        );
     }
 
-    function collectTokenAmountsFromUni(DataType.Context memory _context, DataType.PerpStatus storage _range) internal {
-        IUniswapV3Pool(_context.uniswapPool).collect(
+    function collectTradeFeeFromUni(DataType.Context memory _context, DataType.PerpStatus storage _range) internal {
+        // Update cumulative trade fee
+        IUniswapV3Pool(_context.uniswapPool).burn(_range.lowerTick, _range.upperTick, 0);
+
+        (uint256 collect0, uint256 collect1) = IUniswapV3Pool(_context.uniswapPool).collect(
             address(this),
             _range.lowerTick,
             _range.upperTick,
             type(uint128).max,
             type(uint128).max
         );
-    }
 
-    function collectTradeFeeFromUni(DataType.Context memory _context, DataType.PerpStatus storage _range) internal {
-        // Update cumulative trade fee
-        (uint256 fee0GrowthGlobal, uint256 fee1GrowthGlobal) = getFeeGrowth(IUniswapV3Pool(_context.uniswapPool));
+        uint256 totalLiquidity = LPTStateLib.getTotalLiquidityAmount(address(this), _context.uniswapPool, _range);
 
-        (uint256 feeGrowthInside0X128, uint256 feeGrowthInside1X128) = InterestCalculator.getFeeGrowthInside(
-            IUniswapV3Pool(_context.uniswapPool),
-            _range.lowerTick,
-            _range.upperTick,
-            fee0GrowthGlobal,
-            fee1GrowthGlobal
-        );
-
-        _range.fee0Growth = feeGrowthInside0X128;
-        _range.fee1Growth = feeGrowthInside1X128;
-    }
-
-    function getFeeGrowth(IUniswapV3Pool _uniswapPool) internal view returns (uint256, uint256) {
-        return (_uniswapPool.feeGrowthGlobal0X128(), _uniswapPool.feeGrowthGlobal1X128());
+        _range.fee0Growth = _range.fee0Growth.add(PredyMath.mulDiv(collect0, Constants.ONE, totalLiquidity));
+        _range.fee1Growth = _range.fee1Growth.add(PredyMath.mulDiv(collect1, Constants.ONE, totalLiquidity));
     }
 }
