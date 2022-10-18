@@ -548,10 +548,6 @@ library PositionUpdater {
         }
     }
 
-    function getSqrtPrice(IUniswapV3Pool _uniswapPool) public view returns (uint160 sqrtPriceX96) {
-        (sqrtPriceX96, , , , , , ) = _uniswapPool.slot0();
-    }
-
     /**
      * @notice Collects trade fee and updates fee growth.
      */
