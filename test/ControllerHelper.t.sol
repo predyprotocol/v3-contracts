@@ -14,6 +14,9 @@ contract ControllerHelperTest is TestDeployer, Test {
     address owner;
     bool isQuoteZero;
 
+    uint256 private vaultId1;
+    uint256 private vaultId2;
+
     function setUp() public {
         owner = 0x503828976D22510aad0201ac7EC88293211D23Da;
         vm.startPrank(owner);
@@ -25,8 +28,8 @@ contract ControllerHelperTest is TestDeployer, Test {
         deployContracts(owner, factory);
         vm.warp(block.timestamp + 1 minutes);
 
-        depositToken(0, 1e10, 5 * 1e18);
-        depositLPT(0, 0, 202500, 202600, 2 * 1e18);
+        vaultId1 = depositToken(0, 1e10, 5 * 1e18);
+        vaultId2 = depositLPT(0, 0, 202500, 202600, 2 * 1e18);
 
         isQuoteZero = getIsMarginZero();
     }
@@ -370,29 +373,45 @@ contract ControllerHelperTest is TestDeployer, Test {
         );
     }
 
-    function testWithdrawLPT1(uint256 _swapAmount) public {
+    function testWithdrawLPT(uint256 _swapAmount) public {
         uint256 swapAmount = bound(_swapAmount, 1e16, 5 * 1e18);
 
         uint256 vaultId = depositLPT(0, 0, 202500, 202600, 1e18);
-        borrowLPT(0, 0, 202600, 202500, 202600, 1e18, 100 * 1e6);
+        uint256 vaultId3 = borrowLPT(0, 0, 202600, 202500, 202600, 1e18, 100 * 1e6);
 
         slip(owner, true, swapAmount);
 
         vm.warp(block.timestamp + 5 minutes);
 
-        console.log(1);
-
-        controller.closeVault(
-            vaultId,
-            DataType.TradeOption(false, true, false, getIsMarginZero(), 0, -1, EMPTY_METADATA),
-            DataType.ClosePositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 100, 1e4, block.timestamp)
+        DataType.TradeOption memory tradeOption = DataType.TradeOption(
+            false,
+            true,
+            false,
+            getIsMarginZero(),
+            0,
+            -1,
+            EMPTY_METADATA
+        );
+        DataType.ClosePositionOption memory closeOption = DataType.ClosePositionOption(
+            getLowerSqrtPrice(),
+            getUpperSqrtPrice(),
+            100,
+            1e4,
+            block.timestamp
         );
 
-        console.log(2);
+        controller.closeVault(vaultId, tradeOption, closeOption);
 
         DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);
 
         assertEq(vaultStatus.subVaults.length, 0);
+
+        // close all positions
+        controller.closeVault(vaultId3, tradeOption, closeOption);
+
+        controller.closeVault(vaultId2, tradeOption, closeOption);
+
+        controller.closeVault(vaultId1, tradeOption, closeOption);
     }
 
     function testRepayLPT(uint256 _swapAmount) public {

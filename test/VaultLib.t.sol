@@ -102,12 +102,16 @@ contract VaultLibTest is Test {
     function testDepositLPT2() public {
         VaultLib.depositLPT(subVault, ranges[rangeId2], rangeId2, 100);
         ranges[rangeId2].premiumGrowthForLender += 100;
+        ranges[rangeId2].fee0Growth += 100;
+        ranges[rangeId2].fee1Growth += 100;
         VaultLib.depositLPT(subVault, ranges[rangeId2], rangeId2, 200);
 
         assertEq(subVault.lpts.length, 1);
         assertTrue(subVault.lpts[0].isCollateral);
         assertEq(uint256(subVault.lpts[0].liquidityAmount), 300);
         assertEq(subVault.lpts[0].premiumGrowthLast, 66);
+        assertEq(subVault.lpts[0].fee0Last, 66);
+        assertEq(subVault.lpts[0].fee1Last, 66);
     }
 
     /**************************

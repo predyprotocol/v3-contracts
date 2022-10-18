@@ -179,7 +179,7 @@ abstract contract BaseTestHelper {
         uint256 _vaultId,
         uint256 _amount0,
         uint256 _amount1
-    ) public {
+    ) public returns (uint256 vaultId) {
         DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](1);
 
         positionUpdates[0] = DataType.PositionUpdate(
@@ -193,7 +193,7 @@ abstract contract BaseTestHelper {
             _amount1
         );
 
-        controller.updatePosition(
+        (vaultId, , ) = controller.updatePosition(
             _vaultId,
             positionUpdates,
             DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1, EMPTY_METADATA)
