@@ -437,6 +437,28 @@ contract PositionUpdaterTest is TestDeployer, Test {
     }
 
     /**************************
+     *   Test: depositTokens   *
+     **************************/
+
+    function testDepositTokens(uint256 _amount0, uint256 _amount1) public {
+        DataType.PositionUpdate memory positionUpdate = DataType.PositionUpdate(
+            DataType.PositionUpdateType.DEPOSIT_TOKEN,
+            0,
+            false,
+            0,
+            0,
+            0,
+            _amount0,
+            _amount1
+        );
+
+        PositionUpdater.depositTokens(subVaults[100], context, positionUpdate);
+
+        assertEq(subVaults[100].balance0.assetAmount, _amount0);
+        assertEq(subVaults[100].balance1.assetAmount, _amount1);
+    }
+
+    /**************************
      *   Test: depositLPT     *
      **************************/
 

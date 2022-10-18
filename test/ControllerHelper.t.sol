@@ -58,7 +58,7 @@ contract ControllerHelperTest is TestDeployer, Test {
     }
 
     function testDepositLPT() public {
-        (uint128 liquidity, , ) = LPTMath.getLiquidityAndAmountToDeposit(
+        (uint128 liquidity, , ) = getLiquidityAndAmountToDeposit(
             true,
             1e18,
             controller.getSqrtPrice(),
@@ -85,7 +85,7 @@ contract ControllerHelperTest is TestDeployer, Test {
 
         vm.warp(block.timestamp + 5 minutes);
 
-        (uint128 liquidity, , ) = LPTMath.getLiquidityAndAmountToDeposit(
+        (uint128 liquidity, , ) = getLiquidityAndAmountToDeposit(
             true,
             1e18,
             controller.getSqrtPrice(),
@@ -136,7 +136,7 @@ contract ControllerHelperTest is TestDeployer, Test {
 
         uint256 margin = 100 * 1e6;
 
-        (uint128 liquidity, , ) = LPTMath.getLiquidityAndAmountToBorrow(true, 1e18, 202600, 202500, 202600);
+        (uint128 liquidity, , ) = getLiquidityAndAmountToBorrow(true, 1e18, 202600, 202500, 202600);
 
         DataType.LPT[] memory lpts = new DataType.LPT[](1);
         lpts[0] = DataType.LPT(false, liquidity, 202500, 202600);
@@ -191,7 +191,7 @@ contract ControllerHelperTest is TestDeployer, Test {
     function testBorrowETH() public {
         uint256 margin = 500 * 1e6;
 
-        (uint128 liquidity, , ) = LPTMath.getLiquidityAndAmountToDeposit(
+        (uint128 liquidity, , ) = getLiquidityAndAmountToDeposit(
             true,
             1e18,
             controller.getSqrtPrice(),
@@ -214,7 +214,7 @@ contract ControllerHelperTest is TestDeployer, Test {
     function testSubVaults() public {
         uint256 vaultId = depositLPT(0, 0, 202500, 202600, 1e18);
 
-        (uint128 liquidity, , ) = LPTMath.getLiquidityAndAmountToDeposit(
+        (uint128 liquidity, , ) = getLiquidityAndAmountToDeposit(
             true,
             1e18,
             controller.getSqrtPrice(),
@@ -240,7 +240,7 @@ contract ControllerHelperTest is TestDeployer, Test {
     function testCannotCreateSubVaults() public {
         uint256 vaultId = depositLPT(0, 0, 202500, 202600, 1e18);
 
-        (uint128 liquidity, , ) = LPTMath.getLiquidityAndAmountToDeposit(
+        (uint128 liquidity, , ) = getLiquidityAndAmountToDeposit(
             true,
             1e18,
             controller.getSqrtPrice(),

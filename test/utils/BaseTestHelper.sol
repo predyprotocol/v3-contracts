@@ -209,7 +209,7 @@ abstract contract BaseTestHelper {
     ) public returns (uint256 vaultId) {
         DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](1);
 
-        (uint128 liquidity, uint256 amount0, uint256 amount1) = LPTMath.getLiquidityAndAmountToDeposit(
+        (uint128 liquidity, uint256 amount0, uint256 amount1) = getLiquidityAndAmountToDeposit(
             getIsMarginZero(),
             _amount,
             controller.getSqrtPrice(),
@@ -241,7 +241,7 @@ abstract contract BaseTestHelper {
         int24 _upper,
         uint256 _amount
     ) internal returns (DataType.Position[] memory positions) {
-        (uint128 liquidity, , ) = LPTMath.getLiquidityAndAmountToBorrow(true, _amount, _tick, _lower, _upper);
+        (uint128 liquidity, , ) = getLiquidityAndAmountToBorrow(true, _amount, _tick, _lower, _upper);
 
         DataType.LPT[] memory lpts = new DataType.LPT[](1);
         lpts[0] = DataType.LPT(false, liquidity, _lower, _upper);
@@ -387,5 +387,145 @@ abstract contract BaseTestHelper {
 
     function getUpperSqrtPrice() internal view returns (uint160) {
         return (controller.getSqrtPrice() * 120) / 100;
+    }
+
+    function getLiquidityAndAmountToDeposit(
+        bool isMarginZero,
+        uint256 requestedAmount,
+        uint160 currentSqrtPrice,
+        int24 lower,
+        int24 upper
+    )
+        internal
+        pure
+        returns (
+            uint128 liquidity,
+            uint256 amount0,
+            uint256 amount1
+        )
+    {
+        if (isMarginZero) {
+            return
+                getLiquidityAndAmount(
+                    0,
+                    requestedAmount,
+                    TickMath.getSqrtRatioAtTick(upper),
+                    currentSqrtPrice,
+                    lower,
+                    upper
+                );
+        } else {
+            return
+                getLiquidityAndAmount(
+                    requestedAmount,
+                    0,
+                    TickMath.getSqrtRatioAtTick(lower),
+                    currentSqrtPrice,
+                    lower,
+                    upper
+                );
+        }
+    }
+
+    function getLiquidityAndAmountToBorrow(
+        bool isMarginZero,
+        uint256 requestedAmount,
+        int24 tick,
+        int24 lower,
+        int24 upper
+    )
+        internal
+        pure
+        returns (
+            uint128 liquidity,
+            uint256 amount0,
+            uint256 amount1
+        )
+    {
+        if (isMarginZero) {
+            return
+                getLiquidityAndAmount(
+                    0,
+                    requestedAmount,
+                    TickMath.getSqrtRatioAtTick(upper),
+                    TickMath.getSqrtRatioAtTick(tick),
+                    lower,
+                    upper
+                );
+        } else {
+            return
+                getLiquidityAndAmount(
+                    requestedAmount,
+                    0,
+                    TickMath.getSqrtRatioAtTick(lower),
+                    TickMath.getSqrtRatioAtTick(tick),
+                    lower,
+                    upper
+                );
+        }
+    }
+
+    function getLiquidityAndAmount(
+        uint256 requestedAmount0,
+        uint256 requestedAmount1,
+        uint160 sqrtPrice1,
+        uint160 sqrtPrice2,
+        int24 lower,
+        int24 upper
+    )
+        internal
+        pure
+        returns (
+            uint128 liquidity,
+            uint256 amount0,
+            uint256 amount1
+        )
+    {
+        (liquidity) = LiquidityAmounts.getLiquidityForAmounts(
+            sqrtPrice1,
+            TickMath.getSqrtRatioAtTick(lower),
+            TickMath.getSqrtRatioAtTick(upper),
+            requestedAmount0,
+            requestedAmount1
+        );
+
+        (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
+            sqrtPrice2,
+            TickMath.getSqrtRatioAtTick(lower),
+            TickMath.getSqrtRatioAtTick(upper),
+            liquidity
+        );
+    }
+
+    function getLiquidityForAmounts(
+        uint160 currentSqrtPrice,
+        int24 _lower,
+        int24 _upper,
+        uint256 _amount0,
+        uint256 _amount1
+    ) internal pure returns (uint128) {
+        return
+            LiquidityAmounts.getLiquidityForAmounts(
+                currentSqrtPrice,
+                TickMath.getSqrtRatioAtTick(_lower),
+                TickMath.getSqrtRatioAtTick(_upper),
+                _amount0,
+                _amount1
+            );
+    }
+
+    function getAmountsForLiquidity(
+        uint160 currentSqrtPrice,
+        int24 _lower,
+        int24 _upper,
+        uint128 _liquidity
+    ) internal pure returns (uint256, uint256) {
+        return
+            LiquidityAmounts.getAmountsForLiquidity(
+                currentSqrtPrice,
+                TickMath.getSqrtRatioAtTick(_lower),
+                TickMath.getSqrtRatioAtTick(_upper),
+                _liquidity
+            );
     }
 }

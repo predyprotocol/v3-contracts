@@ -590,10 +590,10 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
     function calculateDelta(uint256 _poolPosition) internal view returns (uint256 delta) {
         Range memory range = ranges[currentRangeId];
 
-        (uint256 amount0, uint256 amount1) = LPTMath.getAmountsForLiquidity(
+        (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
             controller.getSqrtPrice(),
-            range.lowerTick,
-            range.upperTick,
+            TickMath.getSqrtRatioAtTick(range.lowerTick),
+            TickMath.getSqrtRatioAtTick(range.upperTick),
             uint128((range.liquidity * _poolPosition) / 1e18)
         );
 
