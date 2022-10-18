@@ -80,6 +80,7 @@ contract Controller is IController, Initializable, IUniswapV3MintCallback {
         DataType.InitializationParams memory _initializationParams,
         address _factory,
         address _swapRouter,
+        address _chainlinkPriceFeed,
         address _vaultNFT
     ) public initializer {
         context.feeTier = _initializationParams.feeTier;
@@ -87,6 +88,7 @@ contract Controller is IController, Initializable, IUniswapV3MintCallback {
         context.token1 = _initializationParams.token1;
         context.isMarginZero = _initializationParams.isMarginZero;
         context.swapRouter = _swapRouter;
+        context.chainlinkPriceFeed = _chainlinkPriceFeed;
 
         PoolAddress.PoolKey memory poolKey = PoolAddress.PoolKey({
             token0: context.token0,
@@ -315,12 +317,10 @@ contract Controller is IController, Initializable, IUniswapV3MintCallback {
      * @notice Returns values and token amounts of the vault.
      * @param _vaultId The id of the vault
      */
-    function getVaultStatus(uint256 _vaultId) external returns (DataType.VaultStatus memory) {
-        uint160 sqrtPriceX96 = getSqrtPrice();
-
+    function getVaultStatus(uint256 _vaultId, uint160 _sqrtPriceX96) external returns (DataType.VaultStatus memory) {
         applyPerpFee(_vaultId);
 
-        return vaults[_vaultId].getVaultStatus(subVaults, ranges, context, sqrtPriceX96);
+        return vaults[_vaultId].getVaultStatus(subVaults, ranges, context, _sqrtPriceX96);
     }
 
     function getVaultValue(uint256 _vaultId) external view returns (int256) {
@@ -422,6 +422,10 @@ contract Controller is IController, Initializable, IUniswapV3MintCallback {
      */
     function getSqrtPrice() public view returns (uint160 sqrtPriceX96) {
         (sqrtPriceX96, , , , , , ) = IUniswapV3Pool(context.uniswapPool).slot0();
+    }
+
+    function getSqrtIndexPrice() external view returns (uint160) {
+        return PriceHelper.getSqrtIndexPrice(context);
     }
 
     function getPosition(uint256 _vaultId) public view returns (DataType.Position[] memory) {

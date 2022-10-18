@@ -12,7 +12,6 @@ import {TransferHelper} from "@uniswap/v3-periphery/libraries/TransferHelper.sol
 import "../interfaces/IControllerHelper.sol";
 import "../interfaces/IReader.sol";
 import "../interfaces/IVaultNFT.sol";
-import "../libraries/LPTMath.sol";
 import "../libraries/Constants.sol";
 import "./SateliteLib.sol";
 import "./FutureMarketLib.sol";
@@ -130,15 +129,15 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
     }
 
     function getLPTokenPrice() external view returns (uint256) {
-        return (Constants.ONE * getPoolValue(reader.getTWAP())) / totalSupply();
+        return (Constants.ONE * getPoolValue(reader.getIndexPrice())) / totalSupply();
     }
 
     function deposit(uint256 _amount) external returns (uint256 mintAmount) {
         updateFundingPaidPerPosition();
 
-        uint256 poolValue = getPoolValue(reader.getTWAP());
+        uint256 poolValue = getPoolValue(reader.getIndexPrice());
 
-        if (poolValue == 0) {
+        if (poolValue == 0 || totalSupply() == 0) {
             mintAmount = _amount;
         } else {
             mintAmount = (_amount * totalSupply()) / poolValue;
@@ -154,7 +153,7 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
     function withdraw(uint256 _amount) external returns (uint256 burnAmount) {
         updateFundingPaidPerPosition();
 
-        uint256 poolValue = getPoolValue(reader.getTWAP());
+        uint256 poolValue = getPoolValue(reader.getIndexPrice());
 
         burnAmount = (_amount * totalSupply()) / poolValue;
 
@@ -293,7 +292,7 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
     {
         FutureMarketLib.FutureVault memory futureVault = futureVaults[_vaultId];
 
-        uint256 twap = reader.getTWAP();
+        uint256 twap = reader.getIndexPrice();
 
         uint256 minCollateral = FutureMarketLib.calculateMinCollateral(futureVault, twap);
 
@@ -408,7 +407,7 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
         }
 
         // TODO: use chainlink
-        uint256 twap = reader.getTWAP();
+        uint256 twap = reader.getIndexPrice();
 
         uint256 minCollateral = FutureMarketLib.calculateMinCollateral(_futureVault, twap);
 
@@ -605,7 +604,7 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
     }
 
     function updateFundingPaidPerPosition() internal {
-        updateFundingPaidPerPosition(reader.getTWAP(), calculateFundingRate());
+        updateFundingPaidPerPosition(reader.getIndexPrice(), calculateFundingRate());
     }
 
     function updateFundingPaidPerPosition(uint256 twap, int256 fundingRate) internal {

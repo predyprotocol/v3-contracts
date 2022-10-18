@@ -27,6 +27,15 @@ function getUsdcAddress(network: string) {
   }
 }
 
+function getChainlinkPriceFeed(network: string) {
+  switch (network) {
+    case 'goerli':
+      return '0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e'
+    default:
+      return undefined
+  }
+}
+
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts, ethers, network } = hre
   const { deployer } = await getNamedAccounts()
@@ -66,6 +75,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
             },
             uniswapFactoryAddress,
             swapRouterAddress,
+            getChainlinkPriceFeed(network.name),
             vaultNFT.address,
           ],
         },

@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/math/SignedSafeMath.sol";
 import "@uniswap/v3-periphery/libraries/LiquidityAmounts.sol";
 import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import "./DataType.sol";
-import "./LPTMath.sol";
+import "./PriceHelper.sol";
 
 /**
  * @title PositionCalculator library
@@ -176,7 +176,7 @@ library PositionCalculator {
             uint256 debtValue
         )
     {
-        uint256 price = LPTMath.decodeSqrtPriceX96(_isMarginZero, _sqrtPrice);
+        uint256 price = PriceHelper.decodeSqrtPriceX96(_isMarginZero, _sqrtPrice);
 
         if (_isMarginZero) {
             marginValue = _position.marginAmount0.add(_position.marginAmount1.mul(int256(price)).div(1e18));

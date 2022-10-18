@@ -57,7 +57,7 @@ abstract contract TestDeployer is BaseTestHelper {
 
         controller = new ControllerHelper();
 
-        controller.initialize(initializationParam, factory, address(swapRouter), address(vaultNFT));
+        controller.initialize(initializationParam, factory, address(swapRouter), address(0), address(vaultNFT));
 
         vaultNFT.init(address(controller));
 

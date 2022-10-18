@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import {TransferHelper} from "@uniswap/v3-periphery/libraries/TransferHelper.sol";
 import "../interfaces/IControllerHelper.sol";
 import "../interfaces/IReader.sol";
-import "../libraries/LPTMath.sol";
+import "../libraries/PriceHelper.sol";
 import "../libraries/Constants.sol";
 import "./BlackScholes.sol";
 import "./SateliteLib.sol";
@@ -340,7 +340,7 @@ contract OptionMarket is ERC20, IERC721Receiver, Ownable {
             return true;
         }
 
-        uint256 twap = reader.getTWAP();
+        uint256 twap = reader.getIndexPrice();
 
         Strike memory strike = strikes[_optionPosition.strikeId];
 
@@ -681,7 +681,7 @@ contract OptionMarket is ERC20, IERC721Receiver, Ownable {
     function calculateStrikePrice(int24 _lowerTick, int24 _upperTick) internal pure returns (uint256) {
         uint160 sqrtPrice = TickMath.getSqrtRatioAtTick((_lowerTick + _upperTick) / 2);
 
-        return LPTMath.decodeSqrtPriceX96(true, sqrtPrice);
+        return PriceHelper.decodeSqrtPriceX96(true, sqrtPrice);
     }
 
     function calculateUSDValue(

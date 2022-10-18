@@ -233,7 +233,7 @@ contract ControllerTest is TestDeployer, Test {
             DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1, EMPTY_METADATA)
         );
 
-        DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(lpVaultId);
+        DataType.VaultStatus memory vaultStatus = getVaultStatus(lpVaultId);
 
         assertEq(vaultStatus.subVaults.length, 0);
     }
@@ -251,7 +251,7 @@ contract ControllerTest is TestDeployer, Test {
 
         vm.warp(block.timestamp + 1 minutes);
 
-        DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);
+        DataType.VaultStatus memory vaultStatus = getVaultStatus(vaultId);
 
         assertGt(vaultStatus.subVaults[0].values.assetValue, 0);
         assertGt(vaultStatus.subVaults[0].values.debtValue, 0);
@@ -297,7 +297,7 @@ contract ControllerTest is TestDeployer, Test {
             DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1, EMPTY_METADATA)
         );
 
-        DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);
+        DataType.VaultStatus memory vaultStatus = getVaultStatus(vaultId);
 
         assertEq(vaultStatus.subVaults.length, 0);
     }

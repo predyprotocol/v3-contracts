@@ -46,6 +46,7 @@ library DataType {
         uint24 feeTier;
         address swapRouter;
         address uniswapPool;
+        address chainlinkPriceFeed;
         bool isMarginZero;
         uint256 nextSubVaultId;
         BaseToken.TokenState tokenState0;

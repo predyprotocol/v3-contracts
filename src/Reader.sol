@@ -4,7 +4,7 @@ pragma abicoder v2;
 
 import "./Controller.sol";
 import "./libraries/BaseToken.sol";
-import "./libraries/LPTMath.sol";
+import "./libraries/PriceHelper.sol";
 import "./libraries/PositionCalculator.sol";
 import "./libraries/UniHelper.sol";
 
@@ -32,17 +32,15 @@ contract Reader {
      * @return price
      **/
     function getPrice() public view returns (uint256) {
-        return LPTMath.decodeSqrtPriceX96(isMarginZero, controller.getSqrtPrice());
+        return PriceHelper.decodeSqrtPriceX96(isMarginZero, controller.getSqrtPrice());
     }
 
     /**
-     * @notice Gets time weighted average price of underlying asset.
-     * @return twap
+     * @notice Gets index price.
+     * @return indexPrice
      **/
-    function getTWAP() external view returns (uint256) {
-        uint160 sqrtPrice = UniHelper.getSqrtTWAP(uniswapPool);
-
-        return LPTMath.decodeSqrtPriceX96(isMarginZero, sqrtPrice);
+    function getIndexPrice() external view returns (uint256) {
+        return PriceHelper.decodeSqrtPriceX96(isMarginZero, controller.getSqrtIndexPrice());
     }
 
     /**

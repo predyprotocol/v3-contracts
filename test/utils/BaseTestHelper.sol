@@ -10,7 +10,6 @@ import "../../src/ControllerHelper.sol";
 import "../../src/Reader.sol";
 import "../../src/VaultNFT.sol";
 import "../../src/mocks/MockERC20.sol";
-import "../../src/libraries/LPTMath.sol";
 import "../../src/libraries/VaultLib.sol";
 import "../../src/libraries/PositionCalculator.sol";
 import "../../src/libraries/DataType.sol";
@@ -50,6 +49,7 @@ abstract contract BaseTestHelper {
                 500,
                 address(swapRouter),
                 address(uniPool),
+                address(0),
                 true,
                 1,
                 tokenState,
@@ -387,6 +387,10 @@ abstract contract BaseTestHelper {
 
     function getUpperSqrtPrice() internal view returns (uint160) {
         return (controller.getSqrtPrice() * 120) / 100;
+    }
+
+    function getVaultStatus(uint256 _vaultId) internal returns (DataType.VaultStatus memory) {
+        return controller.getVaultStatus(_vaultId, controller.getSqrtPrice());
     }
 
     function getLiquidityAndAmountToDeposit(

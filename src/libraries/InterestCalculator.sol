@@ -10,7 +10,7 @@ import "@uniswap/v3-periphery/libraries/LiquidityAmounts.sol";
 
 import "./DataType.sol";
 import "./BaseToken.sol";
-import "./LPTMath.sol";
+import "./PriceHelper.sol";
 import "./LPTStateLib.sol";
 import "./Constants.sol";
 
@@ -200,7 +200,7 @@ library InterestCalculator {
             1e18
         );
 
-        uint256 price = LPTMath.decodeSqrtPriceX96(_isMarginZero, _sqrtPrice);
+        uint256 price = PriceHelper.decodeSqrtPriceX96(_isMarginZero, _sqrtPrice);
 
         if (_isMarginZero) {
             value = PredyMath.mulDiv(amount1, price, 1e18).add(amount0);
