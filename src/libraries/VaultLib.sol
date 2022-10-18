@@ -419,40 +419,7 @@ library VaultLib {
 
         return DataType.SubVaultInterest(assetFee0, assetFee1, debtFee0, debtFee1);
     }
-
-    function isDebtZero(
-        DataType.Vault memory _vault,
-        mapping(uint256 => DataType.SubVault) storage _subVaults,
-        DataType.Context memory _context
-    ) external view returns (bool) {
-        for (uint256 i = 0; i < _vault.subVaults.length; i++) {
-            if (!isDebtZeroInSubVault(_subVaults[_vault.subVaults[i]], _context)) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    function isDebtZeroInSubVault(DataType.SubVault memory _subVault, DataType.Context memory _context)
-        internal
-        pure
-        returns (bool)
-    {
-        if (
-            _context.tokenState0.getDebtValue(_subVault.balance0) != 0 ||
-            _context.tokenState1.getDebtValue(_subVault.balance1) != 0
-        ) {
-            return false;
-        }
-
-        if (_subVault.lpts.length > 0) {
-            return false;
-        }
-
-        return true;
-    }
-
+    
     /**
      * @notice latest asset amounts
      */
@@ -497,15 +464,17 @@ library VaultLib {
         bool _isCollateral
     ) internal view returns (uint256 totalAmount0, uint256 totalAmount1) {
         for (uint256 i = 0; i < _subVault.lpts.length; i++) {
-            if (_isCollateral != _subVault.lpts[i].isCollateral) {
+            DataType.LPTState memory lpt = _subVault.lpts[i];
+
+            if (_isCollateral != lpt.isCollateral) {
                 continue;
             }
 
-            (uint256 amount0, uint256 amount1) = LPTMath.getAmountsForLiquidity(
+            (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
                 _sqrtPrice,
-                _ranges[_subVault.lpts[i].rangeId].lowerTick,
-                _ranges[_subVault.lpts[i].rangeId].upperTick,
-                _subVault.lpts[i].liquidityAmount
+                TickMath.getSqrtRatioAtTick(_ranges[lpt.rangeId].lowerTick),
+                TickMath.getSqrtRatioAtTick(_ranges[lpt.rangeId].upperTick),
+                lpt.liquidityAmount
             );
 
             totalAmount0 = totalAmount0.add(amount0);

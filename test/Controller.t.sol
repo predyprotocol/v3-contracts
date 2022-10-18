@@ -50,7 +50,7 @@ contract ControllerTest is TestDeployer, Test {
 
         uint128 liquidity;
 
-        (liquidity, buffer0, buffer1) = LPTMath.getLiquidityAndAmountToDeposit(
+        (liquidity, buffer0, buffer1) = getLiquidityAndAmountToDeposit(
             true,
             1e18,
             controller.getSqrtPrice(),
@@ -95,7 +95,7 @@ contract ControllerTest is TestDeployer, Test {
     {
         positionUpdates = new DataType.PositionUpdate[](3);
 
-        (uint128 liquidity, , ) = LPTMath.getLiquidityAndAmountToBorrow(true, 1e18, 202600, 202500, 202600);
+        (uint128 liquidity, , ) = getLiquidityAndAmountToBorrow(true, 1e18, 202600, 202500, 202600);
 
         positionUpdates[0] = DataType.PositionUpdate(
             DataType.PositionUpdateType.BORROW_LPT,

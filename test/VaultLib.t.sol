@@ -250,4 +250,14 @@ contract VaultLibTest is Test {
         assertEq(fee0, 100);
         assertEq(fee1, 0);
     }
+
+    /****************************
+     *  Test: updateEntryPrice  *
+     ****************************/
+
+    function testUpdateEntryPrice(uint256 _positionTrade) public {
+        uint256 positionTrade = bound(_positionTrade, 1, 1e32);
+
+        assertEq(VaultLib.updateEntryPrice(100, positionTrade, 200, positionTrade), 150);
+    }
 }
