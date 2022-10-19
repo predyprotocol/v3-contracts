@@ -14,8 +14,6 @@ contract VaultNFT is ERC721, IVaultNFT, Initializable {
     address public controller;
     address private immutable deployer;
 
-    mapping(address => bool) public allowlist;
-
     modifier onlyController() {
         require(msg.sender == controller, "Not Controller");
         _;

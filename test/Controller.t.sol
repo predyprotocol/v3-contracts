@@ -179,7 +179,7 @@ contract ControllerTest is TestDeployer, Test {
 
         bool isMarginZero = getIsMarginZero();
 
-        vm.expectRevert(bytes("ERC721: owner query for nonexistent token"));
+        vm.expectRevert(bytes("P5"));
         controller.updatePosition(
             1000,
             positionUpdates,

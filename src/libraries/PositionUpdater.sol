@@ -310,6 +310,7 @@ library PositionUpdater {
         DataType.Context storage _context,
         DataType.PositionUpdate memory _positionUpdate
     ) internal {
+        require(_positionUpdate.param0 > 0 || _positionUpdate.param1 > 0);
         _context.tokenState0.addAsset(_subVault.balance0, _positionUpdate.param0, _positionUpdate.zeroForOne);
         _context.tokenState1.addAsset(_subVault.balance1, _positionUpdate.param1, _positionUpdate.zeroForOne);
 
@@ -321,6 +322,8 @@ library PositionUpdater {
         DataType.Context storage _context,
         DataType.PositionUpdate memory _positionUpdate
     ) internal returns (uint256 withdrawAmount0, uint256 withdrawAmount1) {
+        require(_positionUpdate.param0 > 0 || _positionUpdate.param1 > 0);
+
         uint256 assetFee0;
         uint256 assetFee1;
 
@@ -338,6 +341,8 @@ library PositionUpdater {
         DataType.Context storage _context,
         DataType.PositionUpdate memory _positionUpdate
     ) internal {
+        require(_positionUpdate.param0 > 0 || _positionUpdate.param1 > 0);
+
         _context.tokenState0.addDebt(_subVault.balance0, _positionUpdate.param0, _positionUpdate.zeroForOne);
         _context.tokenState1.addDebt(_subVault.balance1, _positionUpdate.param1, _positionUpdate.zeroForOne);
 
@@ -349,6 +354,8 @@ library PositionUpdater {
         DataType.Context storage _context,
         DataType.PositionUpdate memory _positionUpdate
     ) internal returns (uint256 requiredAmount0, uint256 requiredAmount1) {
+        require(_positionUpdate.param0 > 0 || _positionUpdate.param1 > 0);
+
         uint256 debtFee0;
         uint256 debtFee1;
 

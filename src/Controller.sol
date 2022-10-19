@@ -27,6 +27,7 @@ import "./libraries/Constants.sol";
  * P2: caller must be vault owner
  * P3: must not be liquidatable
  * P4: must be liquidatable
+ * P5: vault does not exists
  */
 contract Controller is IController, Initializable, IUniswapV3MintCallback {
     using BaseToken for BaseToken.TokenState;
@@ -59,6 +60,11 @@ contract Controller is IController, Initializable, IUniswapV3MintCallback {
 
     modifier onlyOperator() {
         require(operator == msg.sender, "caller must be operator");
+        _;
+    }
+
+    modifier checkVaultExists(uint256 _vaultId) {
+        require(_vaultId < IVaultNFT(vaultNFT).nextId(), "P5");
         _;
     }
 
@@ -186,6 +192,7 @@ contract Controller is IController, Initializable, IUniswapV3MintCallback {
     )
         public
         override
+        checkVaultExists(_vaultId)
         returns (
             uint256 vaultId,
             DataType.TokenAmounts memory requiredAmounts,
@@ -244,7 +251,12 @@ contract Controller is IController, Initializable, IUniswapV3MintCallback {
      * @param _vaultId The id of the vault
      * @param _positionUpdates Operation list to update position
      */
-    function liquidate(uint256 _vaultId, DataType.PositionUpdate[] memory _positionUpdates) internal {
+    function liquidate(uint256 _vaultId, DataType.PositionUpdate[] memory _positionUpdates)
+        internal
+        checkVaultExists(_vaultId)
+    {
+        require(_vaultId < IVaultNFT(vaultNFT).nextId());
+
         applyPerpFee(_vaultId, _positionUpdates);
 
         LiquidationLogic.execLiquidation(vaults[_vaultId], subVaults, _positionUpdates, context, ranges);
