@@ -28,6 +28,7 @@ contract VaultLibTest is Test {
             500,
             address(0),
             address(0),
+            address(0),
             true,
             1,
             BaseToken.TokenState(0, 0, 0, 0, 1e18, 1e18, 0, 0),

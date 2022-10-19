@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/math/SignedSafeMath.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "./PredyMath.sol";
 import "./Constants.sol";
-import "./LPTMath.sol";
+import "./PriceHelper.sol";
 import "./BaseToken.sol";
 import "./DataType.sol";
 import "./PositionCalculator.sol";
@@ -348,7 +348,7 @@ library VaultLib {
         uint160 _sqrtPrice,
         bool _isMarginZero
     ) internal pure returns (DataType.SubVaultValue memory) {
-        uint256 price = LPTMath.decodeSqrtPriceX96(_isMarginZero, _sqrtPrice);
+        uint256 price = PriceHelper.decodeSqrtPriceX96(_isMarginZero, _sqrtPrice);
 
         int256 fee0 = statusInterest.assetFee0 - statusInterest.debtFee0;
         int256 fee1 = statusInterest.assetFee1 - statusInterest.debtFee1;
@@ -419,7 +419,7 @@ library VaultLib {
 
         return DataType.SubVaultInterest(assetFee0, assetFee1, debtFee0, debtFee1);
     }
-    
+
     /**
      * @notice latest asset amounts
      */

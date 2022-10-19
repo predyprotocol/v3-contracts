@@ -6,5 +6,5 @@ interface IReader {
 
     function getPrice() external view returns (uint256);
 
-    function getTWAP() external view returns (uint256);
+    function getIndexPrice() external view returns (uint256);
 }

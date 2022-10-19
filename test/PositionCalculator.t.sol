@@ -6,7 +6,6 @@ import "forge-std/Test.sol";
 import "forge-std/Vm.sol";
 import "forge-std/console.sol";
 import "../src/libraries/PositionCalculator.sol";
-import "../src/libraries/LPTMath.sol";
 
 contract PositionCalculatorTest is Test {
     function testCalculateMinSqrtPrice(int256 _lowerTick, int256 _upperTick) public {

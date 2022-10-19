@@ -58,13 +58,7 @@ contract ControllerHelperTest is TestDeployer, Test {
     }
 
     function testDepositLPT() public {
-        (uint128 liquidity, , ) = getLiquidityAndAmountToDeposit(
-            true,
-            1e18,
-            controller.getSqrtPrice(),
-            202560,
-            202570
-        );
+        (uint128 liquidity, , ) = getLiquidityAndAmountToDeposit(true, 1e18, controller.getSqrtPrice(), 202560, 202570);
 
         DataType.LPT[] memory lpts = new DataType.LPT[](1);
         lpts[0] = DataType.LPT(true, liquidity, 202560, 202570);
@@ -85,13 +79,7 @@ contract ControllerHelperTest is TestDeployer, Test {
 
         vm.warp(block.timestamp + 5 minutes);
 
-        (uint128 liquidity, , ) = getLiquidityAndAmountToDeposit(
-            true,
-            1e18,
-            controller.getSqrtPrice(),
-            202500,
-            202600
-        );
+        (uint128 liquidity, , ) = getLiquidityAndAmountToDeposit(true, 1e18, controller.getSqrtPrice(), 202500, 202600);
 
         DataType.LPT[] memory lpts = new DataType.LPT[](1);
         lpts[0] = DataType.LPT(true, liquidity, 202500, 202600);
@@ -122,7 +110,7 @@ contract ControllerHelperTest is TestDeployer, Test {
             DataType.OpenPositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), block.timestamp)
         );
 
-        DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);
+        DataType.VaultStatus memory vaultStatus = getVaultStatus(vaultId);
 
         assertEq(vaultStatus.marginValue, margin);
         assertGt(vaultStatus.subVaults[0].values.assetValue, 0);
@@ -149,7 +137,7 @@ contract ControllerHelperTest is TestDeployer, Test {
             DataType.OpenPositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), block.timestamp)
         );
 
-        DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);
+        DataType.VaultStatus memory vaultStatus = getVaultStatus(vaultId);
 
         assertGt(vaultStatus.subVaults[0].values.assetValue, 0);
         assertGt(vaultStatus.subVaults[0].values.debtValue, 0);
@@ -191,13 +179,7 @@ contract ControllerHelperTest is TestDeployer, Test {
     function testBorrowETH() public {
         uint256 margin = 500 * 1e6;
 
-        (uint128 liquidity, , ) = getLiquidityAndAmountToDeposit(
-            true,
-            1e18,
-            controller.getSqrtPrice(),
-            202560,
-            202570
-        );
+        (uint128 liquidity, , ) = getLiquidityAndAmountToDeposit(true, 1e18, controller.getSqrtPrice(), 202560, 202570);
 
         DataType.LPT[] memory lpts = new DataType.LPT[](1);
         lpts[0] = DataType.LPT(true, liquidity, 202560, 202570);
@@ -214,13 +196,7 @@ contract ControllerHelperTest is TestDeployer, Test {
     function testSubVaults() public {
         uint256 vaultId = depositLPT(0, 0, 202500, 202600, 1e18);
 
-        (uint128 liquidity, , ) = getLiquidityAndAmountToDeposit(
-            true,
-            1e18,
-            controller.getSqrtPrice(),
-            202600,
-            202700
-        );
+        (uint128 liquidity, , ) = getLiquidityAndAmountToDeposit(true, 1e18, controller.getSqrtPrice(), 202600, 202700);
 
         DataType.LPT[] memory lpts = new DataType.LPT[](1);
         lpts[0] = DataType.LPT(true, liquidity, 202600, 202700);
@@ -233,20 +209,14 @@ contract ControllerHelperTest is TestDeployer, Test {
             DataType.OpenPositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), block.timestamp)
         );
 
-        DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);
+        DataType.VaultStatus memory vaultStatus = getVaultStatus(vaultId);
         assertEq(vaultStatus.subVaults.length, 2);
     }
 
     function testCannotCreateSubVaults() public {
         uint256 vaultId = depositLPT(0, 0, 202500, 202600, 1e18);
 
-        (uint128 liquidity, , ) = getLiquidityAndAmountToDeposit(
-            true,
-            1e18,
-            controller.getSqrtPrice(),
-            202600,
-            202700
-        );
+        (uint128 liquidity, , ) = getLiquidityAndAmountToDeposit(true, 1e18, controller.getSqrtPrice(), 202600, 202700);
 
         DataType.LPT[] memory lpts = new DataType.LPT[](1);
         lpts[0] = DataType.LPT(true, liquidity, 202600, 202700);
@@ -285,7 +255,7 @@ contract ControllerHelperTest is TestDeployer, Test {
             DataType.ClosePositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 54, 1e4, block.timestamp)
         );
 
-        DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);
+        DataType.VaultStatus memory vaultStatus = getVaultStatus(vaultId);
 
         assertGt(vaultStatus.marginValue, 0);
         assertEq(vaultStatus.subVaults.length, 1);
@@ -308,7 +278,7 @@ contract ControllerHelperTest is TestDeployer, Test {
             DataType.ClosePositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 100, 1e4, block.timestamp)
         );
 
-        DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);
+        DataType.VaultStatus memory vaultStatus = getVaultStatus(vaultId);
         assertEq(vaultStatus.subVaults.length, 1);
     }
 
@@ -355,7 +325,7 @@ contract ControllerHelperTest is TestDeployer, Test {
         console.log(0, afterBalance0 - before0);
         console.log(1, afterBalance1 - before1);
 
-        DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);
+        DataType.VaultStatus memory vaultStatus = getVaultStatus(vaultId);
 
         assertEq(vaultStatus.subVaults.length, 0);
     }
@@ -402,7 +372,7 @@ contract ControllerHelperTest is TestDeployer, Test {
 
         controller.closeVault(vaultId, tradeOption, closeOption);
 
-        DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);
+        DataType.VaultStatus memory vaultStatus = getVaultStatus(vaultId);
 
         assertEq(vaultStatus.subVaults.length, 0);
 
@@ -441,7 +411,7 @@ contract ControllerHelperTest is TestDeployer, Test {
         assertGt(afterBalance0, before0);
         assertEq(afterBalance1, before1);
 
-        DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);
+        DataType.VaultStatus memory vaultStatus = getVaultStatus(vaultId);
 
         assertEq(vaultStatus.marginValue, 0);
         assertEq(vaultStatus.subVaults.length, 0);
@@ -461,7 +431,7 @@ contract ControllerHelperTest is TestDeployer, Test {
             DataType.ClosePositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 100, 1e4, block.timestamp)
         );
 
-        DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);
+        DataType.VaultStatus memory vaultStatus = getVaultStatus(vaultId);
         assertEq(vaultStatus.subVaults.length, 0);
     }
 
@@ -526,7 +496,7 @@ contract ControllerHelperTest is TestDeployer, Test {
         console.log(afterBalance0 - beforeBalance0);
         assertGt(afterBalance0, beforeBalance0);
 
-        DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);
+        DataType.VaultStatus memory vaultStatus = getVaultStatus(vaultId);
 
         assertEq(vaultStatus.subVaults.length, 0);
 
@@ -541,7 +511,7 @@ contract ControllerHelperTest is TestDeployer, Test {
 
         vm.warp(block.timestamp + 2 days);
 
-        DataType.VaultStatus memory vaultStatus1 = controller.getVaultStatus(vaultId);
+        DataType.VaultStatus memory vaultStatus1 = getVaultStatus(vaultId);
 
         assertLt(vaultStatus1.marginValue, 0);
 
@@ -555,7 +525,7 @@ contract ControllerHelperTest is TestDeployer, Test {
         console.log(afterBalance0 - beforeBalance0);
         assertGt(afterBalance0, beforeBalance0);
 
-        DataType.VaultStatus memory vaultStatus2 = controller.getVaultStatus(vaultId);
+        DataType.VaultStatus memory vaultStatus2 = getVaultStatus(vaultId);
 
         assertEq(vaultStatus2.subVaults.length, 0);
 
@@ -578,7 +548,7 @@ contract ControllerHelperTest is TestDeployer, Test {
         // get penalty amount
         assertGt(afterBalance0, beforeBalance0);
 
-        DataType.VaultStatus memory vaultStatus = controller.getVaultStatus(vaultId);
+        DataType.VaultStatus memory vaultStatus = getVaultStatus(vaultId);
         assertEq(vaultStatus.subVaults.length, 1);
 
         assertFalse(controller.checkLiquidatable(vaultId));

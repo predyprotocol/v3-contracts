@@ -11,6 +11,7 @@ import "../DataType.sol";
 import "../PositionLib.sol";
 import "../PositionCalculator.sol";
 import "../PositionUpdater.sol";
+import "../PriceHelper.sol";
 
 /**
  * @title LiquidationLogic library
@@ -34,7 +35,7 @@ library LiquidationLogic {
         DataType.Context storage _context,
         mapping(bytes32 => DataType.PerpStatus) storage _ranges
     ) external {
-        uint160 sqrtTwap = UniHelper.getSqrtTWAP(_context.uniswapPool);
+        uint160 sqrtTwap = PriceHelper.getSqrtIndexPrice(_context);
 
         PositionCalculator.PositionCalculatorParams memory _params = VaultLib.getPositionCalculatorParams(
             _vault,
@@ -119,7 +120,7 @@ library LiquidationLogic {
         DataType.Context memory _context,
         mapping(bytes32 => DataType.PerpStatus) storage _ranges
     ) public view returns (bool) {
-        uint160 sqrtPrice = UniHelper.getSqrtTWAP(_context.uniswapPool);
+        uint160 sqrtPrice = PriceHelper.getSqrtIndexPrice(_context);
 
         PositionCalculator.PositionCalculatorParams memory _params = VaultLib.getPositionCalculatorParams(
             _vault,
@@ -137,7 +138,7 @@ library LiquidationLogic {
         DataType.Context memory _context,
         mapping(bytes32 => DataType.PerpStatus) storage _ranges
     ) external view returns (int256) {
-        uint160 sqrtPrice = UniHelper.getSqrtTWAP(_context.uniswapPool);
+        uint160 sqrtPrice = PriceHelper.getSqrtIndexPrice(_context);
 
         PositionCalculator.PositionCalculatorParams memory _params = VaultLib.getPositionCalculatorParams(
             _vault,
