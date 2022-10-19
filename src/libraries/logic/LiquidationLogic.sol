@@ -219,4 +219,8 @@ library LiquidationLogic {
     ) internal {
         TransferHelper.safeTransfer(_context.isMarginZero ? _context.token0 : _context.token1, _liquidator, _reward);
     }
+
+    function getSqrtIndexPrice(DataType.Context memory _context) external view returns (uint160) {
+        return PriceHelper.getSqrtIndexPrice(_context);
+    }
 }

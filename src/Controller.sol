@@ -48,6 +48,7 @@ contract Controller is IController, Initializable, IUniswapV3MintCallback {
 
     address private vaultNFT;
 
+    event OperatorUpdated(address operator);
     event VaultCreated(uint256 vaultId, address owner);
     event PositionUpdated(
         uint256 vaultId,
@@ -83,6 +84,7 @@ contract Controller is IController, Initializable, IUniswapV3MintCallback {
         address _chainlinkPriceFeed,
         address _vaultNFT
     ) public initializer {
+        require(_vaultNFT != address(0));
         context.feeTier = _initializationParams.feeTier;
         context.token0 = _initializationParams.token0;
         context.token1 = _initializationParams.token1;
@@ -102,15 +104,15 @@ contract Controller is IController, Initializable, IUniswapV3MintCallback {
 
         context.nextSubVaultId = 1;
 
-        ERC20(context.token0).approve(address(_swapRouter), type(uint256).max);
-        ERC20(context.token1).approve(address(_swapRouter), type(uint256).max);
-
         context.tokenState0.initialize();
         context.tokenState1.initialize();
 
         lastTouchedTimestamp = block.timestamp;
 
         operator = msg.sender;
+
+        ERC20(context.token0).approve(address(_swapRouter), type(uint256).max);
+        ERC20(context.token1).approve(address(_swapRouter), type(uint256).max);
     }
 
     /**
@@ -121,6 +123,8 @@ contract Controller is IController, Initializable, IUniswapV3MintCallback {
     function setOperator(address _newOperator) external onlyOperator {
         require(_newOperator != address(0));
         operator = _newOperator;
+
+        emit OperatorUpdated(_newOperator);
     }
 
     /**
@@ -193,8 +197,6 @@ contract Controller is IController, Initializable, IUniswapV3MintCallback {
         DataType.Vault storage vault;
         (vaultId, vault) = createOrGetVault(_vaultId, _tradeOption.quoterMode);
 
-        uint256 beforeSqrtPrice = getSqrtPrice();
-
         // update position in the vault
         (requiredAmounts, swapAmounts) = PositionUpdater.updatePosition(
             vault,
@@ -246,23 +248,6 @@ contract Controller is IController, Initializable, IUniswapV3MintCallback {
         applyPerpFee(_vaultId, _positionUpdates);
 
         LiquidationLogic.execLiquidation(vaults[_vaultId], subVaults, _positionUpdates, context, ranges);
-    }
-
-    /**
-     * @notice Contract owner can close positions
-     * @param _data Vaults data to close position
-     */
-    function forceClose(bytes[] memory _data) external onlyOperator {
-        for (uint256 i = 0; i < _data.length; i++) {
-            (uint256 vaultId, DataType.PositionUpdate[] memory _positionUpdates) = abi.decode(
-                _data[i],
-                (uint256, DataType.PositionUpdate[])
-            );
-
-            applyPerpFee(vaultId, _positionUpdates);
-
-            LiquidationLogic.reducePosition(vaults[vaultId], subVaults, context, ranges, _positionUpdates, 0);
-        }
     }
 
     // Getter Functions
@@ -425,7 +410,7 @@ contract Controller is IController, Initializable, IUniswapV3MintCallback {
     }
 
     function getSqrtIndexPrice() external view returns (uint160) {
-        return PriceHelper.getSqrtIndexPrice(context);
+        return LiquidationLogic.getSqrtIndexPrice(context);
     }
 
     function getPosition(uint256 _vaultId) public view returns (DataType.Position[] memory) {
