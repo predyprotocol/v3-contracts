@@ -3,7 +3,7 @@ pragma solidity =0.7.6;
 pragma abicoder v2;
 
 import "./BaseTestHelper.sol";
-import "../../src/ControllerHelper.sol";
+import "../../src/Controller.sol";
 import "../../src/Reader.sol";
 import "../../src/VaultNFT.sol";
 import "../../src/mocks/MockERC20.sol";
@@ -55,7 +55,7 @@ abstract contract TestDeployer is BaseTestHelper {
 
         VaultNFT vaultNFT = new VaultNFT("", "", "");
 
-        controller = new ControllerHelper();
+        controller = new Controller();
 
         controller.initialize(initializationParam, factory, address(swapRouter), address(0), address(vaultNFT));
 

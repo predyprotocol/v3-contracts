@@ -7,7 +7,7 @@ import "forge-std/Vm.sol";
 import "forge-std/console.sol";
 
 import "./utils/TestDeployer.sol";
-import "../src/ControllerHelper.sol";
+import "../src/Controller.sol";
 import "../src/mocks/MockERC20.sol";
 
 contract ControllerHelperTest is TestDeployer, Test {
