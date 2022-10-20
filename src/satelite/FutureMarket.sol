@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import {TransferHelper} from "@uniswap/v3-periphery/libraries/TransferHelper.sol";
-import "../interfaces/IControllerHelper.sol";
+import "../interfaces/IController.sol";
 import "../interfaces/IReader.sol";
 import "../interfaces/IVaultNFT.sol";
 import "../libraries/Constants.sol";
@@ -28,7 +28,7 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
 
     int256 private constant FUNDING_PERIOD = 1 days;
 
-    IControllerHelper internal immutable controller;
+    IController internal immutable controller;
 
     IReader internal immutable reader;
 
@@ -93,7 +93,7 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
         address _usdc,
         address _vaultNFT
     ) ERC20("PredyFutureLP", "PFLP") {
-        controller = IControllerHelper(_controller);
+        controller = IController(_controller);
         reader = IReader(_reader);
         usdc = _usdc;
         vaultNFT = _vaultNFT;

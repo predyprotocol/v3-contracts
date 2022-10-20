@@ -4,7 +4,7 @@ pragma abicoder v2;
 
 import "../libraries/DataType.sol";
 
-interface IControllerHelper {
+interface IController {
     function openPosition(
         uint256 _vaultId,
         DataType.Position memory _position,
