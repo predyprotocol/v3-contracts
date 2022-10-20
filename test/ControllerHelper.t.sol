@@ -7,7 +7,7 @@ import "forge-std/Vm.sol";
 import "forge-std/console.sol";
 
 import "./utils/TestDeployer.sol";
-import "../src/ControllerHelper.sol";
+import "../src/Controller.sol";
 import "../src/mocks/MockERC20.sol";
 
 contract ControllerHelperTest is TestDeployer, Test {
@@ -463,6 +463,37 @@ contract ControllerHelperTest is TestDeployer, Test {
     /**************************
      *   Test: liquidate      *
      **************************/
+
+    function testCannotLiquidateNonExistingVault() public {
+        assertFalse(controller.checkLiquidatable(100));
+
+        DataType.LiquidationOption memory option = DataType.LiquidationOption(100, 1e4);
+
+        vm.expectRevert(bytes("P5"));
+        controller.liquidate(100, option);
+    }
+
+    function testCannotLiquidateEmptyVault() public {
+        DataType.LPT[] memory lpts = new DataType.LPT[](0);
+        DataType.Position memory position = DataType.Position(0, 0, 0, 0, 0, lpts);
+
+        uint256 lowerSqrtPrice = getLowerSqrtPrice();
+        uint256 upperSqrtPrice = getUpperSqrtPrice();
+
+        (uint256 vaultId, , ) = controller.openPosition(
+            0,
+            position,
+            DataType.TradeOption(false, false, false, getIsMarginZero(), 1000, -1, EMPTY_METADATA),
+            DataType.OpenPositionOption(lowerSqrtPrice, upperSqrtPrice, block.timestamp)
+        );
+
+        assertFalse(controller.checkLiquidatable(vaultId));
+
+        DataType.LiquidationOption memory option = DataType.LiquidationOption(100, 1e4);
+
+        vm.expectRevert(bytes("L0"));
+        controller.liquidate(vaultId, option);
+    }
 
     function testCannotLiquidate() public {
         uint256 vaultId = borrowLPT(0, 0, 202600, 202500, 202600, 1e18, 100 * 1e6);

@@ -376,8 +376,8 @@ contract PositionUpdaterTest is TestDeployer, Test {
     }
 
     function testDepositTokenFromMargin(uint256 _marginAmount0, uint256 _marginAmount1) public {
-        vm.assume(_marginAmount0 <= Constants.MAX_MARGIN_AMOUNT);
-        vm.assume(_marginAmount1 <= Constants.MAX_MARGIN_AMOUNT);
+        vm.assume(0 < _marginAmount0 && _marginAmount0 <= Constants.MAX_MARGIN_AMOUNT);
+        vm.assume(0 < _marginAmount1 && _marginAmount1 <= Constants.MAX_MARGIN_AMOUNT);
 
         {
             DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](0);
@@ -441,6 +441,8 @@ contract PositionUpdaterTest is TestDeployer, Test {
      **************************/
 
     function testDepositTokens(uint256 _amount0, uint256 _amount1) public {
+        vm.assume(0 < _amount0 && 0 < _amount1);
+
         DataType.PositionUpdate memory positionUpdate = DataType.PositionUpdate(
             DataType.PositionUpdateType.DEPOSIT_TOKEN,
             0,

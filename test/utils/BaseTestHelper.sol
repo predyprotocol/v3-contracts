@@ -6,7 +6,6 @@ import {SwapRouter} from "v3-periphery/SwapRouter.sol";
 import "v3-core/contracts/libraries/TickMath.sol";
 import {NonfungiblePositionManager} from "v3-periphery/NonfungiblePositionManager.sol";
 import "../../src/Controller.sol";
-import "../../src/ControllerHelper.sol";
 import "../../src/Reader.sol";
 import "../../src/VaultNFT.sol";
 import "../../src/mocks/MockERC20.sol";
@@ -21,7 +20,7 @@ abstract contract BaseTestHelper {
     IERC20 internal token0;
     IERC20 internal token1;
 
-    ControllerHelper internal controller;
+    Controller internal controller;
     Reader internal reader;
 
     NonfungiblePositionManager internal positionManager;
@@ -196,7 +195,8 @@ abstract contract BaseTestHelper {
         (vaultId, , ) = controller.updatePosition(
             _vaultId,
             positionUpdates,
-            DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1, EMPTY_METADATA)
+            DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1, EMPTY_METADATA),
+            DataType.OpenPositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), block.timestamp)
         );
     }
 
@@ -230,7 +230,8 @@ abstract contract BaseTestHelper {
         (vaultId, , ) = controller.updatePosition(
             _vaultId,
             positionUpdates,
-            DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1, EMPTY_METADATA)
+            DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1, EMPTY_METADATA),
+            DataType.OpenPositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), block.timestamp)
         );
     }
 

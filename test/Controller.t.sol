@@ -170,6 +170,10 @@ contract ControllerTest is TestDeployer, Test {
         );
     }
 
+    function getOpenPositionParams() internal returns (DataType.OpenPositionOption memory) {
+        return DataType.OpenPositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), block.timestamp);
+    }
+
     /**************************
      *  Test: updatePosition  *
      **************************/
@@ -179,12 +183,90 @@ contract ControllerTest is TestDeployer, Test {
 
         bool isMarginZero = getIsMarginZero();
 
-        vm.expectRevert(bytes("ERC721: owner query for nonexistent token"));
+        DataType.OpenPositionOption memory openPositionOption = getOpenPositionParams();
+
+        vm.expectRevert(bytes("P5"));
         controller.updatePosition(
             1000,
             positionUpdates,
-            DataType.TradeOption(false, false, false, isMarginZero, -1, -1, EMPTY_METADATA)
+            DataType.TradeOption(false, false, false, isMarginZero, -1, -1, EMPTY_METADATA),
+            openPositionOption
         );
+    }
+
+    function tesetMintVaultNFT() public {
+        DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](0);
+
+        (uint256 vaultId, , ) = controller.updatePosition(
+            0,
+            positionUpdates,
+            DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1, EMPTY_METADATA),
+            getOpenPositionParams()
+        );
+
+        assertGt(vaultId, 0);
+    }
+
+    function testDepositAndWithdrawMargin0(uint256 _marginAmount) public {
+        int256 marginAmount = int256(bound(_marginAmount, 0, 1e10));
+
+        DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](0);
+
+        uint256 beforeBalance0 = token0.balanceOf(user);
+
+        (uint256 vaultId, DataType.TokenAmounts memory addedAmounts, ) = controller.updatePosition(
+            0,
+            positionUpdates,
+            DataType.TradeOption(false, false, false, true, 1e10, -1, EMPTY_METADATA),
+            getOpenPositionParams()
+        );
+
+        uint256 middleBalance0 = token0.balanceOf(user);
+
+        assertEq(addedAmounts.amount0, 1e10);
+        assertEq(beforeBalance0 - middleBalance0, 1e10);
+
+        (, DataType.TokenAmounts memory removedAmounts, ) = controller.updatePosition(
+            vaultId,
+            positionUpdates,
+            DataType.TradeOption(false, false, false, true, 1e10 - marginAmount, -1, EMPTY_METADATA),
+            getOpenPositionParams()
+        );
+        uint256 afterBalance0 = token0.balanceOf(user);
+
+        assertEq(removedAmounts.amount0, -marginAmount);
+        assertEq(afterBalance0 - middleBalance0, uint256(marginAmount));
+    }
+
+    function testDepositAndWithdrawMargin1(uint256 _marginAmount) public {
+        int256 marginAmount = int256(bound(_marginAmount, 0, 1e10));
+
+        DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](0);
+
+        uint256 beforeBalance1 = token1.balanceOf(user);
+
+        (uint256 vaultId, DataType.TokenAmounts memory addedAmounts, ) = controller.updatePosition(
+            0,
+            positionUpdates,
+            DataType.TradeOption(false, false, false, false, -1, 1e10, EMPTY_METADATA),
+            getOpenPositionParams()
+        );
+
+        uint256 middleBalance1 = token1.balanceOf(user);
+
+        assertEq(addedAmounts.amount1, 1e10);
+        assertEq(beforeBalance1 - middleBalance1, 1e10);
+
+        (, DataType.TokenAmounts memory removedAmounts, ) = controller.updatePosition(
+            vaultId,
+            positionUpdates,
+            DataType.TradeOption(false, false, false, false, -1, 1e10 - marginAmount, EMPTY_METADATA),
+            getOpenPositionParams()
+        );
+        uint256 afterBalance1 = token1.balanceOf(user);
+
+        assertEq(removedAmounts.amount1, -marginAmount);
+        assertEq(afterBalance1 - middleBalance1, uint256(marginAmount));
     }
 
     function testDepositLPT() public {
@@ -193,7 +275,8 @@ contract ControllerTest is TestDeployer, Test {
         controller.updatePosition(
             0,
             positionUpdates,
-            DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1, EMPTY_METADATA)
+            DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1, EMPTY_METADATA),
+            getOpenPositionParams()
         );
     }
 
@@ -203,7 +286,8 @@ contract ControllerTest is TestDeployer, Test {
         controller.updatePosition(
             lpVaultId,
             positionUpdates,
-            DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1, EMPTY_METADATA)
+            DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1, EMPTY_METADATA),
+            getOpenPositionParams()
         );
 
         DataType.Vault memory vault = controller.getVault(lpVaultId);
@@ -230,7 +314,8 @@ contract ControllerTest is TestDeployer, Test {
         controller.updatePosition(
             lpVaultId,
             positionUpdates,
-            DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1, EMPTY_METADATA)
+            DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1, EMPTY_METADATA),
+            getOpenPositionParams()
         );
 
         DataType.VaultStatus memory vaultStatus = getVaultStatus(lpVaultId);
@@ -246,7 +331,8 @@ contract ControllerTest is TestDeployer, Test {
         (uint256 vaultId, , ) = controller.updatePosition(
             0,
             positionUpdates,
-            DataType.TradeOption(false, false, false, getIsMarginZero(), int256(margin), -1, EMPTY_METADATA)
+            DataType.TradeOption(false, false, false, getIsMarginZero(), int256(margin), -1, EMPTY_METADATA),
+            getOpenPositionParams()
         );
 
         vm.warp(block.timestamp + 1 minutes);
@@ -262,12 +348,15 @@ contract ControllerTest is TestDeployer, Test {
 
         DataType.PositionUpdate[] memory positionUpdates = createPositionUpdatesForBorrowLPT(margin);
 
+        DataType.OpenPositionOption memory openPositionOption = getOpenPositionParams();
+
         // no enough deposit
         vm.expectRevert(bytes("P3"));
         controller.updatePosition(
             0,
             positionUpdates,
-            DataType.TradeOption(false, false, false, isQuoteZero, -1, -1, EMPTY_METADATA)
+            DataType.TradeOption(false, false, false, isQuoteZero, -1, -1, EMPTY_METADATA),
+            openPositionOption
         );
     }
 
@@ -279,7 +368,8 @@ contract ControllerTest is TestDeployer, Test {
         (uint256 vaultId, , ) = controller.updatePosition(
             0,
             positionUpdates,
-            DataType.TradeOption(false, false, false, getIsMarginZero(), int256(margin), -1, EMPTY_METADATA)
+            DataType.TradeOption(false, false, false, getIsMarginZero(), int256(margin), -1, EMPTY_METADATA),
+            getOpenPositionParams()
         );
 
         DataType.Vault memory vault = controller.getVault(vaultId);
@@ -294,7 +384,8 @@ contract ControllerTest is TestDeployer, Test {
         controller.updatePosition(
             vaultId,
             positionUpdates2,
-            DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1, EMPTY_METADATA)
+            DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1, EMPTY_METADATA),
+            getOpenPositionParams()
         );
 
         DataType.VaultStatus memory vaultStatus = getVaultStatus(vaultId);

@@ -18,7 +18,7 @@ interface IControllerHelper {
             DataType.TokenAmounts memory swapAmounts
         );
 
-    function updatePositionInVault(
+    function updatePosition(
         uint256 _vaultId,
         DataType.PositionUpdate[] memory positionUpdates,
         DataType.TradeOption memory _tradeOption,
