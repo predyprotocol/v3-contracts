@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import {TransferHelper} from "@uniswap/v3-periphery/libraries/TransferHelper.sol";
-import "../interfaces/IControllerHelper.sol";
+import "../interfaces/IController.sol";
 import "../interfaces/IReader.sol";
 import "../libraries/PriceHelper.sol";
 import "../libraries/Constants.sol";
@@ -24,7 +24,7 @@ contract OptionMarket is ERC20, IERC721Receiver, Ownable {
     using SafeMath for uint256;
     using SignedSafeMath for int256;
 
-    IControllerHelper internal controller;
+    IController internal controller;
 
     IReader internal reader;
 
@@ -87,7 +87,7 @@ contract OptionMarket is ERC20, IERC721Receiver, Ownable {
         address _reader,
         address _usdc
     ) ERC20("", "") {
-        controller = IControllerHelper(_controller);
+        controller = IController(_controller);
         reader = IReader(_reader);
         usdc = _usdc;
 

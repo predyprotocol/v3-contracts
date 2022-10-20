@@ -51,7 +51,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const PositionLib = await ethers.getContract('PositionLib', deployer)
   const vaultNFT = await ethers.getContract('VaultNFT', deployer)
 
-  const result = await deploy('ControllerHelper', {
+  const result = await deploy('Controller', {
     from: deployer,
     args: [],
     libraries: {
@@ -84,7 +84,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   })
 
   if (result.newlyDeployed) {
-    const controller = await ethers.getContract('ControllerHelper', deployer)
+    const controller = await ethers.getContract('Controller', deployer)
 
     await vaultNFT.init(controller.address)
 
