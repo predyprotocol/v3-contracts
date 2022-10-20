@@ -9,7 +9,6 @@ import "@uniswap/v3-periphery/libraries/PoolAddress.sol";
 import {TransferHelper} from "@uniswap/v3-periphery/libraries/TransferHelper.sol";
 import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import "./interfaces/IController.sol";
 import {IVaultNFT} from "./interfaces/IVaultNFT.sol";
 import {BaseToken} from "./libraries/BaseToken.sol";
 import "./libraries/DataType.sol";
@@ -28,8 +27,9 @@ import "./libraries/Constants.sol";
  * P3: must not be liquidatable
  * P4: must be liquidatable
  * P5: vault does not exists
+ * P6: caller must be operator
  */
-contract Controller is IController, Initializable, IUniswapV3MintCallback {
+contract Controller is Initializable, IUniswapV3MintCallback {
     using BaseToken for BaseToken.TokenState;
     using SignedSafeMath for int256;
     using VaultLib for DataType.Vault;
@@ -59,7 +59,7 @@ contract Controller is IController, Initializable, IUniswapV3MintCallback {
     );
 
     modifier onlyOperator() {
-        require(operator == msg.sender, "caller must be operator");
+        require(operator == msg.sender, "P6");
         _;
     }
 
@@ -190,8 +190,7 @@ contract Controller is IController, Initializable, IUniswapV3MintCallback {
         DataType.PositionUpdate[] memory _positionUpdates,
         DataType.TradeOption memory _tradeOption
     )
-        public
-        override
+        internal
         checkVaultExists(_vaultId)
         returns (
             uint256 vaultId,
@@ -405,7 +404,7 @@ contract Controller is IController, Initializable, IUniswapV3MintCallback {
             getSqrtPrice()
         );
 
-        lastTouchedTimestamp = InterestCalculator.applyInterest(context, irmParams, lastTouchedTimestamp);
+        // applyInterest();
 
         PositionUpdater.updateFeeGrowth(context, vault, subVaults, ranges, _positionUpdates);
     }
@@ -418,7 +417,7 @@ contract Controller is IController, Initializable, IUniswapV3MintCallback {
      * Gets square root of current underlying token price by quote token.
      */
     function getSqrtPrice() public view returns (uint160 sqrtPriceX96) {
-        (sqrtPriceX96, , , , , , ) = IUniswapV3Pool(context.uniswapPool).slot0();
+        return UniHelper.getSqrtPrice(context.uniswapPool);
     }
 
     function getSqrtIndexPrice() external view returns (uint160) {

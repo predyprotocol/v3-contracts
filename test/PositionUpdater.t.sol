@@ -441,6 +441,8 @@ contract PositionUpdaterTest is TestDeployer, Test {
      **************************/
 
     function testDepositTokens(uint256 _amount0, uint256 _amount1) public {
+        vm.assume(0 < _amount0 && 0 < _amount1);
+        
         DataType.PositionUpdate memory positionUpdate = DataType.PositionUpdate(
             DataType.PositionUpdateType.DEPOSIT_TOKEN,
             0,

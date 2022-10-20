@@ -52,7 +52,7 @@ contract ControllerHelper is Controller {
         _checkPrice(_openPositionOptions.lowerSqrtPrice, _openPositionOptions.upperSqrtPrice);
     }
 
-    function updatePositionInVault(
+    function updatePosition(
         uint256 _vaultId,
         DataType.PositionUpdate[] memory positionUpdates,
         DataType.TradeOption memory _tradeOption,
@@ -66,6 +66,8 @@ contract ControllerHelper is Controller {
             DataType.TokenAmounts memory swapAmounts
         )
     {
+        applyInterest();
+
         (vaultId, requiredAmounts, swapAmounts) = updatePosition(_vaultId, positionUpdates, _tradeOption);
 
         _checkPrice(_openPositionOptions.lowerSqrtPrice, _openPositionOptions.upperSqrtPrice);

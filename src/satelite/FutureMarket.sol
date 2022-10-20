@@ -268,7 +268,7 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
 
         DataType.TokenAmounts memory requiredAmounts;
 
-        (vaultId, requiredAmounts, ) = controller.updatePositionInVault(
+        (vaultId, requiredAmounts, ) = controller.updatePosition(
             vaultId,
             positionUpdates,
             tradeOption,
@@ -463,7 +463,7 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
         DataType.TokenAmounts memory requiredAmounts;
         DataType.TokenAmounts memory swapAmounts;
 
-        (vaultId, requiredAmounts, swapAmounts) = controller.updatePositionInVault(
+        (vaultId, requiredAmounts, swapAmounts) = controller.updatePosition(
             vaultId,
             positionUpdates,
             tradeOption,
