@@ -79,8 +79,8 @@ library PositionCalculator {
     /**
      * @notice Calculates minValue.
      * MinValue is minimal value of following values.
-     * 1. value of at P*1.24
-     * 2. value of at P/1.24
+     * 1. value of at P*1.18
+     * 2. value of at P/1.18
      * 3. values of at P_{min} of LPTs
      */
     function calculateMinValue(
@@ -103,7 +103,7 @@ library PositionCalculator {
         }
 
         {
-            // 1. check value of at P*1.24
+            // 1. check value of at P*1.18
             int256 value = calculateValue(_position, sqrtPriceUpper, _isMarginZero);
             if (minValue > value) {
                 minValue = value;
@@ -111,7 +111,7 @@ library PositionCalculator {
         }
 
         {
-            // 2. check value of at P/1.24
+            // 2. check value of at P/1.18
             int256 value = calculateValue(_position, sqrtPriceLower, _isMarginZero);
             if (minValue > value) {
                 minValue = value;
