@@ -61,7 +61,10 @@ contract PositionCalculatorTest is Test {
             lpts
         );
 
-        assertGe(PositionCalculator.calculateMinDeposit(position, uint160(sqrtPrice), false), 0);
+        int256 minDeposit = PositionCalculator.calculateMinDeposit(position, uint160(sqrtPrice), false);
+
+        assertGe(minDeposit, 0);
+        assertGe(PositionCalculator.calculateValue(position, uint160(sqrtPrice), false), minDeposit);
     }
 
     function testcalculateMinDepositOfBorrowLPT1(uint160 _sqrtPrice) public {
@@ -88,7 +91,10 @@ contract PositionCalculatorTest is Test {
             lpts
         );
 
-        assertGe(PositionCalculator.calculateMinDeposit(position, uint160(sqrtPrice), false), 0);
+        int256 minDeposit = PositionCalculator.calculateMinDeposit(position, uint160(sqrtPrice), false);
+
+        assertGe(minDeposit, 0);
+        assertGe(PositionCalculator.calculateValue(position, uint160(sqrtPrice), false), minDeposit);
     }
 
     /*********************************************
@@ -143,6 +149,9 @@ contract PositionCalculatorTest is Test {
             lpts
         );
 
-        assertGe(PositionCalculator.calculateMinDeposit(position, _sqrtPrice, false), 0);
+        int256 minDeposit = PositionCalculator.calculateMinDeposit(position, uint160(_sqrtPrice), false);
+
+        assertGe(minDeposit, 0);
+        assertGe(PositionCalculator.calculateValue(position, uint160(_sqrtPrice), false), minDeposit);
     }
 }
