@@ -11,3 +11,5 @@ gas_reports = ["*"]
 fs_permissions = [{ access = "read", path = "./"}]
 
 fuzz_runs = 256
+
+auto_detect_solc = true
