@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.7.6;
+pragma solidity ^0.8.0;
 pragma abicoder v2;
 
 import "forge-std/Test.sol";
@@ -109,8 +109,10 @@ contract BaseTokenTest is Test {
         uint256 debtValue2 = BaseToken.getDebtValue(tokenState, normalAccountState) +
             BaseToken.getDebtFee(tokenState, normalAccountState);
 
-        assertLe(assetValue1 + assetValue2 - debtValue1 - debtValue2 + protocolFee, 1600000000 + 2);
-        assertGe(assetValue1 + assetValue2 - debtValue1 - debtValue2 + protocolFee, 1600000000 - 2);
+        console.log(5);
+
+        assertLe((assetValue1 + assetValue2 + protocolFee) - (debtValue1 + debtValue2), 1600000000 + 2);
+        assertGe((assetValue1 + assetValue2 + protocolFee) - (debtValue1 + debtValue2), 1600000000 - 2);
     }
 
     function testUpdateScaler2(uint256 _interestAmount) public {
@@ -131,8 +133,8 @@ contract BaseTokenTest is Test {
         uint256 debtValue2 = BaseToken.getDebtValue(tokenState, normalAccountState) +
             BaseToken.getDebtFee(tokenState, normalAccountState);
 
-        assertLe(assetValue1 + assetValue2 - debtValue1 - debtValue2 + protocolFee1 + protocolFee2, 1400000000 + 2);
-        assertGe(assetValue1 + assetValue2 - debtValue1 - debtValue2 + protocolFee1 + protocolFee2, 1400000000 - 2);
+        assertLe((assetValue1 + assetValue2 + protocolFee1 + protocolFee2) - (debtValue1 + debtValue2), 1400000000 + 2);
+        assertGe((assetValue1 + assetValue2 + protocolFee1 + protocolFee2) - (debtValue1 + debtValue2), 1400000000 - 2);
     }
 
     function testRemoveCollateralAll(uint256 _amount) public {

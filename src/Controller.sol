@@ -1,10 +1,9 @@
 //SPDX-License-Identifier: agpl-3.0
-pragma solidity ^0.7.6;
+pragma solidity ^0.8.0;
 pragma abicoder v2;
 
-import {Initializable} from "@openzeppelin/contracts/proxy/Initializable.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/math/SignedSafeMath.sol";
 import "@uniswap/v3-periphery/libraries/PoolAddress.sol";
 import {TransferHelper} from "@uniswap/v3-periphery/libraries/TransferHelper.sol";
 import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol";
@@ -31,7 +30,6 @@ import "./libraries/Constants.sol";
  */
 contract Controller is Initializable, IUniswapV3MintCallback {
     using BaseToken for BaseToken.TokenState;
-    using SignedSafeMath for int256;
     using VaultLib for DataType.Vault;
 
     uint256 public lastTouchedTimestamp;

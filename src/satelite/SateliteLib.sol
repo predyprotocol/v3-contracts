@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: agpl-3.0
-pragma solidity ^0.7.6;
+pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/math/SignedSafeMath.sol";
 import "@uniswap/v3-periphery/libraries/LiquidityAmounts.sol";
 import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import "../libraries/Constants.sol";
@@ -9,8 +8,6 @@ import "../libraries/PredyMath.sol";
 import "../libraries/DataType.sol";
 
 library SateliteLib {
-    using SignedSafeMath for int256;
-
     function getProfit(
         uint256 indexPrice,
         uint256 strikePrice,

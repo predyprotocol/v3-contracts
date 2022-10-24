@@ -24,6 +24,7 @@
   "homepage": "https://github.com/predyprotocol/v3-draft#readme",
   "dependencies": {
     "@eth-optimism/hardhat-ovm": "^0.2.4",
+    "@openzeppelin/contracts": "^4.7.3",
     "@uniswap/v3-core": "^1.0.1",
     "@uniswap/v3-periphery": "^1.4.1",
     "hardhat": "^2.10.1",

@@ -1,5 +1,5 @@
 /// from https://github.com/LienFinance/bondmaker
-pragma solidity ^0.7.6;
+pragma solidity ^0.8.0;
 
 library AdvancedMath {
     /// @dev sqrt(2*PI) * 10^8

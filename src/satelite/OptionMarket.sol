@@ -1,9 +1,7 @@
 //SPDX-License-Identifier: agpl-3.0
-pragma solidity ^0.7.6;
+pragma solidity ^0.8.0;
 pragma abicoder v2;
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/math/SignedSafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
@@ -21,9 +19,6 @@ import "./SateliteLib.sol";
  * OM2: board has not been exercised
  */
 contract OptionMarket is ERC20, IERC721Receiver, Ownable {
-    using SafeMath for uint256;
-    using SignedSafeMath for int256;
-
     IController internal controller;
 
     IReader internal reader;
@@ -178,7 +173,7 @@ contract OptionMarket is ERC20, IERC721Receiver, Ownable {
     function withdraw(uint256 _amount) external returns (uint256 burnAmount) {
         burnAmount = (_amount * totalSupply()) / totalLiquidityAmount;
 
-        totalLiquidityAmount = totalLiquidityAmount.sub(_amount);
+        totalLiquidityAmount = totalLiquidityAmount - _amount;
 
         TransferHelper.safeTransfer(usdc, msg.sender, _amount);
 
@@ -219,7 +214,7 @@ contract OptionMarket is ERC20, IERC721Receiver, Ownable {
             strikes[_strikeId].callPositionAmount += _amount;
         }
 
-        boards[strikes[_strikeId].boardId].unrealizedProfit += int256(premium).sub(requiredAmount);
+        boards[strikes[_strikeId].boardId].unrealizedProfit += int256(premium) - requiredAmount;
 
         optionId = createOptionPosition(_strikeId, _amount, _isPut, premium, _collateralAmount);
 
@@ -428,7 +423,6 @@ contract OptionMarket is ERC20, IERC721Receiver, Ownable {
         optionPosition.amount = 0;
         optionPosition.collateralAmount = 0;
 
-        // TODO: SafeMath
         TransferHelper.safeTransfer(usdc, msg.sender, uint256(int256(collateralAmount) + profit));
     }
 

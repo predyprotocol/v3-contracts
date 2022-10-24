@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.7.6;
+pragma solidity ^0.8.0;
 pragma abicoder v2;
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@uniswap/v3-periphery/libraries/LiquidityAmounts.sol";
 import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
@@ -18,8 +17,6 @@ import "../PriceHelper.sol";
  * @notice Implements the base logic for all the actions related to liquidation call.
  */
 library LiquidationLogic {
-    using SafeMath for uint256;
-
     event Liquidated(uint256 indexed vaultId, address liquidator, uint256 debtValue, uint256 penaltyAmount);
 
     /**
@@ -87,8 +84,8 @@ library LiquidationLogic {
             uint256 liquidationSlippageSqrtTolerance = calculateLiquidationSlippageTolerance(debtValue);
 
             require(
-                uint256(sqrtTwap).mul(1e6 - liquidationSlippageSqrtTolerance).div(1e6) <= sqrtPrice &&
-                    sqrtPrice <= uint256(sqrtTwap).mul(1e6 + liquidationSlippageSqrtTolerance).div(1e6),
+                (uint256(sqrtTwap) * (1e6 - liquidationSlippageSqrtTolerance)) / 1e6 <= sqrtPrice &&
+                    sqrtPrice <= (uint256(sqrtTwap) * (1e6 + liquidationSlippageSqrtTolerance)) / 1e6,
                 "L4"
             );
         }
@@ -154,7 +151,7 @@ library LiquidationLogic {
         DataType.Context memory _context,
         PositionCalculator.PositionCalculatorParams memory _params,
         uint160 sqrtPrice
-    ) internal pure returns (bool) {
+    ) internal view returns (bool) {
         // calculate Min. Collateral by using TWAP.
         int256 minCollateral = PositionCalculator.calculateMinDeposit(_params, sqrtPrice, _context.isMarginZero);
 

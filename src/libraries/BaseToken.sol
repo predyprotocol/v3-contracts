@@ -1,13 +1,10 @@
 //SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.7.6;
+pragma solidity >=0.8.0;
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
 import "./PredyMath.sol";
 import "./Constants.sol";
 
 library BaseToken {
-    using SafeMath for uint256;
-
     enum InterestType {
         EMPTY,
         COMPOUND,
@@ -52,16 +49,16 @@ library BaseToken {
             require(accountState.interestType != InterestType.NORMAL, "B1");
             mintAmount = PredyMath.mulDiv(_amount, Constants.ONE, tokenState.assetScaler);
 
-            accountState.assetAmount = accountState.assetAmount.add(mintAmount);
-            tokenState.totalCompoundDeposited = tokenState.totalCompoundDeposited.add(mintAmount);
+            accountState.assetAmount = accountState.assetAmount + mintAmount;
+            tokenState.totalCompoundDeposited = tokenState.totalCompoundDeposited + mintAmount;
 
             accountState.interestType = InterestType.COMPOUND;
         } else {
             require(accountState.interestType != InterestType.COMPOUND, "B2");
 
-            accountState.lastAssetGrowth = (
-                accountState.lastAssetGrowth.mul(accountState.assetAmount).add(tokenState.assetGrowth.mul(_amount))
-            ).div(accountState.assetAmount.add(_amount));
+            accountState.lastAssetGrowth =
+                (accountState.lastAssetGrowth * accountState.assetAmount + tokenState.assetGrowth * _amount) /
+                (accountState.assetAmount + _amount);
 
             accountState.assetAmount += _amount;
             tokenState.totalNormalDeposited += _amount;
@@ -86,16 +83,16 @@ library BaseToken {
             require(accountState.interestType != InterestType.NORMAL, "B1");
             mintAmount = PredyMath.mulDiv(_amount, Constants.ONE, tokenState.debtScaler);
 
-            accountState.debtAmount = accountState.debtAmount.add(mintAmount);
-            tokenState.totalCompoundBorrowed = tokenState.totalCompoundBorrowed.add(mintAmount);
+            accountState.debtAmount += mintAmount;
+            tokenState.totalCompoundBorrowed += mintAmount;
 
             accountState.interestType = InterestType.COMPOUND;
         } else {
             require(accountState.interestType != InterestType.COMPOUND, "B2");
 
-            accountState.lastDebtGrowth = (
-                accountState.lastDebtGrowth.mul(accountState.debtAmount).add(tokenState.debtGrowth.mul(_amount))
-            ).div(accountState.debtAmount.add(_amount));
+            accountState.lastDebtGrowth =
+                (accountState.lastDebtGrowth * accountState.debtAmount + tokenState.debtGrowth * _amount) /
+                (accountState.debtAmount + _amount);
 
             accountState.debtAmount += _amount;
             tokenState.totalNormalBorrowed += _amount;
@@ -121,10 +118,10 @@ library BaseToken {
                 accountState.assetAmount = 0;
             } else {
                 finalBurnAmount = burnAmount;
-                accountState.assetAmount = accountState.assetAmount.sub(burnAmount);
+                accountState.assetAmount = accountState.assetAmount - burnAmount;
             }
 
-            tokenState.totalCompoundDeposited = tokenState.totalCompoundDeposited.sub(finalBurnAmount);
+            tokenState.totalCompoundDeposited = tokenState.totalCompoundDeposited - finalBurnAmount;
 
             // TODO: roundUp
             finalBurnAmount = PredyMath.mulDiv(finalBurnAmount, tokenState.assetScaler, Constants.ONE);
@@ -137,10 +134,10 @@ library BaseToken {
             } else {
                 finalBurnAmount = _amount;
                 fee = (fee * finalBurnAmount) / accountState.assetAmount;
-                accountState.assetAmount = accountState.assetAmount.sub(_amount);
+                accountState.assetAmount = accountState.assetAmount - _amount;
             }
 
-            tokenState.totalNormalDeposited = tokenState.totalNormalDeposited.sub(finalBurnAmount);
+            tokenState.totalNormalDeposited = tokenState.totalNormalDeposited - finalBurnAmount;
         }
     }
 
@@ -161,10 +158,10 @@ library BaseToken {
                 accountState.debtAmount = 0;
             } else {
                 finalBurnAmount = burnAmount;
-                accountState.debtAmount = accountState.debtAmount.sub(burnAmount);
+                accountState.debtAmount = accountState.debtAmount - burnAmount;
             }
 
-            tokenState.totalCompoundBorrowed = tokenState.totalCompoundBorrowed.sub(finalBurnAmount);
+            tokenState.totalCompoundBorrowed = tokenState.totalCompoundBorrowed - finalBurnAmount;
 
             // TODO: roundUp
             finalBurnAmount = PredyMath.mulDiv(finalBurnAmount, tokenState.debtScaler, Constants.ONE);
@@ -177,10 +174,10 @@ library BaseToken {
             } else {
                 finalBurnAmount = _amount;
                 fee = (fee * finalBurnAmount) / accountState.debtAmount;
-                accountState.debtAmount = accountState.debtAmount.sub(_amount);
+                accountState.debtAmount = accountState.debtAmount - _amount;
             }
 
-            tokenState.totalNormalBorrowed = tokenState.totalNormalBorrowed.sub(finalBurnAmount);
+            tokenState.totalNormalBorrowed = tokenState.totalNormalBorrowed - finalBurnAmount;
         }
     }
 
@@ -195,7 +192,7 @@ library BaseToken {
 
         return
             PredyMath.mulDiv(
-                tokenState.assetGrowth.sub(accountState.lastAssetGrowth),
+                tokenState.assetGrowth - accountState.lastAssetGrowth,
                 accountState.assetAmount,
                 Constants.ONE
             );
@@ -212,7 +209,7 @@ library BaseToken {
 
         return
             PredyMath.mulDiv(
-                tokenState.debtGrowth.sub(accountState.lastDebtGrowth),
+                tokenState.debtGrowth - accountState.lastDebtGrowth,
                 accountState.debtAmount,
                 Constants.ONE
             );
@@ -266,16 +263,16 @@ library BaseToken {
         // round up
         tokenState.debtScaler = PredyMath.mulDivUp(
             tokenState.debtScaler,
-            (Constants.ONE.add(_interestRate)),
+            (Constants.ONE + _interestRate),
             Constants.ONE
         );
-        tokenState.debtGrowth = tokenState.debtGrowth.add(_interestRate);
+        tokenState.debtGrowth += _interestRate;
         tokenState.assetScaler = PredyMath.mulDiv(
             tokenState.assetScaler,
             Constants.ONE + suppryInterestRate,
             Constants.ONE
         );
-        tokenState.assetGrowth = tokenState.assetGrowth.add(suppryInterestRate);
+        tokenState.assetGrowth += suppryInterestRate;
 
         return protocolFee;
     }
@@ -293,7 +290,7 @@ library BaseToken {
     }
 
     function getAvailableCollateralValue(TokenState memory tokenState) internal pure returns (uint256) {
-        return getTotalCollateralValue(tokenState).sub(getTotalDebtValue(tokenState));
+        return getTotalCollateralValue(tokenState) - getTotalDebtValue(tokenState);
     }
 
     function getUtilizationRatio(TokenState memory tokenState) internal pure returns (uint256) {

@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.7.6;
+pragma solidity ^0.8.0;
 pragma abicoder v2;
 
-import {SwapRouter} from "v3-periphery/SwapRouter.sol";
-import "v3-core/contracts/libraries/TickMath.sol";
-import {NonfungiblePositionManager} from "v3-periphery/NonfungiblePositionManager.sol";
+import "v3-periphery/interfaces/INonfungiblePositionManager.sol";
+import {ISwapRouter} from "v3-periphery/interfaces/ISwapRouter.sol";
+import "v3-core/libraries/TickMath.sol";
 import "../../src/Controller.sol";
 import "../../src/Reader.sol";
 import "../../src/VaultNFT.sol";
@@ -23,8 +23,8 @@ abstract contract BaseTestHelper {
     Controller internal controller;
     Reader internal reader;
 
-    NonfungiblePositionManager internal positionManager;
-    SwapRouter internal swapRouter;
+    INonfungiblePositionManager internal positionManager;
+    ISwapRouter internal swapRouter;
     IUniswapV3Pool internal uniPool;
 
     MockERC20 internal weth = new MockERC20("WETH", "WETH", 18);
@@ -375,7 +375,6 @@ abstract contract BaseTestHelper {
 
     function showCurrentTick() internal view {
         (, int24 tick, , , , , ) = uniPool.slot0();
-        console.log(6, uint256(tick));
     }
 
     function getSqrtPrice() public view returns (uint160 sqrtPriceX96) {

@@ -1,8 +1,8 @@
 //SPDX-License-Identifier: agpl-3.0
-pragma solidity ^0.7.6;
+pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import {Initializable} from "@openzeppelin/contracts/proxy/Initializable.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "./interfaces/IVaultNFT.sol";
 
 /**
@@ -13,6 +13,8 @@ contract VaultNFT is ERC721, IVaultNFT, Initializable {
 
     address public controller;
     address private immutable deployer;
+
+    string internal baseURI;
 
     modifier onlyController() {
         require(msg.sender == controller, "Not Controller");
@@ -31,7 +33,12 @@ contract VaultNFT is ERC721, IVaultNFT, Initializable {
         string memory _baseURI
     ) ERC721(_name, _symbol) {
         deployer = msg.sender;
-        _setBaseURI(_baseURI);
+
+        baseURI = _baseURI;
+    }
+
+    function _baseURI() internal view override returns (string memory) {
+        return baseURI;
     }
 
     /**

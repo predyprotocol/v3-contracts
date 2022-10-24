@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.7.6;
+pragma solidity ^0.8.0;
 pragma abicoder v2;
 
 import "./BaseTestHelper.sol";
@@ -8,12 +8,10 @@ import "../../src/Reader.sol";
 import "../../src/VaultNFT.sol";
 import "../../src/mocks/MockERC20.sol";
 import "../../src/libraries/DataType.sol";
-import "v3-periphery/NonfungiblePositionManager.sol";
-import {UniswapV3Factory} from "v3-core/contracts/UniswapV3Factory.sol";
+import {NonfungiblePositionManager} from "v3-periphery/NonfungiblePositionManager.sol";
 import {SwapRouter} from "v3-periphery/SwapRouter.sol";
-import "v3-periphery/interfaces/external/IWETH9.sol";
-import "v3-core/contracts/interfaces/pool/IUniswapV3PoolActions.sol";
-import "v3-core/contracts/interfaces/IUniswapV3Factory.sol";
+import "v3-core/interfaces/pool/IUniswapV3PoolActions.sol";
+import "v3-core/interfaces/IUniswapV3Factory.sol";
 import "forge-std/console.sol";
 import "forge-std/Vm.sol";
 import "forge-std/Test.sol";

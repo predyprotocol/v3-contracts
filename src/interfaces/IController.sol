@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: agpl-3.0
-pragma solidity ^0.7.6;
+pragma solidity >=0.7.0;
 pragma abicoder v2;
 
 import "../libraries/DataType.sol";

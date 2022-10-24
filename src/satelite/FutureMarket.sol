@@ -1,11 +1,9 @@
 //SPDX-License-Identifier: agpl-3.0
-pragma solidity ^0.7.6;
+pragma solidity ^0.8.0;
 pragma abicoder v2;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/math/SignedSafeMath.sol";
-import "@openzeppelin/contracts/utils/SafeCast.sol";
+import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import {TransferHelper} from "@uniswap/v3-periphery/libraries/TransferHelper.sol";
@@ -22,8 +20,7 @@ import "./FutureMarketLib.sol";
  * FM2: vault must not be safe
  */
 contract FutureMarket is ERC20, IERC721Receiver, Ownable {
-    using SafeMath for uint256;
-    using SignedSafeMath for int256;
+    using SafeCast for uint256;
     using SafeCast for int256;
 
     int256 private constant FUNDING_PERIOD = 1 days;
@@ -157,7 +154,7 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
 
         burnAmount = (_amount * totalSupply()) / poolValue;
 
-        poolPosition.usdcAmount = poolPosition.usdcAmount.sub(_amount);
+        poolPosition.usdcAmount = poolPosition.usdcAmount = _amount;
 
         TransferHelper.safeTransfer(usdc, msg.sender, _amount);
 
@@ -165,13 +162,12 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
     }
 
     function getPoolValue(uint256 _price) internal view returns (uint256) {
-        int256 positionValue = int256(_price)
-            .sub(int256(poolPosition.entryPrice).add(fundingFeePerPosition.sub(poolPosition.entryFundingFee)))
-            .mul(poolPosition.positionAmount) / 1e18;
+        int256 positionValue = (((int256(_price) - int256(poolPosition.entryPrice)) +
+            (fundingFeePerPosition - poolPosition.entryFundingFee)) * poolPosition.positionAmount) / 1e18;
 
         int256 vaultValue = controller.getVaultValue(vaultId);
 
-        return positionValue.add(vaultValue).add(int256(poolPosition.usdcAmount)).toUint256();
+        return (positionValue + vaultValue + int256(poolPosition.usdcAmount)).toUint256();
     }
 
     function updateMargin(uint256 _vaultId, int256 _marginAmount) external returns (uint256 traderVaultId) {
@@ -334,7 +330,7 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
                 );
 
                 poolPosition.entryPrice = newEntryPrice.toUint256();
-                deltaMarginAmount = deltaMarginAmount.add(profitValue);
+                deltaMarginAmount += profitValue;
             }
 
             {
@@ -346,13 +342,13 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
                 );
 
                 poolPosition.entryFundingFee = entryFundingFee;
-                deltaMarginAmount = deltaMarginAmount.add(profitValue);
+                deltaMarginAmount += profitValue;
             }
 
             poolPosition.usdcAmount = PredyMath.addDelta(poolPosition.usdcAmount, deltaMarginAmount);
         }
 
-        poolPosition.positionAmount = poolPosition.positionAmount.sub(_amount);
+        poolPosition.positionAmount = poolPosition.positionAmount - _amount;
     }
 
     function _updateTraderPosition(
@@ -369,7 +365,7 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
             );
 
             _futureVault.entryPrice = newEntryPrice.toUint256();
-            deltaMarginAmount = deltaMarginAmount.add(profitValue);
+            deltaMarginAmount += profitValue;
         }
 
         {
@@ -381,10 +377,10 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
             );
 
             _futureVault.entryFundingFee = entryFundingFee;
-            deltaMarginAmount = deltaMarginAmount.add(profitValue);
+            deltaMarginAmount += profitValue;
         }
 
-        _futureVault.positionAmount = _futureVault.positionAmount.add(_amount);
+        _futureVault.positionAmount += _amount;
 
         _futureVault.marginAmount = PredyMath.addDelta(_futureVault.marginAmount, deltaMarginAmount);
 
@@ -398,7 +394,7 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
     ) internal returns (uint256 penaltyAmount) {
         penaltyAmount = (PredyMath.abs(_tradeAmount) * _entryPrice) / (1e18 * 500);
 
-        _futureVault.marginAmount = _futureVault.marginAmount.sub(penaltyAmount);
+        _futureVault.marginAmount = _futureVault.marginAmount - penaltyAmount;
     }
 
     function isVaultSafe(FutureMarketLib.FutureVault memory _futureVault) internal view returns (bool) {
@@ -421,11 +417,12 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
         view
         returns (int256)
     {
-        int256 positionValue = int256(_price)
-            .sub(int256(_futureVault.entryPrice).add(fundingFeePerPosition.sub(_futureVault.entryFundingFee)))
-            .mul(_futureVault.positionAmount) / 1e18;
+        int256 positionValue = ((int256(_price) -
+            int256(_futureVault.entryPrice) +
+            fundingFeePerPosition -
+            _futureVault.entryFundingFee) * _futureVault.positionAmount) / 1e18;
 
-        return positionValue.add(int256(_futureVault.marginAmount));
+        return positionValue + int256(_futureVault.marginAmount);
     }
 
     function _createOrGetVault(uint256 _vaultId, bool _quoterMode)
@@ -455,7 +452,7 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
         );
 
         DataType.PositionUpdate[] memory positionUpdates = _rebalanceUpdate(
-            int256(PredyMath.abs(_poolPosition.add(_amount))).sub(int256(PredyMath.abs(_poolPosition)))
+            int256(PredyMath.abs(_poolPosition + _amount)) - int256(PredyMath.abs(_poolPosition))
         );
 
         positionUpdates[positionUpdates.length - 1] = _cover(poolPosition.positionAmount);
@@ -481,7 +478,7 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
     function _cover(int256 _poolPosition) internal view returns (DataType.PositionUpdate memory) {
         uint256 delta = calculateDelta(PredyMath.abs(_poolPosition));
 
-        int256 amount = _poolPosition.add(int256(delta));
+        int256 amount = _poolPosition + int256(delta);
         bool isMarginZero = reader.isMarginZero();
 
         if (amount > 0) {
@@ -537,7 +534,7 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
                 DataType.PositionUpdateType.DEPOSIT_LPT,
                 0,
                 false,
-                uint128(uint256(_amount).mul(ranges[currentRangeId].liquidity) / 1e18),
+                ((uint256(_amount) * (ranges[currentRangeId].liquidity)) / 1e18).toUint128(),
                 ranges[currentRangeId].lowerTick,
                 ranges[currentRangeId].upperTick,
                 0,
@@ -548,7 +545,7 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
                 DataType.PositionUpdateType.WITHDRAW_LPT,
                 0,
                 false,
-                uint128(uint256(-_amount).mul(ranges[currentRangeId].liquidity) / 1e18),
+                ((uint256(-_amount) * (ranges[currentRangeId].liquidity)) / 1e18).toUint128(),
                 ranges[currentRangeId].lowerTick,
                 ranges[currentRangeId].upperTick,
                 0,
@@ -568,7 +565,7 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
             DataType.PositionUpdateType.WITHDRAW_LPT,
             0,
             false,
-            uint128(_amount.mul(ranges[_prevRangeId].liquidity) / 1e18),
+            ((_amount * ranges[_prevRangeId].liquidity) / 1e18).toUint128(),
             ranges[_prevRangeId].lowerTick,
             ranges[_prevRangeId].upperTick,
             0,
@@ -578,7 +575,7 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
             DataType.PositionUpdateType.DEPOSIT_LPT,
             0,
             false,
-            uint128(_amount.mul(ranges[_nextRangeId].liquidity) / 1e18),
+            ((_amount * ranges[_nextRangeId].liquidity) / 1e18).toUint128(),
             ranges[_nextRangeId].lowerTick,
             ranges[_nextRangeId].upperTick,
             0,
@@ -593,7 +590,7 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
             controller.getSqrtPrice(),
             TickMath.getSqrtRatioAtTick(range.lowerTick),
             TickMath.getSqrtRatioAtTick(range.upperTick),
-            uint128((range.liquidity * _poolPosition) / 1e18)
+            ((range.liquidity * _poolPosition) / 1e18).toUint128()
         );
 
         if (reader.isMarginZero()) {
@@ -610,9 +607,7 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
     function updateFundingPaidPerPosition(uint256 twap, int256 fundingRate) internal {
         int256 fundingPaid = (int256(twap) * fundingRate) / 1e18;
 
-        fundingFeePerPosition = fundingFeePerPosition.add(
-            int256(block.timestamp - lastTradeTimestamp).mul(fundingPaid) / FUNDING_PERIOD
-        );
+        fundingFeePerPosition += (int256(block.timestamp - lastTradeTimestamp) * fundingPaid) / FUNDING_PERIOD;
         lastTradeTimestamp = block.timestamp;
     }
 

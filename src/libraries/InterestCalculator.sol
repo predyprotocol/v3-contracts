@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.7.6;
+pragma solidity ^0.8.0;
 pragma abicoder v2;
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/utils/SafeCast.sol";
+import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import "@uniswap/v3-periphery/libraries/LiquidityAmounts.sol";
@@ -19,7 +18,6 @@ import "./Constants.sol";
  * @notice Implements the base logic calculating interest rate and premium.
  */
 library InterestCalculator {
-    using SafeMath for uint256;
     using SafeCast for uint256;
     using BaseToken for BaseToken.TokenState;
 
@@ -102,12 +100,8 @@ library InterestCalculator {
         uint256 interest1 = ((block.timestamp - lastTouchedTimestamp) *
             calculateInterestRate(_irmParams, BaseToken.getUtilizationRatio(_context.tokenState0))) / 365 days;
 
-        _context.accumuratedProtocolFee0 = _context.accumuratedProtocolFee0.add(
-            _context.tokenState0.updateScaler(interest0)
-        );
-        _context.accumuratedProtocolFee1 = _context.accumuratedProtocolFee1.add(
-            _context.tokenState1.updateScaler(interest1)
-        );
+        _context.accumuratedProtocolFee0 += _context.tokenState0.updateScaler(interest0);
+        _context.accumuratedProtocolFee1 += _context.tokenState1.updateScaler(interest1);
 
         return block.timestamp;
     }
@@ -128,16 +122,14 @@ library InterestCalculator {
             uint256 premium = ((block.timestamp - _perpState.lastTouchedTimestamp) *
                 calculateYearlyPremium(_params, _context, _perpState, _sqrtPrice, perpUr)) / 365 days;
 
-            _perpState.premiumGrowthForBorrower = _perpState.premiumGrowthForBorrower.add(premium);
+            _perpState.premiumGrowthForBorrower += premium;
 
             uint256 protocolFeePerLiquidity = PredyMath.mulDiv(premium, Constants.LPT_RESERVE_FACTOR, Constants.ONE);
 
-            _perpState.premiumGrowthForLender = _perpState.premiumGrowthForLender.add(
-                PredyMath.mulDiv(
-                    premium.sub(protocolFeePerLiquidity),
-                    _perpState.borrowedLiquidity,
-                    LPTStateLib.getTotalLiquidityAmount(address(this), _context.uniswapPool, _perpState)
-                )
+            _perpState.premiumGrowthForLender += PredyMath.mulDiv(
+                premium - protocolFeePerLiquidity,
+                _perpState.borrowedLiquidity,
+                LPTStateLib.getTotalLiquidityAmount(address(this), _context.uniswapPool, _perpState)
             );
 
             // accumurate protocol fee
@@ -149,9 +141,9 @@ library InterestCalculator {
                 );
 
                 if (_context.isMarginZero) {
-                    _context.accumuratedProtocolFee0 = _context.accumuratedProtocolFee0.add(protocolFee);
+                    _context.accumuratedProtocolFee0 += protocolFee;
                 } else {
-                    _context.accumuratedProtocolFee1 = _context.accumuratedProtocolFee1.add(protocolFee);
+                    _context.accumuratedProtocolFee1 += protocolFee;
                 }
             }
         }
@@ -203,13 +195,13 @@ library InterestCalculator {
         uint256 price = PriceHelper.decodeSqrtPriceX96(_isMarginZero, _sqrtPrice);
 
         if (_isMarginZero) {
-            value = PredyMath.mulDiv(amount1, price, 1e18).add(amount0);
+            value = PredyMath.mulDiv(amount1, price, 1e18) + amount0;
         } else {
-            value = PredyMath.mulDiv(amount0, price, 1e18).add(amount1);
+            value = PredyMath.mulDiv(amount0, price, 1e18) + amount1;
         }
 
         // value (usd/liquidity)
-        value = value.mul(_interestRate).div(1e18);
+        value = (value * _interestRate) / 1e18;
 
         // premium = (value of virtual liquidity) * variance / L
         // where `(value of virtual liquidity) = 2 * L * sqrt{price}` and `L = 1e18`.
@@ -218,7 +210,7 @@ library InterestCalculator {
         // then
         // `(value of virtual liquidity) = 2 * sqrt{price/1e18}*1e18 = 2 * sqrt{price * 1e18}`
         // Since variance is multiplied by 2 in advance, final formula is below.
-        value = value.add((PredyMath.sqrt(price.mul(1e18)).mul(_variance)).div(1e18));
+        value += (PredyMath.sqrt(price * 1e18) * _variance) / 1e18;
     }
 
     function calculateRangeVariance(

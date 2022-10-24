@@ -1,22 +1,19 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.7.6;
+pragma solidity ^0.8.0;
 pragma abicoder v2;
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/math/SignedSafeMath.sol";
 import "@uniswap/v3-periphery/libraries/LiquidityAmounts.sol";
 import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import "./DataType.sol";
 import "./PriceHelper.sol";
+
+import "forge-std/console.sol";
 
 /**
  * @title PositionCalculator library
  * @notice Implements the base logic calculating Min. Deposit and value of positions.
  */
 library PositionCalculator {
-    using SafeMath for uint256;
-    using SignedSafeMath for int256;
-
     uint256 internal constant Q96 = 0x1000000000000000000000000;
     // sqrt{1.18} = 1.08627804912
     uint160 internal constant UPPER_E8 = 108627805;
@@ -44,16 +41,17 @@ library PositionCalculator {
         PositionCalculatorParams memory _params,
         uint160 _sqrtPrice,
         bool _isMarginZero
-    ) internal pure returns (int256 minDeposit) {
+    ) internal view returns (int256 minDeposit) {
         int256 vaultPositionValue = calculateValue(_params, _sqrtPrice, _isMarginZero);
 
         int256 minValue = calculateMinValue(_params, _sqrtPrice, _isMarginZero);
 
         (, , uint256 debtValue) = calculateCollateralAndDebtValue(_params, _sqrtPrice, _isMarginZero, false);
 
-        minDeposit = int256(calculateRequiredCollateralWithDebt(debtValue).mul(debtValue).div(1e6))
-            .add(vaultPositionValue)
-            .sub(minValue);
+        minDeposit =
+            int256((calculateRequiredCollateralWithDebt(debtValue) * debtValue) / 1e6) +
+            vaultPositionValue -
+            minValue;
 
         if (minDeposit < Constants.MIN_MARGIN_AMOUNT && debtValue > 0) {
             minDeposit = Constants.MIN_MARGIN_AMOUNT;
@@ -63,7 +61,7 @@ library PositionCalculator {
     function calculateRequiredCollateralWithDebt(uint256 _debtValue) internal pure returns (uint256) {
         return
             PredyMath.max(
-                Constants.MIN_COLLATERAL_WITH_DEBT_SLOPE.mul(PredyMath.sqrt(_debtValue * 1e6)).div(1e6),
+                (Constants.MIN_COLLATERAL_WITH_DEBT_SLOPE * PredyMath.sqrt(_debtValue * 1e6)) / 1e6,
                 Constants.BASE_MIN_COLLATERAL_WITH_DEBT
             );
     }
@@ -87,7 +85,8 @@ library PositionCalculator {
         PositionCalculatorParams memory _position,
         uint160 _sqrtPrice,
         bool _isMarginZero
-    ) internal pure returns (int256 minValue) {
+    ) internal view returns (int256 minValue) {
+        console.log(3);
         minValue = type(int256).max;
         uint160 sqrtPriceLower = (LOWER_E8 * _sqrtPrice) / 1e8;
         uint160 sqrtPriceUpper = (UPPER_E8 * _sqrtPrice) / 1e8;
@@ -101,6 +100,8 @@ library PositionCalculator {
         if (sqrtPriceUpper > TickMath.MAX_SQRT_RATIO) {
             sqrtPriceUpper = TickMath.MAX_SQRT_RATIO;
         }
+
+        console.log(4);
 
         {
             // 1. check value of at P*1.18
@@ -142,7 +143,7 @@ library PositionCalculator {
         PositionCalculatorParams memory _position,
         uint160 _sqrtPrice,
         bool _isMarginZero
-    ) internal pure returns (int256 value) {
+    ) internal view returns (int256 value) {
         return calculateValue(_position, _sqrtPrice, _isMarginZero, false);
     }
 
@@ -151,7 +152,7 @@ library PositionCalculator {
         uint160 _sqrtPrice,
         bool isMarginZero,
         bool _isMinPrice
-    ) internal pure returns (int256 value) {
+    ) internal view returns (int256 value) {
         (int256 marginValue, uint256 assetValue, uint256 debtValue) = calculateCollateralAndDebtValue(
             _position,
             _sqrtPrice,
@@ -169,7 +170,7 @@ library PositionCalculator {
         bool _isMinPrice
     )
         internal
-        pure
+        view
         returns (
             int256 marginValue,
             uint256 assetValue,
@@ -177,11 +178,12 @@ library PositionCalculator {
         )
     {
         uint256 price = PriceHelper.decodeSqrtPriceX96(_isMarginZero, _sqrtPrice);
+        console.log(10);
 
         if (_isMarginZero) {
-            marginValue = _position.marginAmount0.add(_position.marginAmount1.mul(int256(price)).div(1e18));
+            marginValue = _position.marginAmount0 + (_position.marginAmount1 * int256(price)) / 1e18;
         } else {
-            marginValue = _position.marginAmount0.mul(int256(price)).div(1e18).add(_position.marginAmount1);
+            marginValue = (_position.marginAmount0 * int256(price)) / 1e18 + _position.marginAmount1;
         }
 
         (
@@ -192,11 +194,11 @@ library PositionCalculator {
         ) = calculateCollateralAndDebtAmount(_position, _sqrtPrice, _isMinPrice);
 
         if (_isMarginZero) {
-            assetValue = assetAmount0.add(assetAmount1.mul(price).div(1e18));
-            debtValue = debtAmount0.add(debtAmount1.mul(price).div(1e18));
+            assetValue = assetAmount0 + ((assetAmount1 * price) / 1e18);
+            debtValue = debtAmount0 + ((debtAmount1 * price) / 1e18);
         } else {
-            assetValue = assetAmount0.mul(price).div(1e18).add(assetAmount1);
-            debtValue = debtAmount0.mul(price).div(1e18).add(debtAmount1);
+            assetValue = (assetAmount0 * price) / 1e18 + assetAmount1;
+            debtValue = (debtAmount0 * price) / 1e18 + debtAmount1;
         }
     }
 
@@ -226,13 +228,10 @@ library PositionCalculator {
             uint160 sqrtUpperPrice = TickMath.getSqrtRatioAtTick(lpt.upperTick);
 
             if (_isMinPrice && !lpt.isCollateral && sqrtLowerPrice <= _sqrtPrice && _sqrtPrice <= sqrtUpperPrice) {
-                debtAmount1 = debtAmount1.add(
-                    (
-                        uint256(lpt.liquidity).mul(
-                            TickMath.getSqrtRatioAtTick(lpt.upperTick) - TickMath.getSqrtRatioAtTick(lpt.lowerTick)
-                        )
-                    ).div(Q96)
-                );
+                debtAmount1 +=
+                    (uint256(lpt.liquidity) *
+                        (TickMath.getSqrtRatioAtTick(lpt.upperTick) - TickMath.getSqrtRatioAtTick(lpt.lowerTick))) /
+                    Q96;
                 continue;
             }
 
@@ -244,11 +243,11 @@ library PositionCalculator {
             );
 
             if (lpt.isCollateral) {
-                assetAmount0 = assetAmount0.add(amount0);
-                assetAmount1 = assetAmount1.add(amount1);
+                assetAmount0 = assetAmount0 + amount0;
+                assetAmount1 = assetAmount1 + amount1;
             } else {
-                debtAmount0 = debtAmount0.add(amount0);
-                debtAmount1 = debtAmount1.add(amount1);
+                debtAmount0 = debtAmount0 + amount0;
+                debtAmount1 = debtAmount1 + amount1;
             }
         }
     }

@@ -1,17 +1,13 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.7.6;
+pragma solidity ^0.8.0;
 pragma abicoder v2;
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/math/SignedSafeMath.sol";
-import "@openzeppelin/contracts/utils/SafeCast.sol";
+import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@uniswap/v3-periphery/libraries/LiquidityAmounts.sol";
 import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import "./DataType.sol";
 
 library PositionLib {
-    using SafeMath for uint256;
-    using SignedSafeMath for int256;
     using SafeCast for uint256;
 
     function getPositionUpdatesToOpen(
@@ -208,15 +204,15 @@ library PositionLib {
         DataType.Position memory _destPosition,
         uint160 _sqrtPrice
     ) internal pure returns (int256 requiredAmount0, int256 requiredAmount1) {
-        requiredAmount0 = requiredAmount0.sub(int256(_srcPosition.asset0));
-        requiredAmount1 = requiredAmount1.sub(int256(_srcPosition.asset1));
-        requiredAmount0 = requiredAmount0.add(int256(_srcPosition.debt0));
-        requiredAmount1 = requiredAmount1.add(int256(_srcPosition.debt1));
+        requiredAmount0 -= int256(_srcPosition.asset0);
+        requiredAmount1 -= int256(_srcPosition.asset1);
+        requiredAmount0 += int256(_srcPosition.debt0);
+        requiredAmount1 += int256(_srcPosition.debt1);
 
-        requiredAmount0 = requiredAmount0.add(int256(_destPosition.asset0));
-        requiredAmount1 = requiredAmount1.add(int256(_destPosition.asset1));
-        requiredAmount0 = requiredAmount0.sub(int256(_destPosition.debt0));
-        requiredAmount1 = requiredAmount1.sub(int256(_destPosition.debt1));
+        requiredAmount0 += int256(_destPosition.asset0);
+        requiredAmount1 += int256(_destPosition.asset1);
+        requiredAmount0 -= int256(_destPosition.debt0);
+        requiredAmount1 -= int256(_destPosition.debt1);
 
         for (uint256 i = 0; i < _srcPosition.lpts.length; i++) {
             DataType.LPT memory lpt = _srcPosition.lpts[i];
@@ -229,11 +225,11 @@ library PositionLib {
             );
 
             if (lpt.isCollateral) {
-                requiredAmount0 = requiredAmount0.sub(int256(amount0));
-                requiredAmount1 = requiredAmount1.sub(int256(amount1));
+                requiredAmount0 = requiredAmount0 - int256(amount0);
+                requiredAmount1 = requiredAmount1 - int256(amount1);
             } else {
-                requiredAmount0 = requiredAmount0.add(int256(amount0));
-                requiredAmount1 = requiredAmount1.add(int256(amount1));
+                requiredAmount0 = requiredAmount0 + int256(amount0);
+                requiredAmount1 = requiredAmount1 + int256(amount1);
             }
         }
 
@@ -248,11 +244,11 @@ library PositionLib {
             );
 
             if (lpt.isCollateral) {
-                requiredAmount0 = requiredAmount0.add(int256(amount0));
-                requiredAmount1 = requiredAmount1.add(int256(amount1));
+                requiredAmount0 += int256(amount0);
+                requiredAmount1 += int256(amount1);
             } else {
-                requiredAmount0 = requiredAmount0.sub(int256(amount0));
-                requiredAmount1 = requiredAmount1.sub(int256(amount1));
+                requiredAmount0 -= int256(amount0);
+                requiredAmount1 -= int256(amount1);
             }
         }
     }
@@ -375,7 +371,7 @@ library PositionLib {
                         DataType.PositionUpdateType.WITHDRAW_LPT,
                         _positions[i].subVaultIndex,
                         false,
-                        uint256(lpt.liquidity).mul(_closeRatio).div(1e4).toUint128(),
+                        ((uint256(lpt.liquidity) * _closeRatio) / 1e4).toUint128(),
                         lpt.lowerTick,
                         lpt.upperTick,
                         0,
@@ -397,7 +393,7 @@ library PositionLib {
                         DataType.PositionUpdateType.REPAY_LPT,
                         _positions[i].subVaultIndex,
                         false,
-                        uint256(lpt.liquidity).mul(_closeRatio).div(1e4).toUint128(),
+                        ((uint256(lpt.liquidity) * _closeRatio) / 1e4).toUint128(),
                         lpt.lowerTick,
                         lpt.upperTick,
                         0,
@@ -417,8 +413,8 @@ library PositionLib {
                     0,
                     0,
                     0,
-                    _positions[i].asset0.mul(_closeRatio).div(1e4),
-                    _positions[i].asset1.mul(_closeRatio).div(1e4)
+                    (_positions[i].asset0 * _closeRatio) / 1e4,
+                    (_positions[i].asset1 * _closeRatio) / 1e4
                 );
                 index++;
             }
@@ -433,8 +429,8 @@ library PositionLib {
                     0,
                     0,
                     0,
-                    _positions[i].debt0.mul(_closeRatio).div(1e4),
-                    _positions[i].debt1.mul(_closeRatio).div(1e4)
+                    (_positions[i].debt0 * _closeRatio) / 1e4,
+                    (_positions[i].debt1 * _closeRatio) / 1e4
                 );
             }
         }

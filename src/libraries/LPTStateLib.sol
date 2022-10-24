@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.7.6;
+pragma solidity ^0.8.0;
 pragma abicoder v2;
 
 import "@uniswap/v3-periphery/libraries/PositionKey.sol";
@@ -7,8 +7,6 @@ import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "./DataType.sol";
 
 library LPTStateLib {
-    using SafeMath for uint256;
-
     /**
      * @notice register new LPT
      */

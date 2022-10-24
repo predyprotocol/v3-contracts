@@ -1,11 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity >=0.4.0 <0.8.0;
-
-import "@openzeppelin/contracts/math/SafeMath.sol";
+pragma solidity ^0.8.0;
 
 library PredyMath {
-    using SafeMath for uint256;
-
     /**
      * @dev https://github.com/transmissions11/solmate/blob/main/src/utils/FixedPointMathLib.sol
      */
