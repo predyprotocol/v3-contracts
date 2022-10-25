@@ -19,8 +19,28 @@ contract PositionCalculatorTest is Test {
         assertLe(minSqrtPrice, uint256(TickMath.getSqrtRatioAtTick(int24(_upperTick))));
     }
 
+    function testCannotCalculateMinDeposit() public {
+        DataType.LPT[] memory lpts = new DataType.LPT[](0);
+
+        PositionCalculator.PositionCalculatorParams memory position = PositionCalculator.PositionCalculatorParams(
+            0,
+            0,
+            1e18,
+            0,
+            0,
+            1000 * 1e6,
+            lpts
+        );
+
+        vm.expectRevert(bytes("PC0"));
+        PositionCalculator.calculateMinDeposit(position, uint160(Constants.MIN_SQRT_PRICE - 1), false);
+
+        vm.expectRevert(bytes("PC0"));
+        PositionCalculator.calculateMinDeposit(position, uint160(Constants.MAX_SQRT_PRICE + 1), false);
+    }
+
     function testcalculateMinDepositOfLongToken0(uint160 _sqrtPrice) public {
-        vm.assume(2823045766959374473400000 < _sqrtPrice && _sqrtPrice < TickMath.MAX_SQRT_RATIO);
+        uint160 sqrtPrice = uint160(bound(_sqrtPrice, 2823045766959374473400000, Constants.MAX_SQRT_PRICE));
 
         DataType.LPT[] memory lpts = new DataType.LPT[](0);
 
@@ -34,11 +54,11 @@ contract PositionCalculatorTest is Test {
             lpts
         );
 
-        assertGe(PositionCalculator.calculateMinDeposit(position, _sqrtPrice, false), 0);
+        assertGe(PositionCalculator.calculateMinDeposit(position, sqrtPrice, false), 0);
     }
 
-    function testcalculateMinDepositOfBorrowLPT0(uint160 _sqrtPrice) public {
-        uint256 sqrtPrice = bound(_sqrtPrice, TickMath.MIN_SQRT_RATIO + 1, TickMath.MAX_SQRT_RATIO - 1);
+    function testcalculateMinDepositOfBorrowLPT0(uint256 _sqrtPrice) public {
+        uint256 sqrtPrice = bound(_sqrtPrice, Constants.MIN_SQRT_PRICE, Constants.MAX_SQRT_PRICE);
 
         DataType.LPT[] memory lpts = new DataType.LPT[](1);
         uint128 liquidity = LiquidityAmounts.getLiquidityForAmounts(
@@ -64,8 +84,8 @@ contract PositionCalculatorTest is Test {
         assertGe(PositionCalculator.calculateMinDeposit(position, uint160(sqrtPrice), false), 0);
     }
 
-    function testcalculateMinDepositOfBorrowLPT1(uint160 _sqrtPrice) public {
-        uint256 sqrtPrice = bound(_sqrtPrice, TickMath.MIN_SQRT_RATIO + 1, TickMath.MAX_SQRT_RATIO - 1);
+    function testcalculateMinDepositOfBorrowLPT1(uint256 _sqrtPrice) public {
+        uint256 sqrtPrice = bound(_sqrtPrice, Constants.MIN_SQRT_PRICE, Constants.MAX_SQRT_PRICE);
 
         DataType.LPT[] memory lpts = new DataType.LPT[](1);
         uint128 liquidity = LiquidityAmounts.getLiquidityForAmounts(
@@ -123,8 +143,8 @@ contract PositionCalculatorTest is Test {
             );
     }
 
-    function testcalculateMinDepositOfCallSpread(uint160 _sqrtPrice) public {
-        vm.assume(TickMath.MIN_SQRT_RATIO < _sqrtPrice && _sqrtPrice < TickMath.MAX_SQRT_RATIO);
+    function testcalculateMinDepositOfCallSpread(uint256 _sqrtPrice) public {
+        uint160 sqrtPrice = uint160(bound(_sqrtPrice, Constants.MIN_SQRT_PRICE, Constants.MAX_SQRT_PRICE));
 
         DataType.LPT[] memory lpts = new DataType.LPT[](2);
         uint128 liquidity0 = getLiquidity(1e18, -202560, -202550);
@@ -143,6 +163,6 @@ contract PositionCalculatorTest is Test {
             lpts
         );
 
-        assertGe(PositionCalculator.calculateMinDeposit(position, _sqrtPrice, false), 0);
+        assertGe(PositionCalculator.calculateMinDeposit(position, sqrtPrice, false), 0);
     }
 }

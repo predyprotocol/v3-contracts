@@ -240,7 +240,7 @@ contract InterestCalculatorTest is TestDeployer, Test {
             1e18
         );
 
-        assertEq((liquidityForOne * premium) / 1e18, 5014712906);
+        assertEq((liquidityForOne * premium) / 1e18, 5014712907);
     }
 
     function testCalculateValueByStableTokenMargin1() public {
@@ -264,7 +264,7 @@ contract InterestCalculatorTest is TestDeployer, Test {
             0
         );
 
-        assertEq((liquidityForOne * premium) / 1e18, 5014712906);
+        assertEq((liquidityForOne * premium) / 1e18, 5014712907);
     }
 
     function testCalculateValueByStableTokenMarginDAI() public {
@@ -304,6 +304,6 @@ contract InterestCalculatorTest is TestDeployer, Test {
             upper
         );
 
-        assertEq(interestPerl, 95331868969);
+        assertEq(interestPerl, 95331869018);
     }
 }

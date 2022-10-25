@@ -348,8 +348,6 @@ library VaultLib {
         uint160 _sqrtPrice,
         bool _isMarginZero
     ) internal pure returns (DataType.SubVaultValue memory) {
-        uint256 price = PriceHelper.decodeSqrtPriceX96(_isMarginZero, _sqrtPrice);
-
         int256 fee0 = statusInterest.assetFee0 - statusInterest.debtFee0;
         int256 fee1 = statusInterest.assetFee1 - statusInterest.debtFee1;
 
@@ -358,21 +356,26 @@ library VaultLib {
 
         int256 premium = int256(statusPremium.receivedPremium).sub(int256(statusPremium.paidPremium));
 
-        if (_isMarginZero) {
-            return
-                DataType.SubVaultValue(
-                    PredyMath.mulDiv(statusAmount.assetAmount1, price, 1e18).add(statusAmount.assetAmount0),
-                    PredyMath.mulDiv(statusAmount.debtAmount1, price, 1e18).add(statusAmount.debtAmount0),
-                    (fee1.mul(int256(price)).div(1e18).add(fee0)).add(premium)
-                );
-        } else {
-            return
-                DataType.SubVaultValue(
-                    PredyMath.mulDiv(statusAmount.assetAmount0, price, 1e18).add(statusAmount.assetAmount1),
-                    PredyMath.mulDiv(statusAmount.debtAmount0, price, 1e18).add(statusAmount.debtAmount1),
-                    (fee0.mul(int256(price)).div(1e18).add(fee1)).add(premium)
-                );
-        }
+        return
+            DataType.SubVaultValue(
+                uint256(
+                    PriceHelper.getValue(
+                        _isMarginZero,
+                        _sqrtPrice,
+                        int256(statusAmount.assetAmount0),
+                        int256(statusAmount.assetAmount1)
+                    )
+                ),
+                uint256(
+                    PriceHelper.getValue(
+                        _isMarginZero,
+                        _sqrtPrice,
+                        int256(statusAmount.debtAmount0),
+                        int256(statusAmount.debtAmount1)
+                    )
+                ),
+                PriceHelper.getValue(_isMarginZero, _sqrtPrice, fee0, fee1).add(premium)
+            );
     }
 
     function getVaultStatusAmount(

@@ -340,7 +340,7 @@ contract OptionMarket is ERC20, IERC721Receiver, Ownable {
             return true;
         }
 
-        uint256 twap = reader.getIndexPrice();
+        uint256 twap = reader.getIndexPrice() / PriceHelper.PRICE_SCALER;
 
         Strike memory strike = strikes[_optionPosition.strikeId];
 
@@ -681,7 +681,7 @@ contract OptionMarket is ERC20, IERC721Receiver, Ownable {
     function calculateStrikePrice(int24 _lowerTick, int24 _upperTick) internal pure returns (uint256) {
         uint160 sqrtPrice = TickMath.getSqrtRatioAtTick((_lowerTick + _upperTick) / 2);
 
-        return PriceHelper.decodeSqrtPriceX96(true, sqrtPrice);
+        return PriceHelper.decodeSqrtPriceX96(true, sqrtPrice) / PriceHelper.PRICE_SCALER;
     }
 
     function calculateUSDValue(
@@ -704,7 +704,7 @@ contract OptionMarket is ERC20, IERC721Receiver, Ownable {
         int256 _amount,
         bool _isPut
     ) internal view returns (uint256 marginValue) {
-        uint256 currentPrice = reader.getPrice();
+        uint256 currentPrice = reader.getPrice() / PriceHelper.PRICE_SCALER;
 
         uint256 instinctValue;
 

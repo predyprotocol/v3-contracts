@@ -45,6 +45,8 @@ library PositionCalculator {
         uint160 _sqrtPrice,
         bool _isMarginZero
     ) internal pure returns (int256 minDeposit) {
+        require(Constants.MIN_SQRT_PRICE <= _sqrtPrice && _sqrtPrice <= Constants.MAX_SQRT_PRICE, "PC0");
+
         int256 vaultPositionValue = calculateValue(_params, _sqrtPrice, _isMarginZero);
 
         int256 minValue = calculateMinValue(_params, _sqrtPrice, _isMarginZero);
@@ -89,8 +91,11 @@ library PositionCalculator {
         bool _isMarginZero
     ) internal pure returns (int256 minValue) {
         minValue = type(int256).max;
-        uint160 sqrtPriceLower = (LOWER_E8 * _sqrtPrice) / 1e8;
-        uint160 sqrtPriceUpper = (UPPER_E8 * _sqrtPrice) / 1e8;
+        uint256 sqrtPriceLower = uint256(LOWER_E8).mul(_sqrtPrice) / 1e8;
+        uint256 sqrtPriceUpper = uint256(UPPER_E8).mul(_sqrtPrice) / 1e8;
+
+        require(sqrtPriceLower < type(uint160).max);
+        require(sqrtPriceUpper < type(uint160).max);
 
         require(TickMath.MIN_SQRT_RATIO < _sqrtPrice && _sqrtPrice < TickMath.MAX_SQRT_RATIO, "PC0");
 
@@ -104,7 +109,7 @@ library PositionCalculator {
 
         {
             // 1. check value of at P*1.18
-            int256 value = calculateValue(_position, sqrtPriceUpper, _isMarginZero);
+            int256 value = calculateValue(_position, uint160(sqrtPriceUpper), _isMarginZero);
             if (minValue > value) {
                 minValue = value;
             }
@@ -112,7 +117,7 @@ library PositionCalculator {
 
         {
             // 2. check value of at P/1.18
-            int256 value = calculateValue(_position, sqrtPriceLower, _isMarginZero);
+            int256 value = calculateValue(_position, uint160(sqrtPriceLower), _isMarginZero);
             if (minValue > value) {
                 minValue = value;
             }
@@ -176,13 +181,7 @@ library PositionCalculator {
             uint256 debtValue
         )
     {
-        uint256 price = PriceHelper.decodeSqrtPriceX96(_isMarginZero, _sqrtPrice);
-
-        if (_isMarginZero) {
-            marginValue = _position.marginAmount0.add(_position.marginAmount1.mul(int256(price)).div(1e18));
-        } else {
-            marginValue = _position.marginAmount0.mul(int256(price)).div(1e18).add(_position.marginAmount1);
-        }
+        marginValue = PriceHelper.getValue(_isMarginZero, _sqrtPrice, _position.marginAmount0, _position.marginAmount1);
 
         (
             uint256 assetAmount0,
@@ -191,13 +190,11 @@ library PositionCalculator {
             uint256 debtAmount1
         ) = calculateCollateralAndDebtAmount(_position, _sqrtPrice, _isMinPrice);
 
-        if (_isMarginZero) {
-            assetValue = assetAmount0.add(assetAmount1.mul(price).div(1e18));
-            debtValue = debtAmount0.add(debtAmount1.mul(price).div(1e18));
-        } else {
-            assetValue = assetAmount0.mul(price).div(1e18).add(assetAmount1);
-            debtValue = debtAmount0.mul(price).div(1e18).add(debtAmount1);
-        }
+        assetValue = uint256(
+            PriceHelper.getValue(_isMarginZero, _sqrtPrice, int256(assetAmount0), int256(assetAmount1))
+        );
+
+        debtValue = uint256(PriceHelper.getValue(_isMarginZero, _sqrtPrice, int256(debtAmount0), int256(debtAmount1)));
     }
 
     function calculateCollateralAndDebtAmount(
@@ -272,10 +269,10 @@ library PositionCalculator {
             lpts
         );
 
-        _newParams.asset0 += _position.asset0;
-        _newParams.asset1 += _position.asset1;
-        _newParams.debt0 += _position.debt0;
-        _newParams.debt1 += _position.debt1;
+        _newParams.asset0 = _newParams.asset0.add(_position.asset0);
+        _newParams.asset1 = _newParams.asset1.add(_position.asset1);
+        _newParams.debt0 = _newParams.debt0.add(_position.debt0);
+        _newParams.debt1 = _newParams.debt1.add(_position.debt1);
 
         uint256 k;
 
