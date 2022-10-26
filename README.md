@@ -12,8 +12,6 @@ This Protocol enables perpetual options by lending and borrowing Uniswap V3's Li
 
 `Controller.sol` is entry point of traders.
 
-`ContractHelper.sol` has helper functions for creating transaction to update positions.
-
 ### Libraries
 
 `BaseToken.sol` has functions to handle deposit and borrowing tokens.
@@ -26,8 +24,10 @@ This Protocol enables perpetual options by lending and borrowing Uniswap V3's Li
 
 `PositionLib.sol` has functions to calculate required token amounts and parameters which is required to update position.
 
-`VaultLib.sol` has functions to manage vault state.
-
 `LPTStateLib.sol` has functions to manage LPT state.
 
-`LPTMath.sol` has wrapper functions of LiquidityAmounts library from uniswap core.
+`PriceHelper.sol` has functions to calculate underlying price.
+
+`UniHelper.sol` has helper functions of Uniswap pool.
+
+`VaultLib.sol` has functions to manage vault state.
