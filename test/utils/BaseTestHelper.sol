@@ -196,7 +196,7 @@ abstract contract BaseTestHelper {
             _vaultId,
             positionUpdates,
             DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1, EMPTY_METADATA),
-            DataType.OpenPositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), block.timestamp)
+            DataType.OpenPositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 100, block.timestamp)
         );
     }
 
@@ -231,7 +231,7 @@ abstract contract BaseTestHelper {
             _vaultId,
             positionUpdates,
             DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1, EMPTY_METADATA),
-            DataType.OpenPositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), block.timestamp)
+            DataType.OpenPositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 100, block.timestamp)
         );
     }
 
@@ -267,7 +267,7 @@ abstract contract BaseTestHelper {
             _vaultId,
             positions[0],
             DataType.TradeOption(false, false, false, getIsMarginZero(), int256(_margin), -1, EMPTY_METADATA),
-            DataType.OpenPositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), block.timestamp)
+            DataType.OpenPositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 100, block.timestamp)
         );
     }
 
