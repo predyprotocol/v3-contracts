@@ -120,6 +120,7 @@ library DataType {
     struct OpenPositionOption {
         uint256 lowerSqrtPrice;
         uint256 upperSqrtPrice;
+        uint256 swapRatio;
         uint256 deadline;
     }
 

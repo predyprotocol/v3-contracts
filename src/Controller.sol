@@ -207,7 +207,8 @@ contract Controller is Initializable, IUniswapV3MintCallback {
         DataType.PositionUpdate[] memory positionUpdates = PositionLib.getPositionUpdatesToOpen(
             _position,
             _tradeOption.isQuoteZero,
-            getSqrtPrice()
+            getSqrtPrice(),
+            _openPositionOptions.swapRatio
         );
 
         (vaultId, requiredAmounts, swapAmounts) = updatePosition(

@@ -500,6 +500,7 @@ contract OptionMarket is ERC20, IERC721Receiver, Ownable {
         DataType.OpenPositionOption memory openPositionOption = DataType.OpenPositionOption(
             0,
             type(uint256).max,
+            100,
             block.timestamp
         );
 
@@ -525,6 +526,7 @@ contract OptionMarket is ERC20, IERC721Receiver, Ownable {
         DataType.OpenPositionOption memory openPositionOption = DataType.OpenPositionOption(
             0,
             type(uint256).max,
+            100,
             block.timestamp
         );
 

@@ -171,7 +171,7 @@ contract ControllerTest is TestDeployer, Test {
     }
 
     function getOpenPositionParams() internal returns (DataType.OpenPositionOption memory) {
-        return DataType.OpenPositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), block.timestamp);
+        return DataType.OpenPositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 100, block.timestamp);
     }
 
     /**************************
