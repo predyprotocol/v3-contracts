@@ -104,6 +104,7 @@ library PositionUpdater {
                 requiredAmounts.amount1 = requiredAmounts.amount1.sub(int256(amount1));
             } else if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.BORROW_TOKEN) {
                 require(!_tradeOption.reduceOnly, "PU1");
+
                 borrowTokens(subVault, _context, positionUpdate);
 
                 requiredAmounts.amount0 = requiredAmounts.amount0.sub(int256(positionUpdate.param0));
@@ -115,6 +116,7 @@ library PositionUpdater {
                 requiredAmounts.amount1 = requiredAmounts.amount1.add(int256(amount1));
             } else if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.DEPOSIT_LPT) {
                 require(!_tradeOption.reduceOnly, "PU1");
+
                 (uint256 amount0, uint256 amount1) = depositLPT(subVault, _context, _ranges, positionUpdate);
 
                 requiredAmounts.amount0 = requiredAmounts.amount0.add(int256(amount0));
@@ -126,6 +128,7 @@ library PositionUpdater {
                 requiredAmounts.amount1 = requiredAmounts.amount1.sub(int256(amount1));
             } else if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.BORROW_LPT) {
                 require(!_tradeOption.reduceOnly, "PU1");
+
                 (uint256 amount0, uint256 amount1) = borrowLPT(subVault, _context, _ranges, positionUpdate);
 
                 requiredAmounts.amount0 = requiredAmounts.amount0.sub(int256(amount0));
@@ -398,7 +401,7 @@ library PositionUpdater {
         DataType.Context memory _context,
         mapping(bytes32 => DataType.PerpStatus) storage _ranges,
         DataType.PositionUpdate memory _positionUpdate
-    ) internal returns (uint256 withdrawAmount0, uint256 withdrawAmount1) {
+    ) internal returns (uint256 withdrawnAmount0, uint256 withdrawnAmount1) {
         bytes32 rangeId = LPTStateLib.getRangeKey(_positionUpdate.lowerTick, _positionUpdate.upperTick);
 
         (uint256 fee0, uint256 fee1, uint128 liquidityAmount) = _subVault.withdrawLPT(
@@ -408,20 +411,20 @@ library PositionUpdater {
             _context.isMarginZero
         );
 
-        (withdrawAmount0, withdrawAmount1) = decreaseLiquidityFromUni(_context, _ranges[rangeId], liquidityAmount);
+        (withdrawnAmount0, withdrawnAmount1) = decreaseLiquidityFromUni(_context, _ranges[rangeId], liquidityAmount);
 
         emit LPTWithdrawn(
             _subVault.id,
             rangeId,
             liquidityAmount,
-            withdrawAmount0,
-            withdrawAmount1,
+            withdrawnAmount0,
+            withdrawnAmount1,
             int256(fee0),
             int256(fee1)
         );
 
-        withdrawAmount0 = withdrawAmount0.add(fee0);
-        withdrawAmount1 = withdrawAmount1.add(fee1);
+        withdrawnAmount0 = withdrawnAmount0.add(fee0);
+        withdrawnAmount1 = withdrawnAmount1.add(fee1);
     }
 
     function borrowLPT(
@@ -429,10 +432,10 @@ library PositionUpdater {
         DataType.Context memory _context,
         mapping(bytes32 => DataType.PerpStatus) storage _ranges,
         DataType.PositionUpdate memory _positionUpdate
-    ) internal returns (uint256 requiredAmount0, uint256 requiredAmount1) {
+    ) internal returns (uint256 borrowedAmount0, uint256 borrowedAmount1) {
         bytes32 rangeId = LPTStateLib.getRangeKey(_positionUpdate.lowerTick, _positionUpdate.upperTick);
 
-        (requiredAmount0, requiredAmount1) = decreaseLiquidityFromUni(
+        (borrowedAmount0, borrowedAmount1) = decreaseLiquidityFromUni(
             _context,
             _ranges[rangeId],
             _positionUpdate.liquidity
@@ -445,7 +448,7 @@ library PositionUpdater {
 
         _subVault.borrowLPT(_ranges[rangeId], rangeId, _positionUpdate.liquidity);
 
-        emit LPTBorrowed(_subVault.id, rangeId, _positionUpdate.liquidity, requiredAmount0, requiredAmount1);
+        emit LPTBorrowed(_subVault.id, rangeId, _positionUpdate.liquidity, borrowedAmount0, borrowedAmount1);
     }
 
     function repayLPT(
@@ -556,6 +559,26 @@ library PositionUpdater {
     }
 
     /**
+     * @notice Decreases liquidity from Uniswap pool.
+     */
+    function decreaseLiquidityFromUni(
+        DataType.Context memory _context,
+        DataType.PerpStatus storage _range,
+        uint128 _liquidity
+    ) internal returns (uint256 amount0, uint256 amount1) {
+        (amount0, amount1) = IUniswapV3Pool(_context.uniswapPool).burn(_range.lowerTick, _range.upperTick, _liquidity);
+
+        // collect burned token amounts
+        IUniswapV3Pool(_context.uniswapPool).collect(
+            address(this),
+            _range.lowerTick,
+            _range.upperTick,
+            amount0.toUint128(),
+            amount1.toUint128()
+        );
+    }
+
+    /**
      * @notice Collects trade fee and updates fee growth.
      */
     function updateFeeGrowth(
@@ -578,32 +601,15 @@ library PositionUpdater {
         for (uint256 i = 0; i < _positionUpdates.length; i++) {
             bytes32 rangeId = LPTStateLib.getRangeKey(_positionUpdates[i].lowerTick, _positionUpdates[i].upperTick);
 
-            if (_ranges[rangeId].lastTouchedTimestamp == 0) {
-                continue;
-            }
-
             updateFeeGrowthForRange(_context, _ranges[rangeId]);
         }
     }
 
-    function decreaseLiquidityFromUni(
-        DataType.Context memory _context,
-        DataType.PerpStatus storage _range,
-        uint128 _liquidity
-    ) internal returns (uint256 amount0, uint256 amount1) {
-        (amount0, amount1) = IUniswapV3Pool(_context.uniswapPool).burn(_range.lowerTick, _range.upperTick, _liquidity);
-
-        // collect burned token amounts
-        IUniswapV3Pool(_context.uniswapPool).collect(
-            address(this),
-            _range.lowerTick,
-            _range.upperTick,
-            amount0.toUint128(),
-            amount1.toUint128()
-        );
-    }
-
     function updateFeeGrowthForRange(DataType.Context memory _context, DataType.PerpStatus storage _range) internal {
+        if (_range.lastTouchedTimestamp == 0) {
+            return;
+        }
+
         uint256 totalLiquidity = LPTStateLib.getTotalLiquidityAmount(address(this), _context.uniswapPool, _range);
 
         if (totalLiquidity == 0) {

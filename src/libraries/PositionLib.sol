@@ -26,7 +26,7 @@ library PositionLib {
 
         (int256 requiredAmount0, int256 requiredAmount1) = getRequiredTokenAmountsToOpen(_position, _sqrtPrice);
 
-        if(_swapRatio == 0) {
+        if (_swapRatio == 0) {
             return positionUpdates;
         }
 
@@ -94,7 +94,7 @@ library PositionLib {
 
         (int256 requiredAmount0, int256 requiredAmount1) = getRequiredTokenAmountsToClose(_positions, _sqrtPrice);
 
-        if(_swapRatio == 0) {
+        if (_swapRatio == 0) {
             return positionUpdates;
         }
 
