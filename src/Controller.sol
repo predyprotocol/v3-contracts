@@ -28,6 +28,7 @@ import "./libraries/Constants.sol";
  * P4: must be liquidatable
  * P5: vault does not exists
  * P6: caller must be operator
+ * P7: cannot create vault with 0 amount
  */
 contract Controller is Initializable, IUniswapV3MintCallback {
     using BaseToken for BaseToken.TokenState;
@@ -363,6 +364,11 @@ contract Controller is Initializable, IUniswapV3MintCallback {
 
         if (_tradeOption.quoterMode) {
             revertRequiredAmounts(requiredAmounts, swapAmounts);
+        }
+
+        if(_vaultId == 0) {
+            // non 0 amount of tokens required to create new vault.
+            require(requiredAmounts.amount0 > 0 || requiredAmounts.amount1 > 0, "P7");
         }
 
         // check the vault is safe
