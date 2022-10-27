@@ -366,7 +366,7 @@ contract Controller is Initializable, IUniswapV3MintCallback {
             revertRequiredAmounts(requiredAmounts, swapAmounts);
         }
 
-        if(_vaultId == 0) {
+        if (_vaultId == 0) {
             // non 0 amount of tokens required to create new vault.
             require(requiredAmounts.amount0 > 0 || requiredAmounts.amount1 > 0, "P7");
         }

@@ -314,7 +314,7 @@ library VaultLib {
 
         return
             DataType.VaultStatus(
-                int256(assetValue) - int256(debtValue),
+                int256(assetValue).sub(int256(debtValue)),
                 marginValue,
                 PositionCalculator.calculateMinDeposit(params, _sqrtPrice, _context.isMarginZero),
                 subVaultsStatus
@@ -348,11 +348,11 @@ library VaultLib {
         uint160 _sqrtPrice,
         bool _isMarginZero
     ) internal pure returns (DataType.SubVaultValue memory) {
-        int256 fee0 = statusInterest.assetFee0 - statusInterest.debtFee0;
-        int256 fee1 = statusInterest.assetFee1 - statusInterest.debtFee1;
+        int256 fee0 = statusInterest.assetFee0.sub(statusInterest.debtFee0);
+        int256 fee1 = statusInterest.assetFee1.sub(statusInterest.debtFee1);
 
-        fee0 += int256(statusPremium.receivedTradeAmount0);
-        fee1 += int256(statusPremium.receivedTradeAmount1);
+        fee0 = fee0.add(int256(statusPremium.receivedTradeAmount0));
+        fee1 = fee1.add(int256(statusPremium.receivedTradeAmount1));
 
         int256 premium = int256(statusPremium.receivedPremium).sub(int256(statusPremium.paidPremium));
 
@@ -491,26 +491,22 @@ library VaultLib {
         returns (uint256 totalAmount0, uint256 totalAmount1)
     {
         if (_lpt.isCollateral) {
-            totalAmount0 = (
-                PredyMath.mulDiv(_range.fee0Growth.sub(_lpt.fee0Last), _lpt.liquidityAmount, Constants.ONE)
-            );
-            totalAmount1 = (
-                PredyMath.mulDiv(_range.fee1Growth.sub(_lpt.fee1Last), _lpt.liquidityAmount, Constants.ONE)
-            );
+            totalAmount0 = PredyMath.mulDiv(_range.fee0Growth.sub(_lpt.fee0Last), _lpt.liquidityAmount, Constants.ONE);
+            totalAmount1 = PredyMath.mulDiv(_range.fee1Growth.sub(_lpt.fee1Last), _lpt.liquidityAmount, Constants.ONE);
         }
     }
 
     function getEarnedTradeFee(
         DataType.SubVault memory _subVault,
         mapping(bytes32 => DataType.PerpStatus) storage ranges
-    ) public view returns (uint256 totalAmount0, uint256 totalAmount1) {
+    ) public view returns (uint256 totalFeeAmount0, uint256 totalFeeAmount1) {
         for (uint256 i = 0; i < _subVault.lpts.length; i++) {
             bytes32 rangeId = _subVault.lpts[i].rangeId;
 
-            (uint256 amount0, uint256 amount1) = getEarnedTradeFeeForRange(_subVault.lpts[i], ranges[rangeId]);
+            (uint256 tradeFee0, uint256 tradeFee1) = getEarnedTradeFeeForRange(_subVault.lpts[i], ranges[rangeId]);
 
-            totalAmount0 = totalAmount0.add(amount0);
-            totalAmount1 = totalAmount1.add(amount1);
+            totalFeeAmount0 = totalFeeAmount0.add(tradeFee0);
+            totalFeeAmount1 = totalFeeAmount1.add(tradeFee1);
         }
     }
 
@@ -522,15 +518,17 @@ library VaultLib {
             bytes32 rangeId = _subVault.lpts[i].rangeId;
             DataType.PerpStatus memory perpStatus = ranges[rangeId];
 
-            if (_subVault.lpts[i].isCollateral) {
-                marginValue = marginValue.add(
-                    PredyMath.mulDiv(
-                        (perpStatus.premiumGrowthForLender.sub(_subVault.lpts[i].premiumGrowthLast)),
-                        _subVault.lpts[i].liquidityAmount,
-                        Constants.ONE
-                    )
-                );
+            if (!_subVault.lpts[i].isCollateral) {
+                continue;
             }
+
+            marginValue = marginValue.add(
+                PredyMath.mulDiv(
+                    perpStatus.premiumGrowthForLender.sub(_subVault.lpts[i].premiumGrowthLast),
+                    _subVault.lpts[i].liquidityAmount,
+                    Constants.ONE
+                )
+            );
         }
     }
 
@@ -542,15 +540,17 @@ library VaultLib {
             bytes32 rangeId = _subVault.lpts[i].rangeId;
             DataType.PerpStatus memory perpStatus = ranges[rangeId];
 
-            if (!_subVault.lpts[i].isCollateral) {
-                marginValue = marginValue.add(
-                    PredyMath.mulDiv(
-                        (perpStatus.premiumGrowthForBorrower.sub(_subVault.lpts[i].premiumGrowthLast)),
-                        _subVault.lpts[i].liquidityAmount,
-                        Constants.ONE
-                    )
-                );
+            if (_subVault.lpts[i].isCollateral) {
+                continue;
             }
+
+            marginValue = marginValue.add(
+                PredyMath.mulDiv(
+                    perpStatus.premiumGrowthForBorrower.sub(_subVault.lpts[i].premiumGrowthLast),
+                    _subVault.lpts[i].liquidityAmount,
+                    Constants.ONE
+                )
+            );
         }
     }
 

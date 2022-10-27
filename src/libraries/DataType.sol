@@ -91,9 +91,7 @@ library DataType {
         BORROW_LPT,
         REPAY_LPT,
         SWAP_EXACT_IN,
-        SWAP_EXACT_OUT,
-        DEPOSIT_MARGIN,
-        WITHDRAW_MARGIN
+        SWAP_EXACT_OUT
     }
 
     struct PositionUpdate {

@@ -155,8 +155,8 @@ library LiquidationLogic {
         PositionCalculator.PositionCalculatorParams memory _params,
         uint160 sqrtPrice
     ) internal pure returns (bool) {
-        // calculate Min. Collateral by using TWAP.
-        int256 minCollateral = PositionCalculator.calculateMinDeposit(_params, sqrtPrice, _context.isMarginZero);
+        // calculate Min. Deposit by using TWAP.
+        int256 minDeposit = PositionCalculator.calculateMinDeposit(_params, sqrtPrice, _context.isMarginZero);
 
         int256 vaultValue;
         int256 marginValue;
@@ -174,7 +174,7 @@ library LiquidationLogic {
             vaultValue = marginValue + int256(assetValue) - int256(debtValue);
         }
 
-        return minCollateral > vaultValue || marginValue < 0;
+        return minDeposit > vaultValue || marginValue < 0;
     }
 
     function reducePosition(
