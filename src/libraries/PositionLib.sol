@@ -445,6 +445,7 @@ library PositionLib {
                     _positions[i].debt0.mul(_closeRatio).div(1e4),
                     _positions[i].debt1.mul(_closeRatio).div(1e4)
                 );
+                index++;
             }
         }
     }
