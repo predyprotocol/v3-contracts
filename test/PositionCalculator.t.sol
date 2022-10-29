@@ -32,14 +32,31 @@ contract PositionCalculatorTest is Test {
             lpts
         );
 
-        vm.expectRevert(bytes("PC0"));
+        vm.expectRevert(bytes("Out of sqrtprice range"));
         PositionCalculator.calculateMinDeposit(position, uint160(Constants.MIN_SQRT_PRICE - 1), false);
 
-        vm.expectRevert(bytes("PC0"));
+        vm.expectRevert(bytes("Out of sqrtprice range"));
         PositionCalculator.calculateMinDeposit(position, uint160(Constants.MAX_SQRT_PRICE + 1), false);
     }
 
-    function testcalculateMinDepositOfLongToken0(uint160 _sqrtPrice) public {
+    function testCannotCalculateMinDepositByTooManyLPTs() public {
+        DataType.LPT[] memory lpts = new DataType.LPT[](17);
+
+        PositionCalculator.PositionCalculatorParams memory position = PositionCalculator.PositionCalculatorParams(
+            0,
+            0,
+            1e18,
+            0,
+            0,
+            1000 * 1e6,
+            lpts
+        );
+
+        vm.expectRevert(bytes("Exceeds max num of LPTs"));
+        PositionCalculator.calculateMinDeposit(position, uint160(Constants.MIN_SQRT_PRICE), false);
+    }
+
+    function testCalculateMinDepositOfLongToken0(uint160 _sqrtPrice) public {
         uint160 sqrtPrice = uint160(bound(_sqrtPrice, 2823045766959374473400000, Constants.MAX_SQRT_PRICE));
 
         DataType.LPT[] memory lpts = new DataType.LPT[](0);
@@ -57,7 +74,7 @@ contract PositionCalculatorTest is Test {
         assertGe(PositionCalculator.calculateMinDeposit(position, sqrtPrice, false), 0);
     }
 
-    function testcalculateMinDepositOfBorrowLPT0(uint256 _sqrtPrice) public {
+    function testCalculateMinDepositOfBorrowLPT0(uint256 _sqrtPrice) public {
         uint256 sqrtPrice = bound(_sqrtPrice, Constants.MIN_SQRT_PRICE, Constants.MAX_SQRT_PRICE);
 
         DataType.LPT[] memory lpts = new DataType.LPT[](1);

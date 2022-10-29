@@ -235,6 +235,52 @@ abstract contract BaseTestHelper {
         );
     }
 
+    function openShortPut(
+        uint256 _vaultId,
+        uint256 _subVaultId,
+        int24 _lower,
+        int24 _upper,
+        uint256 _amount
+    ) public returns (uint256 vaultId) {
+        DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](2);
+
+        (uint128 liquidity, uint256 amount0, uint256 amount1) = getLiquidityAndAmountToDeposit(
+            getIsMarginZero(),
+            _amount,
+            controller.getSqrtPrice(),
+            _lower,
+            _upper
+        );
+
+        positionUpdates[0] = DataType.PositionUpdate(
+            DataType.PositionUpdateType.DEPOSIT_LPT,
+            _subVaultId,
+            false,
+            liquidity,
+            _lower,
+            _upper,
+            0,
+            0
+        );
+        positionUpdates[1] = DataType.PositionUpdate(
+            DataType.PositionUpdateType.BORROW_TOKEN,
+            _subVaultId,
+            false,
+            0,
+            0,
+            0,
+            amount0 / 2,
+            0
+        );
+
+        (vaultId, , ) = controller.updatePosition(
+            _vaultId,
+            positionUpdates,
+            DataType.TradeOption(false, true, false, getIsMarginZero(), -1, -1, EMPTY_METADATA),
+            DataType.OpenPositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 0, block.timestamp)
+        );
+    }
+
     function getBorrowLPTPosition(
         uint256 _subVaultId,
         int24 _tick,

@@ -418,16 +418,14 @@ contract ControllerHelperTest is TestDeployer, Test {
     }
 
     function testCloseSubVaults() public {
-        uint256 vaultId = depositLPT(0, 0, 202500, 202600, 1e18);
-        depositLPT(vaultId, 1, 202600, 202700, 1e18);
+        uint256 vaultId = openShortPut(0, 0, 202500, 202600, 1e18);
+        openShortPut(vaultId, 1, 202600, 202700, 1e18);
 
         vm.warp(block.timestamp + 5 minutes);
 
-        uint256 price = reader.getPrice();
-
         controller.closeVault(
             vaultId,
-            DataType.TradeOption(false, true, false, true, -1, -1, EMPTY_METADATA),
+            DataType.TradeOption(false, true, false, true, -2, -1, EMPTY_METADATA),
             DataType.ClosePositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 100, 1e4, block.timestamp)
         );
 
