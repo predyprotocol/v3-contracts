@@ -515,7 +515,7 @@ contract ControllerHelperTest is TestDeployer, Test {
 
         swapToSamePrice(owner);
 
-        vm.warp(block.timestamp + 18 hours);
+        vm.warp(block.timestamp + 7 hours);
 
         assertTrue(controller.checkLiquidatable(vaultId));
 
@@ -568,7 +568,7 @@ contract ControllerHelperTest is TestDeployer, Test {
 
         swapToSamePrice(owner);
 
-        vm.warp(block.timestamp + 16 hours);
+        vm.warp(block.timestamp + 7 hours);
 
         assertTrue(controller.checkLiquidatable(vaultId));
 

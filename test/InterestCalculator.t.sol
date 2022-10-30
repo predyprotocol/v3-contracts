@@ -156,6 +156,8 @@ contract InterestCalculatorTest is TestDeployer, Test {
     }
 
     function testCalculateDailyPremium() public {
+        InterestCalculator.takeSnapshot(ypParams, uniPool, perpStatus.lowerTick, perpStatus.upperTick);
+
         swapRouter.exactInputSingle(
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
@@ -182,17 +184,11 @@ contract InterestCalculatorTest is TestDeployer, Test {
             })
         );
 
-        swapToSamePrice(owner);
+        vm.warp(block.timestamp + 1 hours);
 
         assertEq(InterestCalculator.calculateInterestRate(ypParams.premiumParams, 50 * 1e16), 288000000000000000);
 
-        uint256 dailyPremium = InterestCalculator.calculateRangeVariance(
-            ypParams,
-            uniPool,
-            perpStatus.lowerTick,
-            perpStatus.upperTick,
-            30 * 1e16
-        );
+        uint256 dailyPremium = InterestCalculator.calculateRangeVariance(ypParams, uniPool, perpStatus, 30 * 1e16);
 
         assertEq(dailyPremium, 88000000000000000);
     }
