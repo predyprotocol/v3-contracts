@@ -23,6 +23,8 @@ library PositionCalculator {
     // sqrt{1/1.18} = 0.92057461789
     uint160 internal constant LOWER_E8 = 92057462;
 
+    uint256 internal constant MAX_NUM_OF_LPTS = 16;
+
     struct PositionCalculatorParams {
         int256 marginAmount0;
         int256 marginAmount1;
@@ -45,7 +47,12 @@ library PositionCalculator {
         uint160 _sqrtPrice,
         bool _isMarginZero
     ) internal pure returns (int256 minDeposit) {
-        require(Constants.MIN_SQRT_PRICE <= _sqrtPrice && _sqrtPrice <= Constants.MAX_SQRT_PRICE, "PC0");
+        require(
+            Constants.MIN_SQRT_PRICE <= _sqrtPrice && _sqrtPrice <= Constants.MAX_SQRT_PRICE,
+            "Out of sqrtprice range"
+        );
+
+        require(_params.lpts.length <= MAX_NUM_OF_LPTS, "Exceeds max num of LPTs");
 
         int256 vaultPositionValue = calculateValue(_params, _sqrtPrice, _isMarginZero);
 
@@ -97,7 +104,7 @@ library PositionCalculator {
         require(sqrtPriceLower < type(uint160).max);
         require(sqrtPriceUpper < type(uint160).max);
 
-        require(TickMath.MIN_SQRT_RATIO < _sqrtPrice && _sqrtPrice < TickMath.MAX_SQRT_RATIO, "PC0");
+        require(TickMath.MIN_SQRT_RATIO < _sqrtPrice && _sqrtPrice < TickMath.MAX_SQRT_RATIO, "Out of sqrtprice range");
 
         if (sqrtPriceLower < TickMath.MIN_SQRT_RATIO) {
             sqrtPriceLower = TickMath.MIN_SQRT_RATIO;

@@ -139,4 +139,24 @@ contract PositionLibTest is Test {
         // empty for swap
         assertEq(swapIndex, 1);
     }
+
+    function testCalculatePositionUpdatesToClose2() public {
+        DataType.Position[] memory positions = new DataType.Position[](3);
+        positions[0] = getPosition3();
+        positions[1] = getPosition3();
+
+        (DataType.PositionUpdate[] memory positionUpdates, ) = PositionLib.calculatePositionUpdatesToClose(
+            positions,
+            1e4
+        );
+
+        assertEq(uint256(positionUpdates[0].positionUpdateType), uint256(DataType.PositionUpdateType.WITHDRAW_LPT));
+        assertEq(uint256(positionUpdates[1].positionUpdateType), uint256(DataType.PositionUpdateType.WITHDRAW_LPT));
+        assertEq(uint256(positionUpdates[2].positionUpdateType), uint256(DataType.PositionUpdateType.NOOP));
+        assertEq(uint256(positionUpdates[3].positionUpdateType), uint256(DataType.PositionUpdateType.WITHDRAW_TOKEN));
+        assertEq(uint256(positionUpdates[4].positionUpdateType), uint256(DataType.PositionUpdateType.WITHDRAW_TOKEN));
+        assertEq(uint256(positionUpdates[5].positionUpdateType), uint256(DataType.PositionUpdateType.REPAY_TOKEN));
+        assertEq(uint256(positionUpdates[6].positionUpdateType), uint256(DataType.PositionUpdateType.REPAY_TOKEN));
+        assertEq(positionUpdates.length, 7);
+    }
 }

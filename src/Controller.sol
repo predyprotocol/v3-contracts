@@ -450,6 +450,8 @@ contract Controller is Initializable, IUniswapV3MintCallback {
      * @return isLiquidatable true if the vault is liquidatable, false if the vault is safe.
      */
     function checkLiquidatable(uint256 _vaultId) external returns (bool) {
+        applyInterest();
+
         applyPerpFee(_vaultId);
 
         return LiquidationLogic.checkLiquidatable(vaults[_vaultId], subVaults, context, ranges);
@@ -460,6 +462,8 @@ contract Controller is Initializable, IUniswapV3MintCallback {
      * @param _vaultId The id of the vault
      */
     function getVaultStatus(uint256 _vaultId, uint160 _sqrtPriceX96) external returns (DataType.VaultStatus memory) {
+        applyInterest();
+
         applyPerpFee(_vaultId);
 
         return vaults[_vaultId].getVaultStatus(subVaults, ranges, context, _sqrtPriceX96);
@@ -549,8 +553,6 @@ contract Controller is Initializable, IUniswapV3MintCallback {
             ypParams,
             getSqrtPrice()
         );
-
-        // applyInterest();
 
         PositionUpdater.updateFeeGrowth(context, vault, subVaults, ranges, _positionUpdates);
     }
