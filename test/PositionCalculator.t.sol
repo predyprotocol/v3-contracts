@@ -101,7 +101,7 @@ contract PositionCalculatorTest is Test {
         assertGe(PositionCalculator.calculateMinDeposit(position, uint160(sqrtPrice), false), 0);
     }
 
-    function testcalculateMinDepositOfBorrowLPT1(uint256 _sqrtPrice) public {
+    function testCalculateMinDepositOfBorrowLPT1(uint256 _sqrtPrice) public {
         uint256 sqrtPrice = bound(_sqrtPrice, Constants.MIN_SQRT_PRICE, Constants.MAX_SQRT_PRICE);
 
         DataType.LPT[] memory lpts = new DataType.LPT[](1);

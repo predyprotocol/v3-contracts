@@ -194,17 +194,20 @@ contract ControllerTest is TestDeployer, Test {
         );
     }
 
-    function tesetMintVaultNFT() public {
+    function testCannotCreateVault() public {
         DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](0);
 
-        (uint256 vaultId, , ) = controller.updatePosition(
+        bool isMarginZero = getIsMarginZero();
+
+        DataType.OpenPositionOption memory openPositionOption = getOpenPositionParams();
+
+        vm.expectRevert(bytes("P7"));
+        controller.updatePosition(
             0,
             positionUpdates,
-            DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1, EMPTY_METADATA),
-            getOpenPositionParams()
+            DataType.TradeOption(false, false, false, isMarginZero, -1, -1, EMPTY_METADATA),
+            openPositionOption
         );
-
-        assertGt(vaultId, 0);
     }
 
     function testDepositAndWithdrawMargin0(uint256 _marginAmount) public {
