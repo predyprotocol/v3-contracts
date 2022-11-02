@@ -352,6 +352,8 @@ contract Controller is Initializable, IUniswapV3MintCallback {
         DataType.Vault storage vault;
         (vaultId, vault) = createOrGetVault(_vaultId, _tradeOption.quoterMode);
 
+        require(!_tradeOption.reduceOnly);
+
         // update position in the vault
         (requiredAmounts, swapAmounts) = PositionUpdater.updatePosition(
             vault,

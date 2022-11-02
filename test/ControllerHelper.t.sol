@@ -582,4 +582,26 @@ contract ControllerHelperTest is TestDeployer, Test {
 
         assertFalse(controller.checkLiquidatable(vaultId));
     }
+
+    function testLiquidateDefaultPosition() public {
+        uint256 vaultId = borrowLPT(0, 0, 202600, 202500, 202600, 1e18, 100 * 1e6);
+
+        swapToSamePrice(owner);
+
+        vm.warp(block.timestamp + 24 hours);
+
+        assertTrue(controller.checkLiquidatable(vaultId));
+
+        uint256 beforeBalance0 = token0.balanceOf(owner);
+        controller.liquidate(vaultId, DataType.LiquidationOption(100, 1e4));
+        uint256 afterBalance0 = token0.balanceOf(owner);
+
+        // penalty amount is zero
+        assertEq(afterBalance0, beforeBalance0);
+
+        DataType.Vault memory vault = controller.getVault(vaultId);
+
+        assertLt(vault.marginAmount0, 0);
+        assertEq(vault.marginAmount1, 0);
+    }
 }

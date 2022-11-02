@@ -127,11 +127,13 @@ library PredyMath {
         return a > b ? b : a;
     }
 
-    function subReward(uint256 a, uint256 b) internal pure returns (uint256, uint256) {
-        if (a >= b) {
-            return (a - b, b);
+    function subReward(int256 a, uint256 b) internal pure returns (int256, uint256) {
+        if (a >= int256(b)) {
+            return (a - int256(b), b);
+        } else if (a >= 0) {
+            return (0, uint256(a));
         } else {
-            return (0, a);
+            return (a, 0);
         }
     }
 

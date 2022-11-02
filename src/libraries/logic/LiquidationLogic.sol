@@ -66,18 +66,6 @@ library LiquidationLogic {
             debtValue / 200
         );
 
-        // check that the vault is safe
-        {
-            require(
-                !_checkLiquidatable(
-                    _context,
-                    VaultLib.getPositionCalculatorParams(_vault, _subVaults, _ranges, _context),
-                    sqrtTwap
-                ),
-                "L1"
-            );
-        }
-
         sendReward(_context, msg.sender, penaltyAmount);
 
         {

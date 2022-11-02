@@ -309,10 +309,6 @@ contract ControllerTest is TestDeployer, Test {
             subVault.lpts[0].liquidityAmount
         );
 
-        // expect fee collected event
-        // vm.expectEmit(true, false, false, false);
-        // emit FeeCollected(lpVaultId, 0, 0);
-
         // execute transaction
         controller.updatePosition(
             lpVaultId,
@@ -394,5 +390,46 @@ contract ControllerTest is TestDeployer, Test {
         DataType.VaultStatus memory vaultStatus = getVaultStatus(vaultId);
 
         assertEq(vaultStatus.subVaults.length, 0);
+    }
+
+    function testUpdatePositionMarginBecomesNegative() public {
+        DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](1);
+
+        positionUpdates[0] = DataType.PositionUpdate(
+            DataType.PositionUpdateType.BORROW_TOKEN,
+            0,
+            false,
+            0,
+            0,
+            0,
+            100 * 1e6,
+            0
+        );
+
+        bool isMarginZero = getIsMarginZero();
+
+        DataType.OpenPositionOption memory openPositionOption = getOpenPositionParams();
+
+        (uint256 vaultId, , ) = controller.updatePosition(
+            0,
+            positionUpdates,
+            DataType.TradeOption(false, false, false, isMarginZero, 200 * 1e6, -1, EMPTY_METADATA),
+            openPositionOption
+        );
+
+        DataType.ClosePositionOption memory closePositionOption = DataType.ClosePositionOption(
+            getLowerSqrtPrice(),
+            getUpperSqrtPrice(),
+            100,
+            100,
+            block.timestamp
+        );
+
+        vm.expectRevert(bytes("PU2"));
+        controller.closeVault(
+            vaultId,
+            DataType.TradeOption(false, true, false, !isMarginZero, -1, -2, EMPTY_METADATA),
+            closePositionOption
+        );
     }
 }
