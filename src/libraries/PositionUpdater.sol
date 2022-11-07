@@ -19,8 +19,7 @@ import "./UniHelper.sol";
 /*
  * Error Codes
  * PU1: reduce only
- * PU2: L must be lower
- * PU3: L must be greater
+ * PU2: margin must not be negative
  */
 library PositionUpdater {
     using SafeMath for uint256;
@@ -91,7 +90,7 @@ library PositionUpdater {
             DataType.SubVault storage subVault = _vault.addSubVault(_subVaults, _context, positionUpdate.subVaultIndex);
 
             if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.DEPOSIT_TOKEN) {
-                require(!_tradeOption.reduceOnly, "PU1");
+                require(!_tradeOption.isLiquidationCall, "PU1");
 
                 depositTokens(subVault, _context, positionUpdate);
 
@@ -103,7 +102,7 @@ library PositionUpdater {
                 requiredAmounts.amount0 = requiredAmounts.amount0.sub(int256(amount0));
                 requiredAmounts.amount1 = requiredAmounts.amount1.sub(int256(amount1));
             } else if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.BORROW_TOKEN) {
-                require(!_tradeOption.reduceOnly, "PU1");
+                require(!_tradeOption.isLiquidationCall, "PU1");
 
                 borrowTokens(subVault, _context, positionUpdate);
 
@@ -115,7 +114,7 @@ library PositionUpdater {
                 requiredAmounts.amount0 = requiredAmounts.amount0.add(int256(amount0));
                 requiredAmounts.amount1 = requiredAmounts.amount1.add(int256(amount1));
             } else if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.DEPOSIT_LPT) {
-                require(!_tradeOption.reduceOnly, "PU1");
+                require(!_tradeOption.isLiquidationCall, "PU1");
 
                 (uint256 amount0, uint256 amount1) = depositLPT(subVault, _context, _ranges, positionUpdate);
 
@@ -127,7 +126,7 @@ library PositionUpdater {
                 requiredAmounts.amount0 = requiredAmounts.amount0.sub(int256(amount0));
                 requiredAmounts.amount1 = requiredAmounts.amount1.sub(int256(amount1));
             } else if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.BORROW_LPT) {
-                require(!_tradeOption.reduceOnly, "PU1");
+                require(!_tradeOption.isLiquidationCall, "PU1");
 
                 (uint256 amount0, uint256 amount1) = borrowLPT(subVault, _context, _ranges, positionUpdate);
 
@@ -192,14 +191,14 @@ library PositionUpdater {
                 // update margin amount of token0 to target margin amount
                 deltaMarginAmount0 = _tradeOption.targetMarginAmount0.sub(int256(_vault.marginAmount0));
 
-                _vault.marginAmount0 = uint256(_tradeOption.targetMarginAmount0);
+                _vault.marginAmount0 = _tradeOption.targetMarginAmount0;
 
                 requiredAmounts.amount0 = requiredAmounts.amount0.add(deltaMarginAmount0);
             } else if (_tradeOption.targetMarginAmount0 == Constants.MARGIN_USE) {
                 // use margin of token0 to make required amount 0
                 deltaMarginAmount0 = requiredAmounts.amount0.mul(-1);
 
-                _vault.marginAmount0 = PredyMath.addDelta(_vault.marginAmount0, deltaMarginAmount0);
+                _vault.marginAmount0 = _vault.marginAmount0.add(deltaMarginAmount0);
 
                 requiredAmounts.amount0 = 0;
             }
@@ -208,14 +207,14 @@ library PositionUpdater {
                 // update margin amount of token1 to target margin amount
                 deltaMarginAmount1 = _tradeOption.targetMarginAmount1.sub(int256(_vault.marginAmount1));
 
-                _vault.marginAmount1 = uint256(_tradeOption.targetMarginAmount1);
+                _vault.marginAmount1 = _tradeOption.targetMarginAmount1;
 
                 requiredAmounts.amount1 = requiredAmounts.amount1.add(deltaMarginAmount1);
             } else if (_tradeOption.targetMarginAmount1 == Constants.MARGIN_USE) {
                 // use margin of token1 to make required amount 0
                 deltaMarginAmount1 = requiredAmounts.amount1.mul(-1);
 
-                _vault.marginAmount1 = PredyMath.addDelta(_vault.marginAmount1, deltaMarginAmount1);
+                _vault.marginAmount1 = _vault.marginAmount1.add(deltaMarginAmount1);
 
                 requiredAmounts.amount1 = 0;
             }
@@ -224,6 +223,10 @@ library PositionUpdater {
             if (deltaMarginAmount0 != 0 || deltaMarginAmount1 != 0) {
                 emit MarginUpdated(_vault.vaultId, deltaMarginAmount0, deltaMarginAmount1);
             }
+        }
+
+        if (!_tradeOption.isLiquidationCall) {
+            require(_vault.marginAmount0 >= 0 && _vault.marginAmount1 >= 0, "PU2");
         }
 
         // remove empty sub-vaults

@@ -18,17 +18,15 @@ import "./libraries/PositionUpdater.sol";
 import "./libraries/InterestCalculator.sol";
 import "./libraries/PositionLib.sol";
 import "./libraries/logic/LiquidationLogic.sol";
+import "./libraries/logic/UpdatePositionLogic.sol";
 import "./libraries/Constants.sol";
 
 /**
  * Error Codes
  * P1: caller must be vault owner
- * P2: caller must be vault owner
- * P3: must not be liquidatable
- * P4: must be liquidatable
- * P5: vault does not exists
- * P6: caller must be operator
- * P7: cannot create vault with 0 amount
+ * P2: vault does not exists
+ * P3: caller must be operator
+ * P4: cannot create vault with 0 amount
  */
 contract Controller is Initializable, IUniswapV3MintCallback {
     using BaseToken for BaseToken.TokenState;
@@ -60,12 +58,12 @@ contract Controller is Initializable, IUniswapV3MintCallback {
     );
 
     modifier onlyOperator() {
-        require(operator == msg.sender, "P6");
+        require(operator == msg.sender, "P3");
         _;
     }
 
     modifier checkVaultExists(uint256 _vaultId) {
-        require(_vaultId < IVaultNFT(vaultNFT).nextId(), "P5");
+        require(_vaultId < IVaultNFT(vaultNFT).nextId(), "P2");
         _;
     }
 
@@ -352,8 +350,8 @@ contract Controller is Initializable, IUniswapV3MintCallback {
         DataType.Vault storage vault;
         (vaultId, vault) = createOrGetVault(_vaultId, _tradeOption.quoterMode);
 
-        // update position in the vault
-        (requiredAmounts, swapAmounts) = PositionUpdater.updatePosition(
+        (requiredAmounts, swapAmounts) = UpdatePositionLogic.updatePosition(
+            vaultId,
             vault,
             subVaults,
             context,
@@ -362,41 +360,10 @@ contract Controller is Initializable, IUniswapV3MintCallback {
             _tradeOption
         );
 
-        if (_tradeOption.quoterMode) {
-            revertRequiredAmounts(requiredAmounts, swapAmounts);
-        }
-
         if (_vaultId == 0) {
             // non 0 amount of tokens required to create new vault.
-            require(requiredAmounts.amount0 > 0 || requiredAmounts.amount1 > 0, "P7");
+            require(requiredAmounts.amount0 > 0 || requiredAmounts.amount1 > 0, "P4");
         }
-
-        // check the vault is safe
-        require(!LiquidationLogic.checkLiquidatable(vault, subVaults, context, ranges), "P3");
-
-        if (requiredAmounts.amount0 > 0) {
-            TransferHelper.safeTransferFrom(
-                context.token0,
-                msg.sender,
-                address(this),
-                uint256(requiredAmounts.amount0)
-            );
-        } else if (requiredAmounts.amount0 < 0) {
-            TransferHelper.safeTransfer(context.token0, msg.sender, uint256(-requiredAmounts.amount0));
-        }
-
-        if (requiredAmounts.amount1 > 0) {
-            TransferHelper.safeTransferFrom(
-                context.token1,
-                msg.sender,
-                address(this),
-                uint256(requiredAmounts.amount1)
-            );
-        } else if (requiredAmounts.amount1 < 0) {
-            TransferHelper.safeTransfer(context.token1, msg.sender, uint256(-requiredAmounts.amount1));
-        }
-
-        emit PositionUpdated(vaultId, requiredAmounts, swapAmounts, _tradeOption.metadata);
     }
 
     /**
@@ -531,7 +498,7 @@ contract Controller is Initializable, IUniswapV3MintCallback {
         } else {
             vaultId = _vaultId;
 
-            require(IVaultNFT(vaultNFT).ownerOf(vaultId) == msg.sender || _quoterMode, "P2");
+            require(IVaultNFT(vaultNFT).ownerOf(vaultId) == msg.sender || _quoterMode, "P1");
         }
 
         return (vaultId, vaults[vaultId]);
@@ -613,24 +580,5 @@ contract Controller is Initializable, IUniswapV3MintCallback {
 
         return
             VaultLib.getPositionOfSubVault(_subVaultIndex, subVaults[vault.subVaults[_subVaultIndex]], ranges, context);
-    }
-
-    function revertRequiredAmounts(
-        DataType.TokenAmounts memory requiredAmounts,
-        DataType.TokenAmounts memory swapAmounts
-    ) internal pure {
-        int256 r0 = requiredAmounts.amount0;
-        int256 r1 = requiredAmounts.amount1;
-        int256 s0 = swapAmounts.amount0;
-        int256 s1 = swapAmounts.amount1;
-
-        assembly {
-            let ptr := mload(0x20)
-            mstore(ptr, r0)
-            mstore(add(ptr, 0x20), r1)
-            mstore(add(ptr, 0x40), s0)
-            mstore(add(ptr, 0x60), s1)
-            revert(ptr, 128)
-        }
     }
 }

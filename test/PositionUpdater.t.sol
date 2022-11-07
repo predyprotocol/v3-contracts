@@ -207,7 +207,7 @@ contract PositionUpdaterTest is TestDeployer, Test {
 
         assertEq(BaseToken.getDebtValue(context.tokenState0, subVaults[vault1.subVaults[0]].balance0), 0);
         assertEq(BaseToken.getDebtValue(context.tokenState1, subVaults[vault1.subVaults[0]].balance1), 1e18);
-        assertEq(vault1.marginAmount0, 1e8);
+        assertEq(vault1.marginAmount0, int256(1e8));
     }
 
     function testUpdatePositionRepayToken() public {
@@ -290,7 +290,7 @@ contract PositionUpdaterTest is TestDeployer, Test {
 
         assertEq(vault3.subVaults.length, 0);
         // margin must be less than 1e8 because vault paid interest.
-        assertLt(vault3.marginAmount0, 1e8);
+        assertLt(vault3.marginAmount0, int256(1e8));
     }
 
     function testUpdatePositionDepositLPT() public {
@@ -325,8 +325,8 @@ contract PositionUpdaterTest is TestDeployer, Test {
             DataType.TradeOption(false, true, false, context.isMarginZero, -1, -1, EMPTY_METADATA)
         );
 
-        assertEq(vault1.marginAmount0, 0);
-        assertEq(vault1.marginAmount1, 0);
+        assertEq(vault1.marginAmount0, int256(0));
+        assertEq(vault1.marginAmount1, int256(0));
     }
 
     function testUpdatePositionDepositMargin(uint256 _marginAmount0, uint256 _marginAmount1) public {
@@ -352,15 +352,15 @@ contract PositionUpdaterTest is TestDeployer, Test {
             )
         );
 
-        assertEq(vault1.marginAmount0, _marginAmount0);
-        assertEq(vault1.marginAmount1, _marginAmount1);
+        assertEq(vault1.marginAmount0, int256(_marginAmount0));
+        assertEq(vault1.marginAmount1, int256(_marginAmount1));
     }
 
     function testUpdatePositionWithdrawMargin() public {
         DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](0);
 
-        assertEq(vault3.marginAmount0, 100 * 1e6);
-        assertEq(vault3.marginAmount1, 0);
+        assertEq(vault3.marginAmount0, int256(100 * 1e6));
+        assertEq(vault3.marginAmount1, int256(0));
 
         PositionUpdater.updatePosition(
             vault3,
@@ -371,8 +371,8 @@ contract PositionUpdaterTest is TestDeployer, Test {
             DataType.TradeOption(false, true, false, context.isMarginZero, 90 * 1e6, -1, EMPTY_METADATA)
         );
 
-        assertEq(vault3.marginAmount0, 90 * 1e6);
-        assertEq(vault3.marginAmount1, 0);
+        assertEq(vault3.marginAmount0, int256(90 * 1e6));
+        assertEq(vault3.marginAmount1, int256(0));
     }
 
     function testDepositTokenFromMargin(uint256 _marginAmount0, uint256 _marginAmount1) public {
@@ -432,8 +432,8 @@ contract PositionUpdaterTest is TestDeployer, Test {
             );
         }
 
-        assertEq(vault1.marginAmount0, 0);
-        assertEq(vault1.marginAmount1, 0);
+        assertEq(vault1.marginAmount0, int256(0));
+        assertEq(vault1.marginAmount1, int256(0));
     }
 
     /**************************

@@ -35,8 +35,8 @@ library DataType {
 
     struct Vault {
         uint256 vaultId;
-        uint256 marginAmount0;
-        uint256 marginAmount1;
+        int256 marginAmount0;
+        int256 marginAmount1;
         uint256[] subVaults;
     }
 
@@ -106,7 +106,7 @@ library DataType {
     }
 
     struct TradeOption {
-        bool reduceOnly;
+        bool isLiquidationCall;
         bool swapAnyway;
         bool quoterMode;
         bool isQuoteZero;
