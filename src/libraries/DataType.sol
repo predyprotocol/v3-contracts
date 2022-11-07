@@ -106,7 +106,7 @@ library DataType {
     }
 
     struct TradeOption {
-        bool reduceOnly;
+        bool isLiquidationCall;
         bool swapAnyway;
         bool quoterMode;
         bool isQuoteZero;

@@ -90,7 +90,7 @@ library PositionUpdater {
             DataType.SubVault storage subVault = _vault.addSubVault(_subVaults, _context, positionUpdate.subVaultIndex);
 
             if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.DEPOSIT_TOKEN) {
-                require(!_tradeOption.reduceOnly, "PU1");
+                require(!_tradeOption.isLiquidationCall, "PU1");
 
                 depositTokens(subVault, _context, positionUpdate);
 
@@ -102,7 +102,7 @@ library PositionUpdater {
                 requiredAmounts.amount0 = requiredAmounts.amount0.sub(int256(amount0));
                 requiredAmounts.amount1 = requiredAmounts.amount1.sub(int256(amount1));
             } else if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.BORROW_TOKEN) {
-                require(!_tradeOption.reduceOnly, "PU1");
+                require(!_tradeOption.isLiquidationCall, "PU1");
 
                 borrowTokens(subVault, _context, positionUpdate);
 
@@ -114,7 +114,7 @@ library PositionUpdater {
                 requiredAmounts.amount0 = requiredAmounts.amount0.add(int256(amount0));
                 requiredAmounts.amount1 = requiredAmounts.amount1.add(int256(amount1));
             } else if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.DEPOSIT_LPT) {
-                require(!_tradeOption.reduceOnly, "PU1");
+                require(!_tradeOption.isLiquidationCall, "PU1");
 
                 (uint256 amount0, uint256 amount1) = depositLPT(subVault, _context, _ranges, positionUpdate);
 
@@ -126,7 +126,7 @@ library PositionUpdater {
                 requiredAmounts.amount0 = requiredAmounts.amount0.sub(int256(amount0));
                 requiredAmounts.amount1 = requiredAmounts.amount1.sub(int256(amount1));
             } else if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.BORROW_LPT) {
-                require(!_tradeOption.reduceOnly, "PU1");
+                require(!_tradeOption.isLiquidationCall, "PU1");
 
                 (uint256 amount0, uint256 amount1) = borrowLPT(subVault, _context, _ranges, positionUpdate);
 
@@ -225,7 +225,7 @@ library PositionUpdater {
             }
         }
 
-        if (!_tradeOption.reduceOnly) {
+        if (!_tradeOption.isLiquidationCall) {
             require(_vault.marginAmount0 >= 0 && _vault.marginAmount1 >= 0, "PU2");
         }
 

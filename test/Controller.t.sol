@@ -185,7 +185,7 @@ contract ControllerTest is TestDeployer, Test {
 
         DataType.OpenPositionOption memory openPositionOption = getOpenPositionParams();
 
-        vm.expectRevert(bytes("P5"));
+        vm.expectRevert(bytes("P2"));
         controller.updatePosition(
             1000,
             positionUpdates,
@@ -201,7 +201,7 @@ contract ControllerTest is TestDeployer, Test {
 
         DataType.OpenPositionOption memory openPositionOption = getOpenPositionParams();
 
-        vm.expectRevert(bytes("P7"));
+        vm.expectRevert(bytes("P4"));
         controller.updatePosition(
             0,
             positionUpdates,
@@ -350,7 +350,7 @@ contract ControllerTest is TestDeployer, Test {
         DataType.OpenPositionOption memory openPositionOption = getOpenPositionParams();
 
         // no enough deposit
-        vm.expectRevert(bytes("P3"));
+        vm.expectRevert(bytes("UPL0"));
         controller.updatePosition(
             0,
             positionUpdates,

@@ -292,7 +292,7 @@ contract ControllerHelperTest is TestDeployer, Test {
         vm.stopPrank();
 
         vm.prank(otherAccount);
-        vm.expectRevert(bytes("P2"));
+        vm.expectRevert(bytes("P1"));
         controller.closeVault(
             vaultId,
             DataType.TradeOption(false, false, false, isQuoteZero, -1, -1, EMPTY_METADATA),
@@ -467,7 +467,7 @@ contract ControllerHelperTest is TestDeployer, Test {
 
         DataType.LiquidationOption memory option = DataType.LiquidationOption(100, 1e4);
 
-        vm.expectRevert(bytes("P5"));
+        vm.expectRevert(bytes("P2"));
         controller.liquidate(100, option);
     }
 
