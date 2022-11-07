@@ -7,9 +7,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const { deploy } = deployments
 
-  return
-
-  const ControllerHelper = await ethers.getContract('ControllerHelper', deployer)
+  const ControllerHelper = await ethers.getContract('Controller', deployer)
 
   await deploy('Reader', {
     from: deployer,
