@@ -26,6 +26,7 @@ contract PriceHelperTest is Test {
             address(0),
             address(0),
             address(priceFeed),
+            bytes32(0),
             false,
             0,
             tokenState,

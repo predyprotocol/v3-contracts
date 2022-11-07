@@ -92,6 +92,7 @@ contract Controller is Initializable, IUniswapV3MintCallback {
         address _factory,
         address _swapRouter,
         address _chainlinkPriceFeed,
+        bytes32 _pythPriceFeedId,
         address _vaultNFT
     ) public initializer {
         require(_vaultNFT != address(0));
@@ -101,6 +102,7 @@ contract Controller is Initializable, IUniswapV3MintCallback {
         context.isMarginZero = _initializationParams.isMarginZero;
         context.swapRouter = _swapRouter;
         context.chainlinkPriceFeed = _chainlinkPriceFeed;
+        context.pythPriceFeedId = _pythPriceFeedId;
 
         PoolAddress.PoolKey memory poolKey = PoolAddress.PoolKey({
             token0: context.token0,

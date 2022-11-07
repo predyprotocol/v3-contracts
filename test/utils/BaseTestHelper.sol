@@ -49,6 +49,7 @@ abstract contract BaseTestHelper {
                 address(swapRouter),
                 address(uniPool),
                 address(0),
+                bytes32(0),
                 true,
                 1,
                 tokenState,

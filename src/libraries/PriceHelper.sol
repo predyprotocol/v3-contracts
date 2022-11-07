@@ -1,7 +1,9 @@
 //SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.7.6;
+pragma abicoder v2;
 
 import "@chainlink/contracts/src/v0.7/interfaces/AggregatorV3Interface.sol";
+import "../vendors/IPyth.sol";
 import "./DataType.sol";
 import "./UniHelper.sol";
 
@@ -16,6 +18,8 @@ library PriceHelper {
 
     uint256 internal constant MAX_PRICE = PRICE_SCALER * 1e36;
 
+    address internal constant PYTH_CONTRACT_ADDRESS = 0xff1a0f4744e8582DF1aE09D5611b887B6a12925C;
+
     /**
      * @notice Gets the square root of underlying index price.
      * If the chainlink price feed address is set, use Chainlink price, otherwise use Uniswap TWAP.
@@ -23,13 +27,15 @@ library PriceHelper {
      * @return price The square root of underlying index price.
      */
     function getSqrtIndexPrice(DataType.Context memory _context) internal view returns (uint160) {
-        if (_context.chainlinkPriceFeed == address(0)) {
-            return uint160(UniHelper.getSqrtTWAP(_context.uniswapPool));
-        } else {
+        if (_context.chainlinkPriceFeed != address(0)) {
             return
                 uint160(
                     encodeSqrtPriceX96(_context.isMarginZero, getChainlinkLatestAnswer(_context.chainlinkPriceFeed))
                 );
+        } else if (_context.pythPriceFeedId != bytes32(0)) {
+            return uint160(encodeSqrtPriceX96(_context.isMarginZero, getPythLatestPrice(_context.pythPriceFeedId)));
+        } else {
+            return uint160(UniHelper.getSqrtTWAP(_context.uniswapPool));
         }
     }
 
@@ -46,6 +52,16 @@ library PriceHelper {
         require(answer > 0, "PH0");
 
         return (uint256(answer) * MARGIN_SCALER * PRICE_SCALER) / 1e8;
+    }
+
+    function getPythLatestPrice(bytes32 _priceFeedId) internal view returns (uint256) {
+        IPyth priceFeed = IPyth(PYTH_CONTRACT_ADDRESS);
+
+        PythStructs.Price memory price = priceFeed.getEmaPriceUnsafe(_priceFeedId);
+
+        require(price.price > 0, "PH0");
+
+        return (uint256(price.price) * MARGIN_SCALER * PRICE_SCALER) / 1e8;
     }
 
     /**

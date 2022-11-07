@@ -47,6 +47,7 @@ library DataType {
         address swapRouter;
         address uniswapPool;
         address chainlinkPriceFeed;
+        bytes32 pythPriceFeedId;
         bool isMarginZero;
         uint256 nextSubVaultId;
         BaseToken.TokenState tokenState0;
