@@ -46,6 +46,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const InterestCalculator = await ethers.getContract('InterestCalculator', deployer)
   const LiquidationLogic = await ethers.getContract('LiquidationLogic', deployer)
+  const UpdatePositionLogic = await ethers.getContract('UpdatePositionLogic', deployer)
   const PositionUpdater = await ethers.getContract('PositionUpdater', deployer)
   const VaultLib = await ethers.getContract('VaultLib', deployer)
   const PositionLib = await ethers.getContract('PositionLib', deployer)
@@ -55,6 +56,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     from: deployer,
     args: [],
     libraries: {
+      UpdatePositionLogic: UpdatePositionLogic.address,
       LiquidationLogic: LiquidationLogic.address,
       PositionUpdater: PositionUpdater.address,
       VaultLib: VaultLib.address,

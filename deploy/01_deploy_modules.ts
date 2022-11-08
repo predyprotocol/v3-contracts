@@ -47,6 +47,17 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     },
   })
 
+  const LiquidationLogic = await ethers.getContract('LiquidationLogic', deployer)
+
+  await deploy('UpdatePositionLogic', {
+    from: deployer,
+    log: true,
+    libraries: {
+      PositionUpdater: PositionUpdater.address,
+      LiquidationLogic: LiquidationLogic.address,
+    },
+  })
+
   // const baseUri = getVaultTokenBaseURI(network.name)
   // await deploy('VaultNFT', { from: deployer, args: [vaultTokenName, vaultTokenSymbol, baseUri], log: true })
 }
