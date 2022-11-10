@@ -225,10 +225,6 @@ library PositionUpdater {
             }
         }
 
-        if (!_tradeOption.isLiquidationCall) {
-            require(_vault.marginAmount0 >= 0 && _vault.marginAmount1 >= 0, "PU2");
-        }
-
         // remove empty sub-vaults
         if (_vault.subVaults.length > 0) {
             uint256 length = _vault.subVaults.length;

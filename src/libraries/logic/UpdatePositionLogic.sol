@@ -41,8 +41,6 @@ library UpdatePositionLogic {
         DataType.PositionUpdate[] memory _positionUpdates,
         DataType.TradeOption memory _tradeOption
     ) external returns (DataType.TokenAmounts memory requiredAmounts, DataType.TokenAmounts memory swapAmounts) {
-        require(!_tradeOption.isLiquidationCall);
-
         // update position in the vault
         (requiredAmounts, swapAmounts) = PositionUpdater.updatePosition(
             _vault,

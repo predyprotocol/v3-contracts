@@ -425,11 +425,13 @@ contract ControllerTest is TestDeployer, Test {
             block.timestamp
         );
 
-        vm.expectRevert(bytes("PU2"));
         controller.closeVault(
             vaultId,
             DataType.TradeOption(false, true, false, !isMarginZero, -1, -2, EMPTY_METADATA),
             closePositionOption
         );
+
+        DataType.Vault memory vault = controller.getVault(vaultId);
+        assertLt(vault.marginAmount1, 0);
     }
 }
