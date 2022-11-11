@@ -85,15 +85,10 @@ library VaultLib {
             DataType.LPTState storage lpt = _subVault.lpts[i];
 
             if (lpt.rangeId == _rangeId && lpt.isCollateral) {
-                lpt.premiumGrowthLast = updateEntryPrice(
-                    lpt.premiumGrowthLast,
-                    lpt.liquidityAmount,
-                    _range.premiumGrowthForLender,
-                    _liquidityAmount
-                );
+                lpt.premiumGrowthLast = _range.premiumGrowthForLender;
 
-                lpt.fee0Last = updateEntryPrice(lpt.fee0Last, lpt.liquidityAmount, _range.fee0Growth, _liquidityAmount);
-                lpt.fee1Last = updateEntryPrice(lpt.fee1Last, lpt.liquidityAmount, _range.fee1Growth, _liquidityAmount);
+                lpt.fee0Last = _range.fee0Growth;
+                lpt.fee1Last = _range.fee1Growth;
 
                 lpt.liquidityAmount = lpt.liquidityAmount.add(_liquidityAmount).toUint128();
 
@@ -115,18 +110,9 @@ library VaultLib {
 
     function withdrawLPT(
         DataType.SubVault storage _subVault,
-        DataType.PerpStatus memory _range,
         bytes32 _rangeId,
-        uint128 _liquidityAmount,
-        bool _isMarginZero
-    )
-        internal
-        returns (
-            uint256 fee0,
-            uint256 fee1,
-            uint128 liquidityAmount
-        )
-    {
+        uint128 _liquidityAmount
+    ) internal returns (uint128 liquidityAmount) {
         for (uint256 i = 0; i < _subVault.lpts.length; i++) {
             DataType.LPTState storage lpt = _subVault.lpts[i];
 
@@ -137,25 +123,6 @@ library VaultLib {
                     liquidityAmount = lpt.liquidityAmount;
                 }
 
-                fee0 = calculateProfit(lpt.fee0Last, _range.fee0Growth, liquidityAmount, Constants.ONE);
-
-                fee1 = calculateProfit(lpt.fee1Last, _range.fee1Growth, liquidityAmount, Constants.ONE);
-
-                {
-                    uint256 profit = calculateProfit(
-                        lpt.premiumGrowthLast,
-                        _range.premiumGrowthForLender,
-                        liquidityAmount,
-                        Constants.ONE
-                    );
-
-                    if (_isMarginZero) {
-                        fee0 += profit;
-                    } else {
-                        fee1 += profit;
-                    }
-                }
-
                 lpt.liquidityAmount = lpt.liquidityAmount.sub(liquidityAmount).toUint128();
 
                 if (lpt.liquidityAmount == 0) {
@@ -163,7 +130,7 @@ library VaultLib {
                     _subVault.lpts.pop();
                 }
 
-                return (fee0, fee1, liquidityAmount);
+                return liquidityAmount;
             }
         }
     }
@@ -178,12 +145,7 @@ library VaultLib {
             DataType.LPTState storage lpt = _subVault.lpts[i];
 
             if (lpt.rangeId == _rangeId && !lpt.isCollateral) {
-                lpt.premiumGrowthLast = updateEntryPrice(
-                    lpt.premiumGrowthLast,
-                    lpt.liquidityAmount,
-                    _range.premiumGrowthForBorrower,
-                    _liquidityAmount
-                );
+                lpt.premiumGrowthLast = _range.premiumGrowthForBorrower;
 
                 lpt.liquidityAmount = lpt.liquidityAmount.add(_liquidityAmount).toUint128();
 
@@ -198,18 +160,9 @@ library VaultLib {
 
     function repayLPT(
         DataType.SubVault storage _subVault,
-        DataType.PerpStatus memory _range,
         bytes32 _rangeId,
-        uint128 _liquidityAmount,
-        bool _isMarginZero
-    )
-        internal
-        returns (
-            uint256 fee0,
-            uint256 fee1,
-            uint128 liquidityAmount
-        )
-    {
+        uint128 _liquidityAmount
+    ) internal returns (uint128 liquidityAmount) {
         for (uint256 i = 0; i < _subVault.lpts.length; i++) {
             DataType.LPTState storage lpt = _subVault.lpts[i];
 
@@ -220,21 +173,6 @@ library VaultLib {
                     liquidityAmount = lpt.liquidityAmount;
                 }
 
-                {
-                    uint256 profit = calculateProfit(
-                        lpt.premiumGrowthLast,
-                        _range.premiumGrowthForBorrower,
-                        liquidityAmount,
-                        Constants.ONE
-                    );
-
-                    if (_isMarginZero) {
-                        fee0 += profit;
-                    } else {
-                        fee1 += profit;
-                    }
-                }
-
                 lpt.liquidityAmount = lpt.liquidityAmount.sub(liquidityAmount).toUint128();
 
                 if (lpt.liquidityAmount == 0) {
@@ -242,7 +180,7 @@ library VaultLib {
                     _subVault.lpts.pop();
                 }
 
-                return (fee0, fee1, liquidityAmount);
+                return liquidityAmount;
             }
         }
     }

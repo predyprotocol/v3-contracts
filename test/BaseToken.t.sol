@@ -83,7 +83,7 @@ contract BaseTokenTest is Test {
 
         BaseToken.addAsset(tokenState, normalAccountState, 1000 * 1e6, false);
 
-        assertEq(BaseToken.getAssetFee(tokenState, normalAccountState), 1800000);
+        assertEq(BaseToken.getAssetFee(tokenState, normalAccountState), 0);
     }
 
     function testAddDebtToUpdateLastDebtGrowth() public {
@@ -93,7 +93,7 @@ contract BaseTokenTest is Test {
 
         BaseToken.addDebt(tokenState, normalAccountState, 200 * 1e6, false);
 
-        assertEq(BaseToken.getDebtFee(tokenState, normalAccountState), 2000000);
+        assertEq(BaseToken.getDebtFee(tokenState, normalAccountState), 0);
     }
 
     function testUpdateScaler(uint256 _interestAmount) public {
@@ -118,27 +118,37 @@ contract BaseTokenTest is Test {
 
         uint256 protocolFee1 = BaseToken.updateScaler(tokenState, 1e16);
 
+        uint256 assetValue;
+        uint256 debtValue;
+        {
+            assetValue = BaseToken.getAssetFee(tokenState, normalAccountState);
+            debtValue = BaseToken.getDebtFee(tokenState, normalAccountState);
+            BaseToken.refreshFee(tokenState, normalAccountState);
+        }
+
         BaseToken.addDebt(tokenState, accountState, 100 * 1e6, true);
         BaseToken.addDebt(tokenState, normalAccountState, 100 * 1e6, false);
 
         uint256 protocolFee2 = BaseToken.updateScaler(tokenState, interestAmount);
 
-        uint256 assetValue1 = BaseToken.getAssetValue(tokenState, accountState);
-        uint256 debtValue1 = BaseToken.getDebtValue(tokenState, accountState);
+        assetValue += BaseToken.getAssetValue(tokenState, accountState);
+        debtValue += BaseToken.getDebtValue(tokenState, accountState);
 
-        uint256 assetValue2 = BaseToken.getAssetValue(tokenState, normalAccountState) +
+        assetValue +=
+            BaseToken.getAssetValue(tokenState, normalAccountState) +
             BaseToken.getAssetFee(tokenState, normalAccountState);
-        uint256 debtValue2 = BaseToken.getDebtValue(tokenState, normalAccountState) +
+        debtValue +=
+            BaseToken.getDebtValue(tokenState, normalAccountState) +
             BaseToken.getDebtFee(tokenState, normalAccountState);
 
-        assertLe(assetValue1 + assetValue2 - debtValue1 - debtValue2 + protocolFee1 + protocolFee2, 1400000000 + 2);
-        assertGe(assetValue1 + assetValue2 - debtValue1 - debtValue2 + protocolFee1 + protocolFee2, 1400000000 - 2);
+        assertLe(assetValue - debtValue + protocolFee1 + protocolFee2, 1400000000 + 2);
+        assertGe(assetValue - debtValue + protocolFee1 + protocolFee2, 1400000000 - 2);
     }
 
     function testRemoveCollateralAll(uint256 _amount) public {
         vm.assume(assetAmount < _amount && _amount < type(uint128).max);
 
-        (uint256 removedAssetAmount, ) = BaseToken.removeAsset(tokenState, accountState, _amount);
+        uint256 removedAssetAmount = BaseToken.removeAsset(tokenState, accountState, _amount);
 
         assertEq(removedAssetAmount, assetAmount);
     }
@@ -146,7 +156,7 @@ contract BaseTokenTest is Test {
     function testRemoveAllDebt(uint256 _amount) public {
         vm.assume(debtAmount < _amount && _amount < type(uint128).max);
 
-        (uint256 removedDebtAmount, ) = BaseToken.removeDebt(tokenState, accountState, _amount);
+        uint256 removedDebtAmount = BaseToken.removeDebt(tokenState, accountState, _amount);
 
         assertEq(removedDebtAmount, debtAmount);
     }
@@ -163,29 +173,5 @@ contract BaseTokenTest is Test {
 
         uint256 debtValue = BaseToken.getDebtValue(tokenState, accountState);
         assertEq(debtValue, 100 * 1e6);
-    }
-
-    function testRemoveCollateralOfNormalInterest() public {
-        BaseToken.updateScaler(tokenState, 1e16);
-
-        (, uint256 assetFee) = BaseToken.removeAsset(tokenState, normalAccountState, 500 * 1e6);
-
-        // 0.01 * 200 * 0.9
-        assertEq(assetFee, 900000);
-
-        uint256 value = BaseToken.getAssetValue(tokenState, normalAccountState);
-        assertEq(value, 500 * 1e6);
-    }
-
-    function testRemoveDebtOfNormalInterest() public {
-        BaseToken.updateScaler(tokenState, 1e16);
-
-        (, uint256 assetFee) = BaseToken.removeDebt(tokenState, normalAccountState, 100 * 1e6);
-
-        // 0.01 * 200
-        assertEq(assetFee, 1000000);
-
-        uint256 value = BaseToken.getDebtValue(tokenState, normalAccountState);
-        assertEq(value, 100 * 1e6);
     }
 }

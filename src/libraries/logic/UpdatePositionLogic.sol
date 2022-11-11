@@ -24,12 +24,7 @@ import "../PriceHelper.sol";
 library UpdatePositionLogic {
     using SafeMath for uint256;
 
-    event PositionUpdated(
-        uint256 vaultId,
-        DataType.TokenAmounts requiredAmounts,
-        DataType.TokenAmounts swapAmounts,
-        bytes metadata
-    );
+    event PositionUpdated(uint256 vaultId, DataType.PositionUpdateResult positionUpdateResult, bytes metadata);
     event VaultCreated(uint256 vaultId, address owner);
 
     function updatePosition(
@@ -40,11 +35,11 @@ library UpdatePositionLogic {
         mapping(bytes32 => DataType.PerpStatus) storage _ranges,
         DataType.PositionUpdate[] memory _positionUpdates,
         DataType.TradeOption memory _tradeOption
-    ) external returns (DataType.TokenAmounts memory requiredAmounts, DataType.TokenAmounts memory swapAmounts) {
+    ) external returns (DataType.PositionUpdateResult memory positionUpdateResult) {
         require(!_tradeOption.isLiquidationCall);
 
         // update position in the vault
-        (requiredAmounts, swapAmounts) = PositionUpdater.updatePosition(
+        positionUpdateResult = PositionUpdater.updatePosition(
             _vault,
             _subVaults,
             _context,
@@ -54,53 +49,66 @@ library UpdatePositionLogic {
         );
 
         if (_tradeOption.quoterMode) {
-            revertRequiredAmounts(requiredAmounts, swapAmounts);
+            revertRequiredAmounts(positionUpdateResult);
         }
 
         // check the vault is safe
         require(!LiquidationLogic.checkLiquidatable(_vault, _subVaults, _context, _ranges), "UPL0");
 
-        if (requiredAmounts.amount0 > 0) {
+        if (positionUpdateResult.requiredAmounts.amount0 > 0) {
             TransferHelper.safeTransferFrom(
                 _context.token0,
                 msg.sender,
                 address(this),
-                uint256(requiredAmounts.amount0)
+                uint256(positionUpdateResult.requiredAmounts.amount0)
             );
-        } else if (requiredAmounts.amount0 < 0) {
-            TransferHelper.safeTransfer(_context.token0, msg.sender, uint256(-requiredAmounts.amount0));
+        } else if (positionUpdateResult.requiredAmounts.amount0 < 0) {
+            TransferHelper.safeTransfer(
+                _context.token0,
+                msg.sender,
+                uint256(-positionUpdateResult.requiredAmounts.amount0)
+            );
         }
 
-        if (requiredAmounts.amount1 > 0) {
+        if (positionUpdateResult.requiredAmounts.amount1 > 0) {
             TransferHelper.safeTransferFrom(
                 _context.token1,
                 msg.sender,
                 address(this),
-                uint256(requiredAmounts.amount1)
+                uint256(positionUpdateResult.requiredAmounts.amount1)
             );
-        } else if (requiredAmounts.amount1 < 0) {
-            TransferHelper.safeTransfer(_context.token1, msg.sender, uint256(-requiredAmounts.amount1));
+        } else if (positionUpdateResult.requiredAmounts.amount1 < 0) {
+            TransferHelper.safeTransfer(
+                _context.token1,
+                msg.sender,
+                uint256(-positionUpdateResult.requiredAmounts.amount1)
+            );
         }
 
-        emit PositionUpdated(vaultId, requiredAmounts, swapAmounts, _tradeOption.metadata);
+        emit PositionUpdated(vaultId, positionUpdateResult, _tradeOption.metadata);
     }
 
-    function revertRequiredAmounts(
-        DataType.TokenAmounts memory requiredAmounts,
-        DataType.TokenAmounts memory swapAmounts
-    ) internal pure {
-        int256 r0 = requiredAmounts.amount0;
-        int256 r1 = requiredAmounts.amount1;
-        int256 s0 = swapAmounts.amount0;
-        int256 s1 = swapAmounts.amount1;
+    function revertRequiredAmounts(DataType.PositionUpdateResult memory positionUpdateResult) internal pure {
+        int256 r0 = positionUpdateResult.requiredAmounts.amount0;
+        int256 r1 = positionUpdateResult.requiredAmounts.amount1;
+        int256 f0 = positionUpdateResult.feeAmounts.amount0;
+        int256 f1 = positionUpdateResult.feeAmounts.amount1;
+        int256 p0 = positionUpdateResult.positionAmounts.amount0;
+        int256 p1 = positionUpdateResult.positionAmounts.amount1;
+        int256 s0 = positionUpdateResult.swapAmounts.amount0;
+        int256 s1 = positionUpdateResult.swapAmounts.amount1;
 
         assembly {
             let ptr := mload(0x20)
             mstore(ptr, r0)
             mstore(add(ptr, 0x20), r1)
-            mstore(add(ptr, 0x40), s0)
-            mstore(add(ptr, 0x60), s1)
-            revert(ptr, 128)
+            mstore(add(ptr, 0x40), f0)
+            mstore(add(ptr, 0x60), f1)
+            mstore(add(ptr, 0x80), p0)
+            mstore(add(ptr, 0xA0), p1)
+            mstore(add(ptr, 0xC0), s0)
+            mstore(add(ptr, 0xE0), s1)
+            revert(ptr, 256)
         }
     }
 }

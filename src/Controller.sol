@@ -350,7 +350,7 @@ contract Controller is Initializable, IUniswapV3MintCallback {
         DataType.Vault storage vault;
         (vaultId, vault) = createOrGetVault(_vaultId, _tradeOption.quoterMode);
 
-        (requiredAmounts, swapAmounts) = UpdatePositionLogic.updatePosition(
+        DataType.PositionUpdateResult memory positionUpdateResult = UpdatePositionLogic.updatePosition(
             vaultId,
             vault,
             subVaults,
@@ -359,6 +359,9 @@ contract Controller is Initializable, IUniswapV3MintCallback {
             _positionUpdates,
             _tradeOption
         );
+
+        requiredAmounts = positionUpdateResult.requiredAmounts;
+        swapAmounts = positionUpdateResult.swapAmounts;
 
         if (_vaultId == 0) {
             // non 0 amount of tokens required to create new vault.

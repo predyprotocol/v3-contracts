@@ -180,4 +180,11 @@ library DataType {
         int256 amount0;
         int256 amount1;
     }
+
+    struct PositionUpdateResult {
+        TokenAmounts requiredAmounts;
+        TokenAmounts feeAmounts;
+        TokenAmounts positionAmounts;
+        TokenAmounts swapAmounts;
+    }
 }
