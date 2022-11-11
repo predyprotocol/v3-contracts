@@ -167,7 +167,14 @@ contract ControllerHelperTest is TestDeployer, Test {
         uint256 lowerSqrtPrice = getLowerSqrtPrice();
         uint256 upperSqrtPrice = getUpperSqrtPrice();
 
-        vm.expectRevert(abi.encode(DataType.TokenAmounts(1e8, 0), DataType.TokenAmounts(0, 0)));
+        vm.expectRevert(
+            abi.encode(
+                DataType.TokenAmounts(1e8, 0),
+                DataType.TokenAmounts(0, 0),
+                DataType.TokenAmounts(1e8, 0),
+                DataType.TokenAmounts(0, 0)
+            )
+        );
         controller.openPosition(
             0,
             position,

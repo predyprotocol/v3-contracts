@@ -59,9 +59,7 @@ library BaseToken {
         } else {
             require(accountState.interestType != InterestType.COMPOUND, "B2");
 
-            accountState.lastAssetGrowth = (
-                accountState.lastAssetGrowth.mul(accountState.assetAmount).add(tokenState.assetGrowth.mul(_amount))
-            ).div(accountState.assetAmount.add(_amount));
+            accountState.lastAssetGrowth = tokenState.assetGrowth;
 
             accountState.assetAmount += _amount;
             tokenState.totalNormalDeposited += _amount;
@@ -93,9 +91,7 @@ library BaseToken {
         } else {
             require(accountState.interestType != InterestType.COMPOUND, "B2");
 
-            accountState.lastDebtGrowth = (
-                accountState.lastDebtGrowth.mul(accountState.debtAmount).add(tokenState.debtGrowth.mul(_amount))
-            ).div(accountState.debtAmount.add(_amount));
+            accountState.lastDebtGrowth = tokenState.debtGrowth;
 
             accountState.debtAmount += _amount;
             tokenState.totalNormalBorrowed += _amount;
@@ -108,9 +104,9 @@ library BaseToken {
         TokenState storage tokenState,
         AccountState storage accountState,
         uint256 _amount
-    ) internal returns (uint256 finalBurnAmount, uint256 fee) {
+    ) internal returns (uint256 finalBurnAmount) {
         if (_amount == 0) {
-            return (0, 0);
+            return 0;
         }
 
         if (accountState.interestType == InterestType.COMPOUND) {
@@ -126,17 +122,13 @@ library BaseToken {
 
             tokenState.totalCompoundDeposited = tokenState.totalCompoundDeposited.sub(finalBurnAmount);
 
-            // TODO: roundUp
             finalBurnAmount = PredyMath.mulDiv(finalBurnAmount, tokenState.assetScaler, Constants.ONE);
         } else {
-            fee = getAssetFee(tokenState, accountState);
-
             if (accountState.assetAmount < _amount) {
                 finalBurnAmount = accountState.assetAmount;
                 accountState.assetAmount = 0;
             } else {
                 finalBurnAmount = _amount;
-                fee = (fee * finalBurnAmount) / accountState.assetAmount;
                 accountState.assetAmount = accountState.assetAmount.sub(_amount);
             }
 
@@ -148,9 +140,9 @@ library BaseToken {
         TokenState storage tokenState,
         AccountState storage accountState,
         uint256 _amount
-    ) internal returns (uint256 finalBurnAmount, uint256 fee) {
+    ) internal returns (uint256 finalBurnAmount) {
         if (_amount == 0) {
-            return (0, 0);
+            return 0;
         }
 
         if (accountState.interestType == InterestType.COMPOUND) {
@@ -169,19 +161,21 @@ library BaseToken {
             // TODO: roundUp
             finalBurnAmount = PredyMath.mulDiv(finalBurnAmount, tokenState.debtScaler, Constants.ONE);
         } else {
-            fee = getDebtFee(tokenState, accountState);
-
             if (accountState.debtAmount < _amount) {
                 finalBurnAmount = accountState.debtAmount;
                 accountState.debtAmount = 0;
             } else {
                 finalBurnAmount = _amount;
-                fee = (fee * finalBurnAmount) / accountState.debtAmount;
                 accountState.debtAmount = accountState.debtAmount.sub(_amount);
             }
 
             tokenState.totalNormalBorrowed = tokenState.totalNormalBorrowed.sub(finalBurnAmount);
         }
+    }
+
+    function refreshFee(TokenState memory tokenState, AccountState storage accountState) internal {
+        accountState.lastAssetGrowth = tokenState.assetGrowth;
+        accountState.lastDebtGrowth = tokenState.debtGrowth;
     }
 
     function getAssetFee(TokenState memory tokenState, AccountState memory accountState)

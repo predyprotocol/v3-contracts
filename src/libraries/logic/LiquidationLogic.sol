@@ -174,7 +174,7 @@ library LiquidationLogic {
         uint256 _penaltyAmount
     ) public returns (uint256) {
         // reduce position
-        (DataType.TokenAmounts memory requiredAmounts, ) = PositionUpdater.updatePosition(
+        DataType.PositionUpdateResult memory result = PositionUpdater.updatePosition(
             _vault,
             _subVaults,
             _context,
@@ -184,8 +184,8 @@ library LiquidationLogic {
             DataType.TradeOption(true, true, false, _context.isMarginZero, -2, -2, bytes(""))
         );
 
-        require(0 == requiredAmounts.amount0, "L2");
-        require(0 == requiredAmounts.amount1, "L3");
+        require(0 == result.requiredAmounts.amount0, "L2");
+        require(0 == result.requiredAmounts.amount1, "L3");
 
         {
             uint256 penaltyAmount;

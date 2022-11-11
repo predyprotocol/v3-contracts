@@ -41,7 +41,7 @@ contract PositionUpdaterTest is TestDeployer, Test {
         // vault4 has deposited token with compound option
         // vault5 has borrowed token with compound option
         depositToken(vault2, context, ranges, 2 * 1e6, 2 * 1e18, false);
-        borrowToken(vault3, context, ranges, 1e6, 1e18, false, 100 * 1e6);
+        borrowToken(vault3, context, ranges, 1e6, 0, false, 100 * 1e6);
         depositToken(vault4, context, ranges, 2 * 1e6, 2 * 1e18, true);
         borrowToken(vault5, context, ranges, 1e6, 1e18, true, -1);
     }
@@ -221,7 +221,7 @@ contract PositionUpdaterTest is TestDeployer, Test {
             0,
             0,
             1e6,
-            1e18
+            0
         );
 
         PositionUpdater.updatePosition(vault3, subVaults, context, ranges, positionUpdates, tradeOption);
@@ -259,7 +259,7 @@ contract PositionUpdaterTest is TestDeployer, Test {
             0,
             0,
             1e6,
-            1e18
+            0
         );
 
         positionUpdates[1] = DataType.PositionUpdate(
@@ -270,14 +270,12 @@ contract PositionUpdaterTest is TestDeployer, Test {
             0,
             0,
             1e6,
-            1e18
+            0
         );
 
         // test interest rate
         BaseToken.updateScaler(context.tokenState0, 1e15);
         BaseToken.updateScaler(context.tokenState1, 1e15);
-
-        depositToken(vault3, context, ranges, 1e6, 1e18, false);
 
         PositionUpdater.updatePosition(
             vault3,

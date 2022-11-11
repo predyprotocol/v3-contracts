@@ -34,9 +34,9 @@ library PositionUpdater {
     using LPTStateLib for DataType.PerpStatus;
 
     event TokenDeposited(uint256 indexed subVaultId, uint256 amount0, uint256 amount1);
-    event TokenWithdrawn(uint256 indexed subVaultId, uint256 amount0, uint256 amount1, int256 fee0, int256 fee1);
+    event TokenWithdrawn(uint256 indexed subVaultId, uint256 amount0, uint256 amount1);
     event TokenBorrowed(uint256 indexed subVaultId, uint256 amount0, uint256 amount1);
-    event TokenRepaid(uint256 indexed subVaultId, uint256 amount0, uint256 amount1, int256 fee0, int256 fee1);
+    event TokenRepaid(uint256 indexed subVaultId, uint256 amount0, uint256 amount1);
     event LPTDeposited(
         uint256 indexed subVaultId,
         bytes32 rangeId,
@@ -49,20 +49,11 @@ library PositionUpdater {
         bytes32 rangeId,
         uint128 liquidity,
         uint256 amount0,
-        uint256 amount1,
-        int256 fee0,
-        int256 fee1
+        uint256 amount1
     );
     event LPTBorrowed(uint256 indexed subVaultId, bytes32 rangeId, uint128 liquidity, uint256 amount0, uint256 amount1);
-    event LPTRepaid(
-        uint256 indexed subVaultId,
-        bytes32 rangeId,
-        uint128 liquidity,
-        uint256 amount0,
-        uint256 amount1,
-        int256 fee0,
-        int256 fee1
-    );
+    event LPTRepaid(uint256 indexed subVaultId, bytes32 rangeId, uint128 liquidity, uint256 amount0, uint256 amount1);
+    event FeeUpdated(uint256 indexed subVaultId, int256 fee0, int256 fee1);
     event TokenSwap(
         uint256 indexed vaultId,
         uint256 subVaultId,
@@ -82,7 +73,11 @@ library PositionUpdater {
         mapping(bytes32 => DataType.PerpStatus) storage _ranges,
         DataType.PositionUpdate[] memory _positionUpdates,
         DataType.TradeOption memory _tradeOption
-    ) external returns (DataType.TokenAmounts memory requiredAmounts, DataType.TokenAmounts memory swapAmounts) {
+    ) external returns (DataType.PositionUpdateResult memory result) {
+        result.feeAmounts = collectFee(_context, _vault, _subVaults, _ranges);
+        result.requiredAmounts.amount0 = result.feeAmounts.amount0;
+        result.requiredAmounts.amount1 = result.feeAmounts.amount1;
+
         for (uint256 i = 0; i < _positionUpdates.length; i++) {
             DataType.PositionUpdate memory positionUpdate = _positionUpdates[i];
 
@@ -94,72 +89,72 @@ library PositionUpdater {
 
                 depositTokens(subVault, _context, positionUpdate);
 
-                requiredAmounts.amount0 = requiredAmounts.amount0.add(int256(positionUpdate.param0));
-                requiredAmounts.amount1 = requiredAmounts.amount1.add(int256(positionUpdate.param1));
+                result.requiredAmounts.amount0 = result.requiredAmounts.amount0.add(int256(positionUpdate.param0));
+                result.requiredAmounts.amount1 = result.requiredAmounts.amount1.add(int256(positionUpdate.param1));
             } else if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.WITHDRAW_TOKEN) {
                 (uint256 amount0, uint256 amount1) = withdrawTokens(subVault, _context, positionUpdate);
 
-                requiredAmounts.amount0 = requiredAmounts.amount0.sub(int256(amount0));
-                requiredAmounts.amount1 = requiredAmounts.amount1.sub(int256(amount1));
+                result.requiredAmounts.amount0 = result.requiredAmounts.amount0.sub(int256(amount0));
+                result.requiredAmounts.amount1 = result.requiredAmounts.amount1.sub(int256(amount1));
             } else if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.BORROW_TOKEN) {
                 require(!_tradeOption.isLiquidationCall, "PU1");
 
                 borrowTokens(subVault, _context, positionUpdate);
 
-                requiredAmounts.amount0 = requiredAmounts.amount0.sub(int256(positionUpdate.param0));
-                requiredAmounts.amount1 = requiredAmounts.amount1.sub(int256(positionUpdate.param1));
+                result.requiredAmounts.amount0 = result.requiredAmounts.amount0.sub(int256(positionUpdate.param0));
+                result.requiredAmounts.amount1 = result.requiredAmounts.amount1.sub(int256(positionUpdate.param1));
             } else if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.REPAY_TOKEN) {
                 (uint256 amount0, uint256 amount1) = repayTokens(subVault, _context, positionUpdate);
 
-                requiredAmounts.amount0 = requiredAmounts.amount0.add(int256(amount0));
-                requiredAmounts.amount1 = requiredAmounts.amount1.add(int256(amount1));
+                result.requiredAmounts.amount0 = result.requiredAmounts.amount0.add(int256(amount0));
+                result.requiredAmounts.amount1 = result.requiredAmounts.amount1.add(int256(amount1));
             } else if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.DEPOSIT_LPT) {
                 require(!_tradeOption.isLiquidationCall, "PU1");
 
                 (uint256 amount0, uint256 amount1) = depositLPT(subVault, _context, _ranges, positionUpdate);
 
-                requiredAmounts.amount0 = requiredAmounts.amount0.add(int256(amount0));
-                requiredAmounts.amount1 = requiredAmounts.amount1.add(int256(amount1));
+                result.requiredAmounts.amount0 = result.requiredAmounts.amount0.add(int256(amount0));
+                result.requiredAmounts.amount1 = result.requiredAmounts.amount1.add(int256(amount1));
             } else if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.WITHDRAW_LPT) {
                 (uint256 amount0, uint256 amount1) = withdrawLPT(subVault, _context, _ranges, positionUpdate);
 
-                requiredAmounts.amount0 = requiredAmounts.amount0.sub(int256(amount0));
-                requiredAmounts.amount1 = requiredAmounts.amount1.sub(int256(amount1));
+                result.requiredAmounts.amount0 = result.requiredAmounts.amount0.sub(int256(amount0));
+                result.requiredAmounts.amount1 = result.requiredAmounts.amount1.sub(int256(amount1));
             } else if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.BORROW_LPT) {
                 require(!_tradeOption.isLiquidationCall, "PU1");
 
                 (uint256 amount0, uint256 amount1) = borrowLPT(subVault, _context, _ranges, positionUpdate);
 
-                requiredAmounts.amount0 = requiredAmounts.amount0.sub(int256(amount0));
-                requiredAmounts.amount1 = requiredAmounts.amount1.sub(int256(amount1));
+                result.requiredAmounts.amount0 = result.requiredAmounts.amount0.sub(int256(amount0));
+                result.requiredAmounts.amount1 = result.requiredAmounts.amount1.sub(int256(amount1));
             } else if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.REPAY_LPT) {
                 (uint256 amount0, uint256 amount1) = repayLPT(subVault, _context, _ranges, positionUpdate);
 
-                requiredAmounts.amount0 = requiredAmounts.amount0.add(int256(amount0));
-                requiredAmounts.amount1 = requiredAmounts.amount1.add(int256(amount1));
+                result.requiredAmounts.amount0 = result.requiredAmounts.amount0.add(int256(amount0));
+                result.requiredAmounts.amount1 = result.requiredAmounts.amount1.add(int256(amount1));
             } else if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.SWAP_EXACT_IN) {
                 (int256 amount0, int256 amount1) = swapExactIn(_vault, _context, positionUpdate);
 
-                requiredAmounts.amount0 = requiredAmounts.amount0.add(amount0);
-                requiredAmounts.amount1 = requiredAmounts.amount1.add(amount1);
+                result.requiredAmounts.amount0 = result.requiredAmounts.amount0.add(amount0);
+                result.requiredAmounts.amount1 = result.requiredAmounts.amount1.add(amount1);
 
-                swapAmounts.amount0 = swapAmounts.amount0.add(amount0);
-                swapAmounts.amount1 = swapAmounts.amount1.add(amount1);
+                result.swapAmounts.amount0 = result.swapAmounts.amount0.add(amount0);
+                result.swapAmounts.amount1 = result.swapAmounts.amount1.add(amount1);
             } else if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.SWAP_EXACT_OUT) {
                 (int256 amount0, int256 amount1) = swapExactOut(_vault, _context, positionUpdate);
 
-                requiredAmounts.amount0 = requiredAmounts.amount0.add(amount0);
-                requiredAmounts.amount1 = requiredAmounts.amount1.add(amount1);
+                result.requiredAmounts.amount0 = result.requiredAmounts.amount0.add(amount0);
+                result.requiredAmounts.amount1 = result.requiredAmounts.amount1.add(amount1);
 
-                swapAmounts.amount0 = swapAmounts.amount0.add(amount0);
-                swapAmounts.amount1 = swapAmounts.amount1.add(amount1);
+                result.swapAmounts.amount0 = result.swapAmounts.amount0.add(amount0);
+                result.swapAmounts.amount1 = result.swapAmounts.amount1.add(amount1);
             }
         }
 
         if (_tradeOption.swapAnyway) {
             DataType.PositionUpdate memory positionUpdate = swapAnyway(
-                requiredAmounts.amount0,
-                requiredAmounts.amount1,
+                result.requiredAmounts.amount0,
+                result.requiredAmounts.amount1,
                 _tradeOption.isQuoteZero,
                 _context.feeTier
             );
@@ -172,11 +167,21 @@ library PositionUpdater {
                 (amount0, amount1) = swapExactOut(_vault, _context, positionUpdate);
             }
 
-            requiredAmounts.amount0 = requiredAmounts.amount0.add(amount0);
-            requiredAmounts.amount1 = requiredAmounts.amount1.add(amount1);
+            result.requiredAmounts.amount0 = result.requiredAmounts.amount0.add(amount0);
+            result.requiredAmounts.amount1 = result.requiredAmounts.amount1.add(amount1);
 
-            swapAmounts.amount0 = swapAmounts.amount0.add(amount0);
-            swapAmounts.amount1 = swapAmounts.amount1.add(amount1);
+            result.swapAmounts.amount0 = result.swapAmounts.amount0.add(amount0);
+            result.swapAmounts.amount1 = result.swapAmounts.amount1.add(amount1);
+        }
+
+        {
+            // calculate position amounts
+            result.positionAmounts.amount0 = result.requiredAmounts.amount0.sub(result.swapAmounts.amount0).sub(
+                result.feeAmounts.amount0
+            );
+            result.positionAmounts.amount1 = result.requiredAmounts.amount1.sub(result.swapAmounts.amount1).sub(
+                result.feeAmounts.amount1
+            );
         }
 
         {
@@ -193,14 +198,14 @@ library PositionUpdater {
 
                 _vault.marginAmount0 = _tradeOption.targetMarginAmount0;
 
-                requiredAmounts.amount0 = requiredAmounts.amount0.add(deltaMarginAmount0);
+                result.requiredAmounts.amount0 = result.requiredAmounts.amount0.add(deltaMarginAmount0);
             } else if (_tradeOption.targetMarginAmount0 == Constants.MARGIN_USE) {
                 // use margin of token0 to make required amount 0
-                deltaMarginAmount0 = requiredAmounts.amount0.mul(-1);
+                deltaMarginAmount0 = result.requiredAmounts.amount0.mul(-1);
 
                 _vault.marginAmount0 = _vault.marginAmount0.add(deltaMarginAmount0);
 
-                requiredAmounts.amount0 = 0;
+                result.requiredAmounts.amount0 = 0;
             }
 
             if (_tradeOption.targetMarginAmount1 >= 0) {
@@ -209,14 +214,14 @@ library PositionUpdater {
 
                 _vault.marginAmount1 = _tradeOption.targetMarginAmount1;
 
-                requiredAmounts.amount1 = requiredAmounts.amount1.add(deltaMarginAmount1);
+                result.requiredAmounts.amount1 = result.requiredAmounts.amount1.add(deltaMarginAmount1);
             } else if (_tradeOption.targetMarginAmount1 == Constants.MARGIN_USE) {
                 // use margin of token1 to make required amount 0
-                deltaMarginAmount1 = requiredAmounts.amount1.mul(-1);
+                deltaMarginAmount1 = result.requiredAmounts.amount1.mul(-1);
 
                 _vault.marginAmount1 = _vault.marginAmount1.add(deltaMarginAmount1);
 
-                requiredAmounts.amount1 = 0;
+                result.requiredAmounts.amount1 = 0;
             }
 
             // emit event if needed
@@ -330,16 +335,10 @@ library PositionUpdater {
     ) internal returns (uint256 withdrawAmount0, uint256 withdrawAmount1) {
         require(_positionUpdate.param0 > 0 || _positionUpdate.param1 > 0);
 
-        uint256 assetFee0;
-        uint256 assetFee1;
+        withdrawAmount0 = _context.tokenState0.removeAsset(_subVault.balance0, _positionUpdate.param0);
+        withdrawAmount1 = _context.tokenState1.removeAsset(_subVault.balance1, _positionUpdate.param1);
 
-        (withdrawAmount0, assetFee0) = _context.tokenState0.removeAsset(_subVault.balance0, _positionUpdate.param0);
-        (withdrawAmount1, assetFee1) = _context.tokenState1.removeAsset(_subVault.balance1, _positionUpdate.param1);
-
-        emit TokenWithdrawn(_subVault.id, withdrawAmount0, withdrawAmount1, int256(assetFee0), int256(assetFee1));
-
-        withdrawAmount0 = withdrawAmount0.add(assetFee0);
-        withdrawAmount1 = withdrawAmount1.add(assetFee1);
+        emit TokenWithdrawn(_subVault.id, withdrawAmount0, withdrawAmount1);
     }
 
     function borrowTokens(
@@ -362,16 +361,10 @@ library PositionUpdater {
     ) internal returns (uint256 requiredAmount0, uint256 requiredAmount1) {
         require(_positionUpdate.param0 > 0 || _positionUpdate.param1 > 0);
 
-        uint256 debtFee0;
-        uint256 debtFee1;
+        requiredAmount0 = _context.tokenState0.removeDebt(_subVault.balance0, _positionUpdate.param0);
+        requiredAmount1 = _context.tokenState1.removeDebt(_subVault.balance1, _positionUpdate.param1);
 
-        (requiredAmount0, debtFee0) = _context.tokenState0.removeDebt(_subVault.balance0, _positionUpdate.param0);
-        (requiredAmount1, debtFee1) = _context.tokenState1.removeDebt(_subVault.balance1, _positionUpdate.param1);
-
-        emit TokenRepaid(_subVault.id, requiredAmount0, requiredAmount1, -int256(debtFee0), -int256(debtFee1));
-
-        requiredAmount0 = requiredAmount0.add(debtFee0);
-        requiredAmount1 = requiredAmount1.add(debtFee1);
+        emit TokenRepaid(_subVault.id, requiredAmount0, requiredAmount1);
     }
 
     function depositLPT(
@@ -407,27 +400,11 @@ library PositionUpdater {
     ) internal returns (uint256 withdrawnAmount0, uint256 withdrawnAmount1) {
         bytes32 rangeId = LPTStateLib.getRangeKey(_positionUpdate.lowerTick, _positionUpdate.upperTick);
 
-        (uint256 fee0, uint256 fee1, uint128 liquidityAmount) = _subVault.withdrawLPT(
-            _ranges[rangeId],
-            rangeId,
-            _positionUpdate.liquidity,
-            _context.isMarginZero
-        );
+        uint128 liquidityAmount = _subVault.withdrawLPT(rangeId, _positionUpdate.liquidity);
 
         (withdrawnAmount0, withdrawnAmount1) = decreaseLiquidityFromUni(_context, _ranges[rangeId], liquidityAmount);
 
-        emit LPTWithdrawn(
-            _subVault.id,
-            rangeId,
-            liquidityAmount,
-            withdrawnAmount0,
-            withdrawnAmount1,
-            int256(fee0),
-            int256(fee1)
-        );
-
-        withdrawnAmount0 = withdrawnAmount0.add(fee0);
-        withdrawnAmount1 = withdrawnAmount1.add(fee1);
+        emit LPTWithdrawn(_subVault.id, rangeId, liquidityAmount, withdrawnAmount0, withdrawnAmount1);
     }
 
     function borrowLPT(
@@ -462,12 +439,7 @@ library PositionUpdater {
     ) internal returns (uint256 requiredAmount0, uint256 requiredAmount1) {
         bytes32 rangeId = LPTStateLib.getRangeKey(_positionUpdate.lowerTick, _positionUpdate.upperTick);
 
-        (uint256 fee0, uint256 fee1, uint128 liquidity) = _subVault.repayLPT(
-            _ranges[rangeId],
-            rangeId,
-            _positionUpdate.liquidity,
-            _context.isMarginZero
-        );
+        uint128 liquidity = _subVault.repayLPT(rangeId, _positionUpdate.liquidity);
 
         (requiredAmount0, requiredAmount1) = IUniswapV3Pool(_context.uniswapPool).mint(
             address(this),
@@ -479,20 +451,7 @@ library PositionUpdater {
 
         _ranges[rangeId].borrowedLiquidity = _ranges[rangeId].borrowedLiquidity.toUint256().sub(liquidity).toUint128();
 
-        {
-            emit LPTRepaid(
-                _subVault.id,
-                rangeId,
-                liquidity,
-                requiredAmount0,
-                requiredAmount1,
-                -int256(fee0),
-                -int256(fee1)
-            );
-
-            requiredAmount0 = requiredAmount0.add(fee0);
-            requiredAmount1 = requiredAmount1.add(fee1);
-        }
+        emit LPTRepaid(_subVault.id, rangeId, liquidity, requiredAmount0, requiredAmount1);
     }
 
     function swapExactIn(
@@ -633,5 +592,59 @@ library PositionUpdater {
 
         _range.fee0Growth = _range.fee0Growth.add(PredyMath.mulDiv(collect0, Constants.ONE, totalLiquidity));
         _range.fee1Growth = _range.fee1Growth.add(PredyMath.mulDiv(collect1, Constants.ONE, totalLiquidity));
+    }
+
+    function collectFee(
+        DataType.Context memory _context,
+        DataType.Vault memory _vault,
+        mapping(uint256 => DataType.SubVault) storage _subVaults,
+        mapping(bytes32 => DataType.PerpStatus) storage _ranges
+    ) internal returns (DataType.TokenAmounts memory requiredAmounts) {
+        for (uint256 i = 0; i < _vault.subVaults.length; i++) {
+            DataType.SubVault storage subVault = _subVaults[_vault.subVaults[i]];
+
+            (int256 requiredAmount0, int256 requiredAmount1) = collectFeeOfSubVault(_context, subVault, _ranges);
+
+            requiredAmounts.amount0 = requiredAmounts.amount0.add(requiredAmount0);
+            requiredAmounts.amount1 = requiredAmounts.amount1.add(requiredAmount1);
+        }
+    }
+
+    function collectFeeOfSubVault(
+        DataType.Context memory _context,
+        DataType.SubVault storage _subVault,
+        mapping(bytes32 => DataType.PerpStatus) storage _ranges
+    ) internal returns (int256 requiredAmount0, int256 requiredAmount1) {
+        int256 totalFee0;
+        int256 totalFee1;
+
+        {
+            (int256 fee0, int256 fee1) = VaultLib.getPremiumAndFeeOfSubVault(_subVault, _ranges, _context);
+            (int256 assetFee0, int256 assetFee1, int256 debtFee0, int256 debtFee1) = VaultLib
+                .getTokenInterestOfSubVault(_subVault, _context);
+
+            totalFee0 = fee0.add(assetFee0).sub(debtFee0);
+            totalFee1 = fee1.add(assetFee1).sub(debtFee1);
+        }
+
+        _context.tokenState0.refreshFee(_subVault.balance0);
+        _context.tokenState1.refreshFee(_subVault.balance1);
+
+        for (uint256 i = 0; i < _subVault.lpts.length; i++) {
+            DataType.LPTState storage lpt = _subVault.lpts[i];
+
+            lpt.fee0Last = _ranges[lpt.rangeId].fee0Growth;
+            lpt.fee1Last = _ranges[lpt.rangeId].fee1Growth;
+            if (lpt.isCollateral) {
+                lpt.premiumGrowthLast = _ranges[lpt.rangeId].premiumGrowthForLender;
+            } else {
+                lpt.premiumGrowthLast = _ranges[lpt.rangeId].premiumGrowthForBorrower;
+            }
+        }
+
+        requiredAmount0 = totalFee0.mul(-1);
+        requiredAmount1 = totalFee1.mul(-1);
+
+        emit FeeUpdated(_subVault.id, totalFee0, totalFee1);
     }
 }
