@@ -1,5 +1,6 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { DeployFunction } from 'hardhat-deploy/types'
+import { constants } from 'ethers'
 
 const uniswapPositionManager = '0xC36442b4a4522E871399CD717aBDD847Ab11FE88'
 const uniswapFactoryAddress = '0x1F98431c8aD98523631AE4a59f267346ea31F984'
@@ -30,7 +31,7 @@ function getUsdcAddress(network: string) {
 function getChainlinkPriceFeed(network: string) {
   switch (network) {
     case 'goerli':
-      return '0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e'
+      return constants.AddressZero //'0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e'
     default:
       return undefined
   }
