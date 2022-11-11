@@ -633,10 +633,10 @@ library PositionUpdater {
         for (uint256 i = 0; i < _subVault.lpts.length; i++) {
             DataType.LPTState storage lpt = _subVault.lpts[i];
 
-            lpt.fee0Last = _ranges[lpt.rangeId].fee0Growth;
-            lpt.fee1Last = _ranges[lpt.rangeId].fee1Growth;
             if (lpt.isCollateral) {
                 lpt.premiumGrowthLast = _ranges[lpt.rangeId].premiumGrowthForLender;
+                lpt.fee0Last = _ranges[lpt.rangeId].fee0Growth;
+                lpt.fee1Last = _ranges[lpt.rangeId].fee1Growth;
             } else {
                 lpt.premiumGrowthLast = _ranges[lpt.rangeId].premiumGrowthForBorrower;
             }

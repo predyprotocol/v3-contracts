@@ -50,12 +50,6 @@ contract Controller is Initializable, IUniswapV3MintCallback {
 
     event OperatorUpdated(address operator);
     event VaultCreated(uint256 vaultId, address owner);
-    event PositionUpdated(
-        uint256 vaultId,
-        DataType.TokenAmounts requiredAmounts,
-        DataType.TokenAmounts swapAmounts,
-        bytes metadata
-    );
 
     modifier onlyOperator() {
         require(operator == msg.sender, "P3");
