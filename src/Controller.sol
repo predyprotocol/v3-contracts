@@ -345,7 +345,6 @@ contract Controller is Initializable, IUniswapV3MintCallback {
         (vaultId, vault) = createOrGetVault(_vaultId, _tradeOption.quoterMode);
 
         DataType.PositionUpdateResult memory positionUpdateResult = UpdatePositionLogic.updatePosition(
-            vaultId,
             vault,
             subVaults,
             context,

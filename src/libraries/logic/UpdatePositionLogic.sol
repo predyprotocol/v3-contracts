@@ -24,11 +24,7 @@ import "../PriceHelper.sol";
 library UpdatePositionLogic {
     using SafeMath for uint256;
 
-    event PositionUpdated(uint256 vaultId, DataType.PositionUpdateResult positionUpdateResult, bytes metadata);
-    event VaultCreated(uint256 vaultId, address owner);
-
     function updatePosition(
-        uint256 vaultId,
         DataType.Vault storage _vault,
         mapping(uint256 => DataType.SubVault) storage _subVaults,
         DataType.Context storage _context,
@@ -84,8 +80,6 @@ library UpdatePositionLogic {
                 uint256(-positionUpdateResult.requiredAmounts.amount1)
             );
         }
-
-        emit PositionUpdated(vaultId, positionUpdateResult, _tradeOption.metadata);
     }
 
     function revertRequiredAmounts(DataType.PositionUpdateResult memory positionUpdateResult) internal pure {

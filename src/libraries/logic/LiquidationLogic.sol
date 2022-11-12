@@ -22,7 +22,11 @@ library LiquidationLogic {
     using SafeMath for uint256;
     using SignedSafeMath for int256;
 
-    event Liquidated(uint256 indexed vaultId, address liquidator, uint256 debtValue, uint256 penaltyAmount);
+    event Liquidated(
+        uint256 indexed vaultId,
+        address liquidator,
+        uint256 penaltyAmount
+    );
 
     /**
      * @notice Anyone can liquidates the vault if its vault value is less than Min. Deposit.
@@ -58,7 +62,7 @@ library LiquidationLogic {
         );
 
         // close all positions in the vault
-        uint256 penaltyAmount = reducePosition(
+        (uint256 penaltyAmount, DataType.PositionUpdateResult memory positionUpdateResult) = reducePosition(
             _vault,
             _subVaults,
             _context,
@@ -83,7 +87,7 @@ library LiquidationLogic {
             );
         }
 
-        emit Liquidated(_vault.vaultId, msg.sender, debtValue, penaltyAmount);
+        emit Liquidated(_vault.vaultId, msg.sender, penaltyAmount);
     }
 
     function calculateLiquidationSlippageTolerance(uint256 _debtValue) internal pure returns (uint256) {
@@ -179,9 +183,9 @@ library LiquidationLogic {
         mapping(bytes32 => DataType.PerpStatus) storage _ranges,
         DataType.PositionUpdate[] memory _positionUpdates,
         uint256 _penaltyAmount
-    ) public returns (uint256) {
+    ) public returns (uint256 penaltyAmount, DataType.PositionUpdateResult memory positionUpdateResult) {
         // reduce position
-        DataType.PositionUpdateResult memory result = PositionUpdater.updatePosition(
+        positionUpdateResult = PositionUpdater.updatePosition(
             _vault,
             _subVaults,
             _context,
@@ -191,19 +195,15 @@ library LiquidationLogic {
             DataType.TradeOption(true, true, false, _context.isMarginZero, -2, -2, bytes(""))
         );
 
-        require(0 == result.requiredAmounts.amount0, "L2");
-        require(0 == result.requiredAmounts.amount1, "L3");
+        require(0 == positionUpdateResult.requiredAmounts.amount0, "L2");
+        require(0 == positionUpdateResult.requiredAmounts.amount1, "L3");
 
         {
-            uint256 penaltyAmount;
-
             if (_context.isMarginZero) {
                 (_vault.marginAmount0, penaltyAmount) = PredyMath.subReward(_vault.marginAmount0, _penaltyAmount);
             } else {
                 (_vault.marginAmount1, penaltyAmount) = PredyMath.subReward(_vault.marginAmount1, _penaltyAmount);
             }
-
-            return penaltyAmount;
         }
     }
 
