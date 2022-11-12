@@ -53,7 +53,7 @@ library UpdatePositionLogic {
         }
 
         // check the vault is safe
-        require(!LiquidationLogic.checkLiquidatable(_vault, _subVaults, _context, _ranges), "UPL0");
+        require(LiquidationLogic.isVaultSafe(_vault, _subVaults, _context, _ranges), "UPL0");
 
         if (positionUpdateResult.requiredAmounts.amount0 > 0) {
             TransferHelper.safeTransferFrom(

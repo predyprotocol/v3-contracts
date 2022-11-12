@@ -424,7 +424,7 @@ contract Controller is Initializable, IUniswapV3MintCallback {
 
         applyPerpFee(_vaultId);
 
-        return LiquidationLogic.checkLiquidatable(vaults[_vaultId], subVaults, context, ranges);
+        return !LiquidationLogic.isVaultSafe(vaults[_vaultId], subVaults, context, ranges);
     }
 
     /**

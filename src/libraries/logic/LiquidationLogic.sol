@@ -3,6 +3,7 @@ pragma solidity =0.7.6;
 pragma abicoder v2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/math/SignedSafeMath.sol";
 import "@uniswap/v3-periphery/libraries/LiquidityAmounts.sol";
 import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
@@ -19,6 +20,7 @@ import "../PriceHelper.sol";
  */
 library LiquidationLogic {
     using SafeMath for uint256;
+    using SignedSafeMath for int256;
 
     event Liquidated(uint256 indexed vaultId, address liquidator, uint256 debtValue, uint256 penaltyAmount);
 
@@ -45,7 +47,7 @@ library LiquidationLogic {
         );
 
         // check that the vault is liquidatable
-        require(_checkLiquidatable(_context, _params, sqrtTwap), "L0");
+        require(!_isVaultSafe(_context, _params, sqrtTwap), "L0");
 
         // calculate debt value to calculate penalty amount
         (, , uint256 debtValue) = PositionCalculator.calculateCollateralAndDebtValue(
@@ -98,11 +100,11 @@ library LiquidationLogic {
     }
 
     /**
-     * @notice Checks the vault is liquidatable or not.
-     * if Min. Deposit is greater than margin value + position value, then return true.
+     * @notice Checks the vault is safe or not.
+     * if the vault value is greater than Min. Deposit, then return true.
      * otherwise return false.
      */
-    function checkLiquidatable(
+    function isVaultSafe(
         DataType.Vault memory _vault,
         mapping(uint256 => DataType.SubVault) storage _subVaults,
         DataType.Context memory _context,
@@ -117,7 +119,7 @@ library LiquidationLogic {
             _context
         );
 
-        return _checkLiquidatable(_context, _params, sqrtPrice);
+        return _isVaultSafe(_context, _params, sqrtPrice);
     }
 
     function getVaultValue(
@@ -138,7 +140,7 @@ library LiquidationLogic {
         return VaultLib.getVaultValue(_context, _params, sqrtPrice);
     }
 
-    function _checkLiquidatable(
+    function _isVaultSafe(
         DataType.Context memory _context,
         PositionCalculator.PositionCalculatorParams memory _params,
         uint160 sqrtPrice
@@ -159,10 +161,15 @@ library LiquidationLogic {
                 false
             );
 
-            vaultValue = marginValue + int256(assetValue) - int256(debtValue);
+            vaultValue = marginValue.add(int256(assetValue)).sub(int256(debtValue));
+
+            if (debtValue == 0) {
+                // if debt value is 0 then vault is safe.
+                return true;
+            }
         }
 
-        return minDeposit > vaultValue || marginValue < 0;
+        return minDeposit <= vaultValue && marginValue >= 0;
     }
 
     function reducePosition(
