@@ -148,30 +148,64 @@ contract BaseTokenTest is Test {
     function testRemoveCollateralAll(uint256 _amount) public {
         vm.assume(assetAmount < _amount && _amount < type(uint128).max);
 
-        uint256 removedAssetAmount = BaseToken.removeAsset(tokenState, accountState, _amount);
+        uint256 removedAssetAmount1 = BaseToken.removeAsset(tokenState, accountState, _amount);
+        uint256 removedAssetAmount2 = BaseToken.removeAsset(tokenState, normalAccountState, _amount);
 
-        assertEq(removedAssetAmount, assetAmount);
+        assertEq(removedAssetAmount1, assetAmount);
+        assertEq(removedAssetAmount2, assetAmount);
+
+        // asset values are 0
+        uint256 assetValue1 = BaseToken.getAssetValue(tokenState, accountState);
+        assertEq(assetValue1, 0);
+
+        uint256 assetValue2 = BaseToken.getAssetValue(tokenState, normalAccountState);
+        assertEq(assetValue2, 0);
     }
 
     function testRemoveAllDebt(uint256 _amount) public {
         vm.assume(debtAmount < _amount && _amount < type(uint128).max);
 
-        uint256 removedDebtAmount = BaseToken.removeDebt(tokenState, accountState, _amount);
+        uint256 removedDebtAmount1 = BaseToken.removeDebt(tokenState, accountState, _amount);
+        uint256 removedDebtAmount2 = BaseToken.removeDebt(tokenState, normalAccountState, _amount);
 
-        assertEq(removedDebtAmount, debtAmount);
+        assertEq(removedDebtAmount1, debtAmount);
+        assertEq(removedDebtAmount2, debtAmount);
+
+        // debt values are 0
+        uint256 debtValue1 = BaseToken.getDebtValue(tokenState, accountState);
+        assertEq(debtValue1, 0);
+
+        uint256 debtValue2 = BaseToken.getDebtValue(tokenState, normalAccountState);
+        assertEq(debtValue2, 0);
     }
 
     function testRemoveCollateral() public {
-        BaseToken.removeAsset(tokenState, accountState, 500 * 1e6);
+        // remove 500 asset of 1000
+        uint256 removedAssetAmount1 = BaseToken.removeAsset(tokenState, accountState, 500 * 1e6);
+        uint256 removedAssetAmount2 = BaseToken.removeAsset(tokenState, normalAccountState, 500 * 1e6);
 
-        uint256 value = BaseToken.getAssetValue(tokenState, accountState);
-        assertEq(value, 500 * 1e6);
+        assertEq(removedAssetAmount1, 500 * 1e6);
+        assertEq(removedAssetAmount2, 500 * 1e6);
+
+        uint256 assetValue1 = BaseToken.getAssetValue(tokenState, accountState);
+        assertEq(assetValue1, 500 * 1e6);
+
+        uint256 assetValue2 = BaseToken.getAssetValue(tokenState, normalAccountState);
+        assertEq(assetValue2, 500 * 1e6);
     }
 
     function testRemoveDebt() public {
-        BaseToken.removeDebt(tokenState, accountState, 100 * 1e6);
+        // remove 100 debt of 200
+        uint256 removedDebtAmount1 = BaseToken.removeDebt(tokenState, accountState, 100 * 1e6);
+        uint256 removedDebtAmount2 = BaseToken.removeDebt(tokenState, normalAccountState, 100 * 1e6);
 
-        uint256 debtValue = BaseToken.getDebtValue(tokenState, accountState);
-        assertEq(debtValue, 100 * 1e6);
+        assertEq(removedDebtAmount1, 100 * 1e6);
+        assertEq(removedDebtAmount2, 100 * 1e6);
+
+        uint256 debtValue1 = BaseToken.getDebtValue(tokenState, accountState);
+        assertEq(debtValue1, 100 * 1e6);
+
+        uint256 debtValue2 = BaseToken.getDebtValue(tokenState, normalAccountState);
+        assertEq(debtValue2, 100 * 1e6);
     }
 }
