@@ -158,7 +158,6 @@ library BaseToken {
 
             tokenState.totalCompoundBorrowed = tokenState.totalCompoundBorrowed.sub(finalBurnAmount);
 
-            // TODO: roundUp
             finalBurnAmount = PredyMath.mulDiv(finalBurnAmount, tokenState.debtScaler, Constants.ONE);
         } else {
             if (accountState.debtAmount < _amount) {
