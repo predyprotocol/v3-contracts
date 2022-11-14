@@ -62,6 +62,7 @@ library PositionUpdater {
         uint256 destAmount
     );
     event MarginUpdated(uint256 indexed vaultId, int256 marginAmount0, int256 marginAmount1);
+    event PositionUpdated(uint256 vaultId, DataType.PositionUpdateResult positionUpdateResult, bytes metadata);
 
     /**
      * @notice update position and return required token amounts.
@@ -252,6 +253,8 @@ library PositionUpdater {
                 }
             }
         }
+
+        emit PositionUpdated(_vault.vaultId, result, _tradeOption.metadata);
     }
 
     function swapAnyway(

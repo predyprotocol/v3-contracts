@@ -3,6 +3,7 @@ pragma solidity =0.7.6;
 pragma abicoder v2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/math/SignedSafeMath.sol";
 import "@uniswap/v3-periphery/libraries/LiquidityAmounts.sol";
 import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
@@ -19,8 +20,13 @@ import "../PriceHelper.sol";
  */
 library LiquidationLogic {
     using SafeMath for uint256;
+    using SignedSafeMath for int256;
 
-    event Liquidated(uint256 indexed vaultId, address liquidator, uint256 debtValue, uint256 penaltyAmount);
+    event Liquidated(
+        uint256 indexed vaultId,
+        address liquidator,
+        uint256 penaltyAmount
+    );
 
     /**
      * @notice Anyone can liquidates the vault if its vault value is less than Min. Deposit.
@@ -45,7 +51,7 @@ library LiquidationLogic {
         );
 
         // check that the vault is liquidatable
-        require(_checkLiquidatable(_context, _params, sqrtTwap), "L0");
+        require(!_isVaultSafe(_context, _params, sqrtTwap), "L0");
 
         // calculate debt value to calculate penalty amount
         (, , uint256 debtValue) = PositionCalculator.calculateCollateralAndDebtValue(
@@ -56,7 +62,7 @@ library LiquidationLogic {
         );
 
         // close all positions in the vault
-        uint256 penaltyAmount = reducePosition(
+        (uint256 penaltyAmount, DataType.PositionUpdateResult memory positionUpdateResult) = reducePosition(
             _vault,
             _subVaults,
             _context,
@@ -81,7 +87,7 @@ library LiquidationLogic {
             );
         }
 
-        emit Liquidated(_vault.vaultId, msg.sender, debtValue, penaltyAmount);
+        emit Liquidated(_vault.vaultId, msg.sender, penaltyAmount);
     }
 
     function calculateLiquidationSlippageTolerance(uint256 _debtValue) internal pure returns (uint256) {
@@ -98,11 +104,11 @@ library LiquidationLogic {
     }
 
     /**
-     * @notice Checks the vault is liquidatable or not.
-     * if Min. Deposit is greater than margin value + position value, then return true.
+     * @notice Checks the vault is safe or not.
+     * if the vault value is greater than Min. Deposit, then return true.
      * otherwise return false.
      */
-    function checkLiquidatable(
+    function isVaultSafe(
         DataType.Vault memory _vault,
         mapping(uint256 => DataType.SubVault) storage _subVaults,
         DataType.Context memory _context,
@@ -117,7 +123,7 @@ library LiquidationLogic {
             _context
         );
 
-        return _checkLiquidatable(_context, _params, sqrtPrice);
+        return _isVaultSafe(_context, _params, sqrtPrice);
     }
 
     function getVaultValue(
@@ -138,7 +144,7 @@ library LiquidationLogic {
         return VaultLib.getVaultValue(_context, _params, sqrtPrice);
     }
 
-    function _checkLiquidatable(
+    function _isVaultSafe(
         DataType.Context memory _context,
         PositionCalculator.PositionCalculatorParams memory _params,
         uint160 sqrtPrice
@@ -159,10 +165,15 @@ library LiquidationLogic {
                 false
             );
 
-            vaultValue = marginValue + int256(assetValue) - int256(debtValue);
+            vaultValue = marginValue.add(int256(assetValue)).sub(int256(debtValue));
+
+            if (debtValue == 0) {
+                // if debt value is 0 then vault is safe.
+                return true;
+            }
         }
 
-        return minDeposit > vaultValue || marginValue < 0;
+        return minDeposit <= vaultValue && marginValue >= 0;
     }
 
     function reducePosition(
@@ -172,9 +183,9 @@ library LiquidationLogic {
         mapping(bytes32 => DataType.PerpStatus) storage _ranges,
         DataType.PositionUpdate[] memory _positionUpdates,
         uint256 _penaltyAmount
-    ) public returns (uint256) {
+    ) public returns (uint256 penaltyAmount, DataType.PositionUpdateResult memory positionUpdateResult) {
         // reduce position
-        DataType.PositionUpdateResult memory result = PositionUpdater.updatePosition(
+        positionUpdateResult = PositionUpdater.updatePosition(
             _vault,
             _subVaults,
             _context,
@@ -184,19 +195,15 @@ library LiquidationLogic {
             DataType.TradeOption(true, true, false, _context.isMarginZero, -2, -2, bytes(""))
         );
 
-        require(0 == result.requiredAmounts.amount0, "L2");
-        require(0 == result.requiredAmounts.amount1, "L3");
+        require(0 == positionUpdateResult.requiredAmounts.amount0, "L2");
+        require(0 == positionUpdateResult.requiredAmounts.amount1, "L3");
 
         {
-            uint256 penaltyAmount;
-
             if (_context.isMarginZero) {
                 (_vault.marginAmount0, penaltyAmount) = PredyMath.subReward(_vault.marginAmount0, _penaltyAmount);
             } else {
                 (_vault.marginAmount1, penaltyAmount) = PredyMath.subReward(_vault.marginAmount1, _penaltyAmount);
             }
-
-            return penaltyAmount;
         }
     }
 

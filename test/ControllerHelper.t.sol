@@ -610,5 +610,7 @@ contract ControllerHelperTest is TestDeployer, Test {
 
         assertLt(vault.marginAmount0, 0);
         assertEq(vault.marginAmount1, 0);
+
+        assertFalse(controller.checkLiquidatable(vaultId));
     }
 }
