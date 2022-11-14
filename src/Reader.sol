@@ -105,4 +105,56 @@ contract Reader {
                 isMarginZero
             );
     }
+
+    function quoteOpenPosition(
+        uint256 _vaultId,
+        DataType.Position memory _position,
+        DataType.TradeOption memory _tradeOption,
+        DataType.OpenPositionOption memory _openPositionOptions
+    ) external returns (DataType.PositionUpdateResult memory result) {
+        require(_vaultId > 0);
+        require(_tradeOption.quoterMode);
+        try controller.openPosition(_vaultId, _position, _tradeOption, _openPositionOptions) {} catch (
+            bytes memory reason
+        ) {
+            return handleRevert(reason);
+        }
+    }
+
+    function parseRevertReason(bytes memory reason)
+        private
+        pure
+        returns (
+            int256,
+            int256,
+            int256,
+            int256,
+            int256,
+            int256,
+            int256,
+            int256
+        )
+    {
+        if (reason.length != 256) {
+            if (reason.length < 68) revert("Unexpected error");
+            assembly {
+                reason := add(reason, 0x04)
+            }
+            revert(abi.decode(reason, (string)));
+        }
+        return abi.decode(reason, (int256, int256, int256, int256, int256, int256, int256, int256));
+    }
+
+    function handleRevert(bytes memory reason) internal pure returns (DataType.PositionUpdateResult memory result) {
+        (
+            result.requiredAmounts.amount0,
+            result.requiredAmounts.amount1,
+            result.feeAmounts.amount0,
+            result.feeAmounts.amount1,
+            result.positionAmounts.amount0,
+            result.positionAmounts.amount1,
+            result.swapAmounts.amount0,
+            result.swapAmounts.amount1
+        ) = parseRevertReason(reason);
+    }
 }
