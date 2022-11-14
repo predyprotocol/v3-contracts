@@ -189,7 +189,17 @@ contract ControllerTest is TestDeployer, Test {
         controller.updatePosition(
             1000,
             positionUpdates,
-            DataType.TradeOption(false, false, false, isMarginZero, -1, -1, EMPTY_METADATA),
+            DataType.TradeOption(
+                false,
+                false,
+                false,
+                isMarginZero,
+                Constants.MARGIN_STAY,
+                Constants.MARGIN_STAY,
+                0,
+                0,
+                EMPTY_METADATA
+            ),
             openPositionOption
         );
     }
@@ -205,7 +215,17 @@ contract ControllerTest is TestDeployer, Test {
         controller.updatePosition(
             0,
             positionUpdates,
-            DataType.TradeOption(false, false, false, isMarginZero, -1, -1, EMPTY_METADATA),
+            DataType.TradeOption(
+                false,
+                false,
+                false,
+                isMarginZero,
+                Constants.MARGIN_STAY,
+                Constants.MARGIN_STAY,
+                0,
+                0,
+                EMPTY_METADATA
+            ),
             openPositionOption
         );
     }
@@ -220,7 +240,17 @@ contract ControllerTest is TestDeployer, Test {
         (uint256 vaultId, DataType.TokenAmounts memory addedAmounts, ) = controller.updatePosition(
             0,
             positionUpdates,
-            DataType.TradeOption(false, false, false, true, 1e10, -1, EMPTY_METADATA),
+            DataType.TradeOption(
+                false,
+                false,
+                false,
+                true,
+                Constants.MARGIN_USE,
+                Constants.MARGIN_STAY,
+                1e10,
+                0,
+                EMPTY_METADATA
+            ),
             getOpenPositionParams()
         );
 
@@ -232,7 +262,17 @@ contract ControllerTest is TestDeployer, Test {
         (, DataType.TokenAmounts memory removedAmounts, ) = controller.updatePosition(
             vaultId,
             positionUpdates,
-            DataType.TradeOption(false, false, false, true, 1e10 - marginAmount, -1, EMPTY_METADATA),
+            DataType.TradeOption(
+                false,
+                false,
+                false,
+                true,
+                Constants.MARGIN_USE,
+                Constants.MARGIN_STAY,
+                -marginAmount,
+                0,
+                EMPTY_METADATA
+            ),
             getOpenPositionParams()
         );
         uint256 afterBalance0 = token0.balanceOf(user);
@@ -251,7 +291,17 @@ contract ControllerTest is TestDeployer, Test {
         (uint256 vaultId, DataType.TokenAmounts memory addedAmounts, ) = controller.updatePosition(
             0,
             positionUpdates,
-            DataType.TradeOption(false, false, false, false, -1, 1e10, EMPTY_METADATA),
+            DataType.TradeOption(
+                false,
+                false,
+                false,
+                false,
+                Constants.MARGIN_STAY,
+                Constants.MARGIN_USE,
+                0,
+                1e10,
+                EMPTY_METADATA
+            ),
             getOpenPositionParams()
         );
 
@@ -263,7 +313,17 @@ contract ControllerTest is TestDeployer, Test {
         (, DataType.TokenAmounts memory removedAmounts, ) = controller.updatePosition(
             vaultId,
             positionUpdates,
-            DataType.TradeOption(false, false, false, false, -1, 1e10 - marginAmount, EMPTY_METADATA),
+            DataType.TradeOption(
+                false,
+                false,
+                false,
+                false,
+                Constants.MARGIN_STAY,
+                Constants.MARGIN_USE,
+                0,
+                -marginAmount,
+                EMPTY_METADATA
+            ),
             getOpenPositionParams()
         );
         uint256 afterBalance1 = token1.balanceOf(user);
@@ -278,7 +338,17 @@ contract ControllerTest is TestDeployer, Test {
         controller.updatePosition(
             0,
             positionUpdates,
-            DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1, EMPTY_METADATA),
+            DataType.TradeOption(
+                false,
+                false,
+                false,
+                getIsMarginZero(),
+                Constants.MARGIN_STAY,
+                Constants.MARGIN_STAY,
+                0,
+                0,
+                EMPTY_METADATA
+            ),
             getOpenPositionParams()
         );
     }
@@ -289,7 +359,17 @@ contract ControllerTest is TestDeployer, Test {
         controller.updatePosition(
             lpVaultId,
             positionUpdates,
-            DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1, EMPTY_METADATA),
+            DataType.TradeOption(
+                false,
+                false,
+                false,
+                getIsMarginZero(),
+                Constants.MARGIN_STAY,
+                Constants.MARGIN_STAY,
+                0,
+                0,
+                EMPTY_METADATA
+            ),
             getOpenPositionParams()
         );
 
@@ -313,7 +393,17 @@ contract ControllerTest is TestDeployer, Test {
         controller.updatePosition(
             lpVaultId,
             positionUpdates,
-            DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1, EMPTY_METADATA),
+            DataType.TradeOption(
+                false,
+                false,
+                false,
+                getIsMarginZero(),
+                Constants.MARGIN_STAY,
+                Constants.MARGIN_STAY,
+                0,
+                0,
+                EMPTY_METADATA
+            ),
             getOpenPositionParams()
         );
 
@@ -330,7 +420,17 @@ contract ControllerTest is TestDeployer, Test {
         (uint256 vaultId, , ) = controller.updatePosition(
             0,
             positionUpdates,
-            DataType.TradeOption(false, false, false, getIsMarginZero(), int256(margin), -1, EMPTY_METADATA),
+            DataType.TradeOption(
+                false,
+                false,
+                false,
+                getIsMarginZero(),
+                Constants.MARGIN_USE,
+                Constants.MARGIN_STAY,
+                int256(margin),
+                0,
+                EMPTY_METADATA
+            ),
             getOpenPositionParams()
         );
 
@@ -354,7 +454,17 @@ contract ControllerTest is TestDeployer, Test {
         controller.updatePosition(
             0,
             positionUpdates,
-            DataType.TradeOption(false, false, false, isQuoteZero, -1, -1, EMPTY_METADATA),
+            DataType.TradeOption(
+                false,
+                false,
+                false,
+                isQuoteZero,
+                Constants.MARGIN_STAY,
+                Constants.MARGIN_STAY,
+                0,
+                0,
+                EMPTY_METADATA
+            ),
             openPositionOption
         );
     }
@@ -367,7 +477,17 @@ contract ControllerTest is TestDeployer, Test {
         (uint256 vaultId, , ) = controller.updatePosition(
             0,
             positionUpdates,
-            DataType.TradeOption(false, false, false, getIsMarginZero(), int256(margin), -1, EMPTY_METADATA),
+            DataType.TradeOption(
+                false,
+                false,
+                false,
+                getIsMarginZero(),
+                Constants.MARGIN_USE,
+                Constants.MARGIN_STAY,
+                int256(margin),
+                0,
+                EMPTY_METADATA
+            ),
             getOpenPositionParams()
         );
 
@@ -383,7 +503,17 @@ contract ControllerTest is TestDeployer, Test {
         controller.updatePosition(
             vaultId,
             positionUpdates2,
-            DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1, EMPTY_METADATA),
+            DataType.TradeOption(
+                false,
+                false,
+                false,
+                getIsMarginZero(),
+                Constants.MARGIN_STAY,
+                Constants.MARGIN_STAY,
+                -1,
+                -1,
+                EMPTY_METADATA
+            ),
             getOpenPositionParams()
         );
 
@@ -413,7 +543,17 @@ contract ControllerTest is TestDeployer, Test {
         (uint256 vaultId, , ) = controller.updatePosition(
             0,
             positionUpdates,
-            DataType.TradeOption(false, false, false, isMarginZero, 200 * 1e6, -1, EMPTY_METADATA),
+            DataType.TradeOption(
+                false,
+                false,
+                false,
+                isMarginZero,
+                Constants.MARGIN_USE,
+                Constants.MARGIN_STAY,
+                200 * 1e6,
+                0,
+                EMPTY_METADATA
+            ),
             openPositionOption
         );
 
@@ -425,11 +565,22 @@ contract ControllerTest is TestDeployer, Test {
             block.timestamp
         );
 
-        vm.expectRevert(bytes("PU2"));
-        controller.closeVault(
+        (DataType.TokenAmounts memory requiredAmounts, ) = controller.closeVault(
             vaultId,
-            DataType.TradeOption(false, true, false, !isMarginZero, -1, -2, EMPTY_METADATA),
+            DataType.TradeOption(
+                false,
+                true,
+                false,
+                !isMarginZero,
+                Constants.MARGIN_STAY,
+                Constants.MARGIN_USE,
+                0,
+                0,
+                EMPTY_METADATA
+            ),
             closePositionOption
         );
+
+        assertGt(requiredAmounts.amount1, 0);
     }
 }

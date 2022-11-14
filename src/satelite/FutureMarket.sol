@@ -249,8 +249,10 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
             true,
             false,
             true,
-            int256(getMarginValue(0)),
+            Constants.MARGIN_USE,
             Constants.MARGIN_STAY,
+            int256(getMarginValue(0)),
+            0,
             bytes("")
         );
 
@@ -316,8 +318,10 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
                 true,
                 false,
                 true,
-                int256(getMarginValue(_amount)),
+                Constants.MARGIN_USE,
                 Constants.MARGIN_STAY,
+                int256(getMarginValue(_amount)),
+                0,
                 bytes("")
             );
 

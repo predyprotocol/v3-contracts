@@ -53,10 +53,20 @@ contract ReaderTest is TestDeployer, Test {
         uint160 upperSqrtPrice = getUpperSqrtPrice();
 
         vm.expectRevert();
-        DataType.PositionUpdateResult memory result = reader.quoteOpenPosition(
+        reader.quoteOpenPosition(
             0,
             position,
-            DataType.TradeOption(false, true, true, isQuoteZero, -1, -1, EMPTY_METADATA),
+            DataType.TradeOption(
+                false,
+                true,
+                true,
+                isQuoteZero,
+                Constants.MARGIN_STAY,
+                Constants.MARGIN_STAY,
+                0,
+                0,
+                EMPTY_METADATA
+            ),
             DataType.OpenPositionOption(lowerSqrtPrice, upperSqrtPrice, 100, block.timestamp)
         );
     }
@@ -67,7 +77,17 @@ contract ReaderTest is TestDeployer, Test {
         DataType.PositionUpdateResult memory result = reader.quoteOpenPosition(
             vaultId1,
             position,
-            DataType.TradeOption(false, true, true, getIsMarginZero(), -1, -1, EMPTY_METADATA),
+            DataType.TradeOption(
+                false,
+                true,
+                true,
+                getIsMarginZero(),
+                Constants.MARGIN_STAY,
+                Constants.MARGIN_STAY,
+                0,
+                0,
+                EMPTY_METADATA
+            ),
             DataType.OpenPositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 100, block.timestamp)
         );
 

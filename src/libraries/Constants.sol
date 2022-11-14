@@ -11,8 +11,8 @@ library Constants {
     uint256 internal constant LPT_RESERVE_FACTOR = 5 * 1e16;
 
     // Margin option
-    int256 internal constant MARGIN_STAY = -1;
-    int256 internal constant MARGIN_USE = -2;
+    uint8 internal constant MARGIN_STAY = 1;
+    uint8 internal constant MARGIN_USE = 2;
 
     uint256 internal constant MAX_MARGIN_AMOUNT = 1e32;
     int256 internal constant MIN_MARGIN_AMOUNT = 1e6;

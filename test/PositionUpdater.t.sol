@@ -33,7 +33,17 @@ contract PositionUpdaterTest is TestDeployer, Test {
         vm.warp(block.timestamp + 1 minutes);
 
         context = getContext();
-        tradeOption = DataType.TradeOption(false, false, false, context.isMarginZero, -1, -1, EMPTY_METADATA);
+        tradeOption = DataType.TradeOption(
+            false,
+            false,
+            false,
+            context.isMarginZero,
+            Constants.MARGIN_STAY,
+            Constants.MARGIN_STAY,
+            0,
+            0,
+            EMPTY_METADATA
+        );
 
         // vault1 is empty
         // vault2 has deposited token
@@ -202,7 +212,17 @@ contract PositionUpdaterTest is TestDeployer, Test {
             context,
             ranges,
             positionUpdates,
-            DataType.TradeOption(false, false, false, context.isMarginZero, 1e8, -1, EMPTY_METADATA)
+            DataType.TradeOption(
+                false,
+                false,
+                false,
+                context.isMarginZero,
+                Constants.MARGIN_USE,
+                Constants.MARGIN_STAY,
+                1e8,
+                0,
+                EMPTY_METADATA
+            )
         );
 
         assertEq(BaseToken.getDebtValue(context.tokenState0, subVaults[vault1.subVaults[0]].balance0), 0);
@@ -283,7 +303,17 @@ contract PositionUpdaterTest is TestDeployer, Test {
             context,
             ranges,
             positionUpdates,
-            DataType.TradeOption(false, true, false, context.isMarginZero, -2, -1, EMPTY_METADATA)
+            DataType.TradeOption(
+                false,
+                true,
+                false,
+                context.isMarginZero,
+                Constants.MARGIN_USE,
+                Constants.MARGIN_STAY,
+                0,
+                0,
+                EMPTY_METADATA
+            )
         );
 
         assertEq(vault3.subVaults.length, 0);
@@ -320,7 +350,17 @@ contract PositionUpdaterTest is TestDeployer, Test {
             context,
             ranges,
             positionUpdates,
-            DataType.TradeOption(false, true, false, context.isMarginZero, -1, -1, EMPTY_METADATA)
+            DataType.TradeOption(
+                false,
+                true,
+                false,
+                context.isMarginZero,
+                Constants.MARGIN_STAY,
+                Constants.MARGIN_STAY,
+                0,
+                0,
+                EMPTY_METADATA
+            )
         );
 
         assertEq(vault1.marginAmount0, int256(0));
@@ -344,6 +384,8 @@ contract PositionUpdaterTest is TestDeployer, Test {
                 true,
                 false,
                 context.isMarginZero,
+                Constants.MARGIN_USE,
+                Constants.MARGIN_USE,
                 int256(_marginAmount0),
                 int256(_marginAmount1),
                 EMPTY_METADATA
@@ -357,7 +399,7 @@ contract PositionUpdaterTest is TestDeployer, Test {
     function testUpdatePositionWithdrawMargin() public {
         DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](0);
 
-        assertEq(vault3.marginAmount0, int256(100 * 1e6));
+        assertEq(vault3.marginAmount0, int256(101 * 1e6));
         assertEq(vault3.marginAmount1, int256(0));
 
         PositionUpdater.updatePosition(
@@ -366,10 +408,49 @@ contract PositionUpdaterTest is TestDeployer, Test {
             context,
             ranges,
             positionUpdates,
-            DataType.TradeOption(false, true, false, context.isMarginZero, 90 * 1e6, -1, EMPTY_METADATA)
+            DataType.TradeOption(
+                false,
+                true,
+                false,
+                context.isMarginZero,
+                Constants.MARGIN_USE,
+                Constants.MARGIN_STAY,
+                -10 * 1e6,
+                0,
+                EMPTY_METADATA
+            )
         );
 
-        assertEq(vault3.marginAmount0, int256(90 * 1e6));
+        assertEq(vault3.marginAmount0, int256(91 * 1e6));
+        assertEq(vault3.marginAmount1, int256(0));
+    }
+
+    function testUpdatePositionWithdrawFullMargin() public {
+        DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](0);
+
+        assertEq(vault3.marginAmount0, int256(101 * 1e6));
+        assertEq(vault3.marginAmount1, int256(0));
+
+        PositionUpdater.updatePosition(
+            vault3,
+            subVaults,
+            context,
+            ranges,
+            positionUpdates,
+            DataType.TradeOption(
+                false,
+                true,
+                false,
+                context.isMarginZero,
+                Constants.MARGIN_USE,
+                Constants.MARGIN_STAY,
+                -200 * 1e6,
+                0,
+                EMPTY_METADATA
+            )
+        );
+
+        assertEq(vault3.marginAmount0, int256(0));
         assertEq(vault3.marginAmount1, int256(0));
     }
 
@@ -391,6 +472,8 @@ contract PositionUpdaterTest is TestDeployer, Test {
                     false,
                     false,
                     context.isMarginZero,
+                    Constants.MARGIN_USE,
+                    Constants.MARGIN_USE,
                     int256(_marginAmount0),
                     int256(_marginAmount1),
                     EMPTY_METADATA
@@ -425,6 +508,8 @@ contract PositionUpdaterTest is TestDeployer, Test {
                     context.isMarginZero,
                     Constants.MARGIN_USE,
                     Constants.MARGIN_USE,
+                    0,
+                    0,
                     EMPTY_METADATA
                 )
             );

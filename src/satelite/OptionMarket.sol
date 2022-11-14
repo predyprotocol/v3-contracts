@@ -200,13 +200,17 @@ contract OptionMarket is ERC20, IERC721Receiver, Ownable {
     ) external returns (uint256 optionId) {
         uint256 marginValue = getMarginValue(strikes[_strikeId], _amount, _isPut);
 
+        int256 vaultValue = controller.getVaultValue(vaultId);
+
         DataType.TradeOption memory tradeOption = DataType.TradeOption(
             false,
             true,
             false,
             true,
-            int256(marginValue),
+            Constants.MARGIN_USE,
             Constants.MARGIN_STAY,
+            int256(marginValue) - vaultValue,
+            0,
             bytes("")
         );
 
@@ -247,6 +251,8 @@ contract OptionMarket is ERC20, IERC721Receiver, Ownable {
             true,
             Constants.MARGIN_STAY,
             Constants.MARGIN_STAY,
+            0,
+            0,
             bytes("")
         );
 
@@ -305,6 +311,8 @@ contract OptionMarket is ERC20, IERC721Receiver, Ownable {
             true,
             Constants.MARGIN_STAY,
             Constants.MARGIN_STAY,
+            0,
+            0,
             bytes("")
         );
 
@@ -366,7 +374,17 @@ contract OptionMarket is ERC20, IERC721Receiver, Ownable {
     function exercise(uint256 _boardId, uint256 _swapRatio) external {
         require(boards[_boardId].expiration <= block.timestamp, "OM1");
 
-        DataType.TradeOption memory tradeOption = DataType.TradeOption(false, true, false, true, 0, 0, bytes(""));
+        DataType.TradeOption memory tradeOption = DataType.TradeOption(
+            false,
+            true,
+            false,
+            true,
+            Constants.MARGIN_USE,
+            Constants.MARGIN_USE,
+            -1e30,
+            -1e30,
+            bytes("")
+        );
 
         DataType.ClosePositionOption memory closePositionOption = DataType.ClosePositionOption(
             0,
