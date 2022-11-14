@@ -23,6 +23,14 @@ library InterestCalculator {
     using SafeCast for uint256;
     using BaseToken for BaseToken.TokenState;
 
+    event InterestScalerUpdated(uint256 assetGrowth0, uint256 debtGrowth0, uint256 assetGrowth1, uint256 debtGrowth1);
+    event PremiumGrowthUpdated(
+        int24 lowerTick,
+        int24 upperTick,
+        uint256 premiumGrowthForBorrower,
+        uint256 premiumGrowthForLender
+    );
+
     struct TickSnapshot {
         uint256 lastSecondsPerLiquidityInside;
         uint256 lastSecondsPerLiquidity;
@@ -94,17 +102,30 @@ library InterestCalculator {
         }
 
         // calculate interest for tokens
-        uint256 interest0 = ((block.timestamp - lastTouchedTimestamp) *
-            calculateInterestRate(_irmParams, BaseToken.getUtilizationRatio(_context.tokenState0))) / 365 days;
+        uint256 interest0 = PredyMath.mulDiv(
+            block.timestamp - lastTouchedTimestamp,
+            calculateInterestRate(_irmParams, BaseToken.getUtilizationRatio(_context.tokenState0)),
+            365 days
+        );
 
-        uint256 interest1 = ((block.timestamp - lastTouchedTimestamp) *
-            calculateInterestRate(_irmParams, BaseToken.getUtilizationRatio(_context.tokenState0))) / 365 days;
+        uint256 interest1 = PredyMath.mulDiv(
+            block.timestamp - lastTouchedTimestamp,
+            calculateInterestRate(_irmParams, BaseToken.getUtilizationRatio(_context.tokenState1)),
+            365 days
+        );
 
         _context.accumuratedProtocolFee0 = _context.accumuratedProtocolFee0.add(
             _context.tokenState0.updateScaler(interest0)
         );
         _context.accumuratedProtocolFee1 = _context.accumuratedProtocolFee1.add(
             _context.tokenState1.updateScaler(interest1)
+        );
+
+        emit InterestScalerUpdated(
+            _context.tokenState0.assetGrowth,
+            _context.tokenState0.debtGrowth,
+            _context.tokenState1.assetGrowth,
+            _context.tokenState1.debtGrowth
         );
 
         return block.timestamp;
@@ -157,6 +178,13 @@ library InterestCalculator {
         takeSnapshot(_params, IUniswapV3Pool(_context.uniswapPool), _perpState.lowerTick, _perpState.upperTick);
 
         _perpState.lastTouchedTimestamp = block.timestamp;
+
+        emit PremiumGrowthUpdated(
+            _perpState.lowerTick,
+            _perpState.upperTick,
+            _perpState.premiumGrowthForBorrower,
+            _perpState.premiumGrowthForLender
+        );
     }
 
     function calculateYearlyPremium(

@@ -63,6 +63,7 @@ library PositionUpdater {
     );
     event MarginUpdated(uint256 indexed vaultId, int256 marginAmount0, int256 marginAmount1);
     event PositionUpdated(uint256 vaultId, DataType.PositionUpdateResult positionUpdateResult, bytes metadata);
+    event FeeGrowthUpdated(int24 lowerTick, int24 upperTick, uint256 fee0Growth, uint256 fee1Growth);
 
     /**
      * @notice update position and return required token amounts.
@@ -595,6 +596,8 @@ library PositionUpdater {
 
         _range.fee0Growth = _range.fee0Growth.add(PredyMath.mulDiv(collect0, Constants.ONE, totalLiquidity));
         _range.fee1Growth = _range.fee1Growth.add(PredyMath.mulDiv(collect1, Constants.ONE, totalLiquidity));
+
+        emit FeeGrowthUpdated(_range.lowerTick, _range.upperTick, _range.fee0Growth, _range.fee1Growth);
     }
 
     function collectFee(

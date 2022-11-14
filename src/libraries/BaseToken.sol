@@ -249,8 +249,8 @@ library BaseToken {
             Constants.ONE
         );
 
-        // suppry interest rate is InterestRate * Utilization * (1 - ReserveFactor)
-        uint256 suppryInterestRate = PredyMath.mulDiv(
+        // supply interest rate is InterestRate * Utilization * (1 - ReserveFactor)
+        uint256 supplyInterestRate = PredyMath.mulDiv(
             PredyMath.mulDiv(_interestRate, getTotalDebtValue(tokenState), getTotalCollateralValue(tokenState)),
             Constants.ONE - Constants.RESERVE_FACTOR,
             Constants.ONE
@@ -265,10 +265,10 @@ library BaseToken {
         tokenState.debtGrowth = tokenState.debtGrowth.add(_interestRate);
         tokenState.assetScaler = PredyMath.mulDiv(
             tokenState.assetScaler,
-            Constants.ONE + suppryInterestRate,
+            Constants.ONE + supplyInterestRate,
             Constants.ONE
         );
-        tokenState.assetGrowth = tokenState.assetGrowth.add(suppryInterestRate);
+        tokenState.assetGrowth = tokenState.assetGrowth.add(supplyInterestRate);
 
         return protocolFee;
     }
