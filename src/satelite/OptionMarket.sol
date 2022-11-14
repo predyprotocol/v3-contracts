@@ -381,8 +381,8 @@ contract OptionMarket is ERC20, IERC721Receiver, Ownable {
             true,
             Constants.MARGIN_USE,
             Constants.MARGIN_USE,
-            -1e30,
-            -1e30,
+            Constants.FULL_WITHDRAWAL,
+            Constants.FULL_WITHDRAWAL,
             bytes("")
         );
 

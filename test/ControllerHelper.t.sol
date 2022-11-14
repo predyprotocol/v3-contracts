@@ -542,7 +542,7 @@ contract ControllerHelperTest is TestDeployer, Test {
             getIsMarginZero(),
             Constants.MARGIN_USE,
             Constants.MARGIN_STAY,
-            -1e30,
+            Constants.FULL_WITHDRAWAL,
             0,
             EMPTY_METADATA
         );
@@ -590,7 +590,7 @@ contract ControllerHelperTest is TestDeployer, Test {
                 getIsMarginZero(),
                 Constants.MARGIN_USE,
                 Constants.MARGIN_STAY,
-                -1e30,
+                Constants.FULL_WITHDRAWAL,
                 0,
                 EMPTY_METADATA
             ),
@@ -653,7 +653,7 @@ contract ControllerHelperTest is TestDeployer, Test {
                 getIsMarginZero(),
                 Constants.MARGIN_USE,
                 Constants.MARGIN_STAY,
-                -1e30,
+                Constants.FULL_WITHDRAWAL,
                 0,
                 EMPTY_METADATA
             ),
