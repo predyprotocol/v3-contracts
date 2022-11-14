@@ -22,11 +22,7 @@ library LiquidationLogic {
     using SafeMath for uint256;
     using SignedSafeMath for int256;
 
-    event Liquidated(
-        uint256 indexed vaultId,
-        address liquidator,
-        uint256 penaltyAmount
-    );
+    event Liquidated(uint256 indexed vaultId, address liquidator, uint256 penaltyAmount);
 
     /**
      * @notice Anyone can liquidates the vault if its vault value is less than Min. Deposit.
