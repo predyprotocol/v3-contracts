@@ -6,32 +6,13 @@ import "forge-std/Test.sol";
 import "forge-std/Vm.sol";
 import "forge-std/console.sol";
 
-import "./utils/TestDeployer.sol";
-import "../src/Controller.sol";
-import "../src/mocks/MockERC20.sol";
+import "./Setup.t.sol";
+import "../../src/Controller.sol";
+import "../../src/mocks/MockERC20.sol";
 
-contract ControllerHelperTest is TestDeployer, Test {
-    address owner;
-    bool isQuoteZero;
-
-    uint256 private vaultId1;
-    uint256 private vaultId2;
-
-    function setUp() public {
-        owner = 0x503828976D22510aad0201ac7EC88293211D23Da;
-        vm.startPrank(owner);
-
-        address factory = deployCode(
-            "../node_modules/@uniswap/v3-core/artifacts/contracts/UniswapV3Factory.sol:UniswapV3Factory"
-        );
-
-        deployContracts(owner, factory);
-        vm.warp(block.timestamp + 1 minutes);
-
-        vaultId1 = depositToken(0, 1e10, 5 * 1e18);
-        vaultId2 = depositLPT(0, 0, 202500, 202600, 2 * 1e18);
-
-        isQuoteZero = getIsMarginZero();
+contract ControllerTest is TestController {
+    function setUp() public override {
+        TestController.setUp();
     }
 
     /**************************
@@ -42,8 +23,8 @@ contract ControllerHelperTest is TestDeployer, Test {
         DataType.LPT[] memory lpts = new DataType.LPT[](0);
         DataType.Position memory position = DataType.Position(0, 0, 1e18, 0, 0, lpts);
 
-        uint256 beforeBalance0 = token0.balanceOf(owner);
-        uint256 beforeBalance1 = token1.balanceOf(owner);
+        uint256 beforeBalance0 = token0.balanceOf(user);
+        uint256 beforeBalance1 = token1.balanceOf(user);
         controller.openPosition(
             0,
             position,
@@ -60,8 +41,8 @@ contract ControllerHelperTest is TestDeployer, Test {
             ),
             DataType.OpenPositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 100, block.timestamp)
         );
-        uint256 afterBalance0 = token0.balanceOf(owner);
-        uint256 afterBalance1 = token1.balanceOf(owner);
+        uint256 afterBalance0 = token0.balanceOf(user);
+        uint256 afterBalance1 = token1.balanceOf(user);
 
         assertEq(beforeBalance0, afterBalance0);
         assertGt(beforeBalance1, afterBalance1);
@@ -120,7 +101,7 @@ contract ControllerHelperTest is TestDeployer, Test {
     function testDepositLPTAndBorrowETH() public {
         int256 margin = 500 * 1e6;
 
-        swapToSamePrice(owner);
+        swapToSamePrice(user);
 
         vm.warp(block.timestamp + 5 minutes);
 
@@ -151,7 +132,7 @@ contract ControllerHelperTest is TestDeployer, Test {
     function testBorrowLPT1(uint256 _swapAmount) public {
         uint256 swapAmount = bound(_swapAmount, 1e16, 10 * 1e18);
 
-        slip(owner, true, swapAmount);
+        slip(user, true, swapAmount);
 
         int256 margin = 500 * 1e6;
 
@@ -185,7 +166,7 @@ contract ControllerHelperTest is TestDeployer, Test {
     function testBorrowLPTWithLowPrice(uint256 _swapAmount) public {
         uint256 swapAmount = bound(_swapAmount, 1e16, 10 * 1e18);
 
-        slip(owner, false, swapAmount);
+        slip(user, false, swapAmount);
 
         uint256 margin = 100 * 1e6;
 
@@ -374,7 +355,7 @@ contract ControllerHelperTest is TestDeployer, Test {
     function testRepayHalfOfLPT() public {
         uint256 vaultId = borrowLPT(0, 0, 202600, 202500, 202600, 1e18, 100 * 1e6);
 
-        swapToSamePrice(owner);
+        swapToSamePrice(user);
 
         vm.warp(block.timestamp + 5 minutes);
 
@@ -443,7 +424,7 @@ contract ControllerHelperTest is TestDeployer, Test {
 
         vm.stopPrank();
 
-        vm.prank(otherAccount);
+        vm.prank(OTHER_ACCOUNT);
         vm.expectRevert(bytes("P1"));
         controller.closeVault(
             vaultId,
@@ -468,14 +449,14 @@ contract ControllerHelperTest is TestDeployer, Test {
         uint256 vaultId = depositLPT(0, 0, 202600, 202700, 1 * 1e18);
         borrowLPT(vaultId, 0, 202600, 202500, 202600, 1e18, 100 * 1e6);
 
-        swapToSamePrice(owner);
+        swapToSamePrice(user);
 
-        slip(owner, false, swapAmount);
+        slip(user, false, swapAmount);
 
         vm.warp(block.timestamp + 5 minutes);
 
-        uint256 before0 = token0.balanceOf(owner);
-        uint256 before1 = token1.balanceOf(owner);
+        uint256 before0 = token0.balanceOf(user);
+        uint256 before1 = token1.balanceOf(user);
         controller.closeVault(
             vaultId,
             DataType.TradeOption(
@@ -491,8 +472,8 @@ contract ControllerHelperTest is TestDeployer, Test {
             ),
             DataType.ClosePositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 100, 1e4, block.timestamp)
         );
-        uint256 afterBalance0 = token0.balanceOf(owner);
-        uint256 afterBalance1 = token1.balanceOf(owner);
+        uint256 afterBalance0 = token0.balanceOf(user);
+        uint256 afterBalance1 = token1.balanceOf(user);
 
         console.log(0, afterBalance0 - before0);
         console.log(1, afterBalance1 - before1);
@@ -531,7 +512,7 @@ contract ControllerHelperTest is TestDeployer, Test {
         uint256 vaultId = depositLPT(0, 0, 202500, 202600, 1e18);
         uint256 vaultId3 = borrowLPT(0, 0, 202600, 202500, 202600, 1e18, 100 * 1e6);
 
-        slip(owner, true, swapAmount);
+        slip(user, true, swapAmount);
 
         vm.warp(block.timestamp + 5 minutes);
 
@@ -573,14 +554,14 @@ contract ControllerHelperTest is TestDeployer, Test {
 
         uint256 vaultId = borrowLPT(0, 0, 202600, 202500, 202600, 1e18, 100 * 1e6);
 
-        swapToSamePrice(owner);
+        swapToSamePrice(user);
 
-        slip(owner, true, swapAmount);
+        slip(user, true, swapAmount);
 
         vm.warp(block.timestamp + 5 minutes);
 
-        uint256 before0 = token0.balanceOf(owner);
-        uint256 before1 = token1.balanceOf(owner);
+        uint256 before0 = token0.balanceOf(user);
+        uint256 before1 = token1.balanceOf(user);
         controller.closeVault(
             vaultId,
             DataType.TradeOption(
@@ -596,8 +577,8 @@ contract ControllerHelperTest is TestDeployer, Test {
             ),
             DataType.ClosePositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 54, 1e4, block.timestamp)
         );
-        uint256 afterBalance0 = token0.balanceOf(owner);
-        uint256 afterBalance1 = token1.balanceOf(owner);
+        uint256 afterBalance0 = token0.balanceOf(user);
+        uint256 afterBalance1 = token1.balanceOf(user);
 
         console.log(0, afterBalance0 - before0);
         console.log(1, afterBalance1 - before1);
@@ -640,7 +621,7 @@ contract ControllerHelperTest is TestDeployer, Test {
     function testWithdrawProtocolFee() public {
         uint256 vaultId = borrowLPT(0, 0, 202600, 202500, 202600, 1e18, 100 * 1e6);
 
-        swapToSamePrice(owner);
+        swapToSamePrice(user);
 
         vm.warp(block.timestamp + 60 minutes);
 
@@ -720,7 +701,7 @@ contract ControllerHelperTest is TestDeployer, Test {
     function testCannotLiquidate() public {
         uint256 vaultId = borrowLPT(0, 0, 202600, 202500, 202600, 1e18, 100 * 1e6);
 
-        swapToSamePrice(owner);
+        swapToSamePrice(user);
 
         vm.warp(block.timestamp + 5 minutes);
 
@@ -735,15 +716,15 @@ contract ControllerHelperTest is TestDeployer, Test {
     function testLiquidateBorrowLPTPosition() public {
         uint256 vaultId = borrowLPT(0, 0, 202600, 202500, 202600, 1e18, 100 * 1e6);
 
-        swapToSamePrice(owner);
+        swapToSamePrice(user);
 
         vm.warp(block.timestamp + 7 hours);
 
         assertTrue(controller.checkLiquidatable(vaultId));
 
-        uint256 beforeBalance0 = token0.balanceOf(owner);
+        uint256 beforeBalance0 = token0.balanceOf(user);
         controller.liquidate(vaultId, DataType.LiquidationOption(100, 1e4));
-        uint256 afterBalance0 = token0.balanceOf(owner);
+        uint256 afterBalance0 = token0.balanceOf(user);
 
         // get penalty amount
         console.log(afterBalance0 - beforeBalance0);
@@ -760,7 +741,7 @@ contract ControllerHelperTest is TestDeployer, Test {
         uint256 vaultId = borrowLPT(0, 0, 202600, 202500, 202600, 1e18, 100 * 1e6);
         depositToken(vaultId, 1e11, 0);
 
-        swapToSamePrice(owner);
+        swapToSamePrice(user);
 
         vm.warp(block.timestamp + 2 days);
 
@@ -770,9 +751,9 @@ contract ControllerHelperTest is TestDeployer, Test {
 
         assertTrue(controller.checkLiquidatable(vaultId));
 
-        uint256 beforeBalance0 = token0.balanceOf(owner);
+        uint256 beforeBalance0 = token0.balanceOf(user);
         controller.liquidate(vaultId, DataType.LiquidationOption(100, 1e4));
-        uint256 afterBalance0 = token0.balanceOf(owner);
+        uint256 afterBalance0 = token0.balanceOf(user);
 
         // get penalty amount
         console.log(afterBalance0 - beforeBalance0);
@@ -788,15 +769,15 @@ contract ControllerHelperTest is TestDeployer, Test {
     function testLiquidatePartially() public {
         uint256 vaultId = borrowLPT(0, 0, 202600, 202500, 202600, 1e18, 100 * 1e6);
 
-        swapToSamePrice(owner);
+        swapToSamePrice(user);
 
         vm.warp(block.timestamp + 7 hours);
 
         assertTrue(controller.checkLiquidatable(vaultId));
 
-        uint256 beforeBalance0 = token0.balanceOf(owner);
+        uint256 beforeBalance0 = token0.balanceOf(user);
         controller.liquidate(vaultId, DataType.LiquidationOption(100, 5000));
-        uint256 afterBalance0 = token0.balanceOf(owner);
+        uint256 afterBalance0 = token0.balanceOf(user);
 
         // get penalty amount
         assertGt(afterBalance0, beforeBalance0);
@@ -810,15 +791,15 @@ contract ControllerHelperTest is TestDeployer, Test {
     function testLiquidateDefaultPosition() public {
         uint256 vaultId = borrowLPT(0, 0, 202600, 202500, 202600, 1e18, 100 * 1e6);
 
-        swapToSamePrice(owner);
+        swapToSamePrice(user);
 
         vm.warp(block.timestamp + 24 hours);
 
         assertTrue(controller.checkLiquidatable(vaultId));
 
-        uint256 beforeBalance0 = token0.balanceOf(owner);
+        uint256 beforeBalance0 = token0.balanceOf(user);
         controller.liquidate(vaultId, DataType.LiquidationOption(100, 1e4));
-        uint256 afterBalance0 = token0.balanceOf(owner);
+        uint256 afterBalance0 = token0.balanceOf(user);
 
         // penalty amount is zero
         assertEq(afterBalance0, beforeBalance0);

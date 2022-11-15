@@ -6,33 +6,13 @@ import "forge-std/Test.sol";
 import "forge-std/Vm.sol";
 import "forge-std/console.sol";
 
-import "./utils/TestDeployer.sol";
-import "../src/Controller.sol";
-import "../src/mocks/MockERC20.sol";
+import "./Setup.t.sol";
+import "../../src/Controller.sol";
+import "../../src/mocks/MockERC20.sol";
 
-contract ControllerTest is TestDeployer, Test {
-    address private user = vm.addr(uint256(1));
-
-    uint256 private lpVaultId;
-    bool private isQuoteZero;
-
-    // expected events
-    event FeeCollected(uint256 vaultId, int256 feeAmount0, int256 feeAmount1);
-
-    function setUp() public {
-        vm.startPrank(user);
-
-        address factory = deployCode(
-            "../node_modules/@uniswap/v3-core/artifacts/contracts/UniswapV3Factory.sol:UniswapV3Factory"
-        );
-
-        deployContracts(user, factory);
-        vm.warp(block.timestamp + 1 minutes);
-
-        depositToken(0, 2000 * 1e6, 5 * 1e18);
-        lpVaultId = depositLPT(0, 0, 202500, 202600, 2 * 1e18);
-
-        isQuoteZero = getIsMarginZero();
+contract ControllerUpdatePositionTest is TestController {
+    function setUp() public override {
+        TestController.setUp();
     }
 
     // Helper Functions
@@ -357,7 +337,7 @@ contract ControllerTest is TestDeployer, Test {
         (DataType.PositionUpdate[] memory positionUpdates, , ) = createPositionUpdatesForDepositLPT();
 
         controller.updatePosition(
-            lpVaultId,
+            vaultId2,
             positionUpdates,
             DataType.TradeOption(
                 false,
@@ -373,7 +353,7 @@ contract ControllerTest is TestDeployer, Test {
             getOpenPositionParams()
         );
 
-        DataType.Vault memory vault = controller.getVault(lpVaultId);
+        DataType.Vault memory vault = controller.getVault(vaultId2);
         DataType.SubVault memory subVault = controller.getSubVault(vault.subVaults[0]);
 
         assertEq(subVault.lpts.length, 2);
@@ -382,7 +362,7 @@ contract ControllerTest is TestDeployer, Test {
     function testWithdrawLPT() public {
         swapToSamePrice(user);
 
-        DataType.Vault memory vault = controller.getVault(lpVaultId);
+        DataType.Vault memory vault = controller.getVault(vaultId2);
         DataType.SubVault memory subVault = controller.getSubVault(vault.subVaults[0]);
 
         DataType.PositionUpdate[] memory positionUpdates = createPositionUpdatesForWithdrawLPT(
@@ -391,7 +371,7 @@ contract ControllerTest is TestDeployer, Test {
 
         // execute transaction
         controller.updatePosition(
-            lpVaultId,
+            vaultId2,
             positionUpdates,
             DataType.TradeOption(
                 false,
@@ -407,7 +387,7 @@ contract ControllerTest is TestDeployer, Test {
             getOpenPositionParams()
         );
 
-        DataType.VaultStatus memory vaultStatus = getVaultStatus(lpVaultId);
+        DataType.VaultStatus memory vaultStatus = getVaultStatus(vaultId2);
 
         assertEq(vaultStatus.subVaults.length, 0);
     }

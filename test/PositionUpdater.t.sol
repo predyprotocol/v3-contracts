@@ -7,11 +7,9 @@ import "forge-std/Vm.sol";
 import "forge-std/console.sol";
 
 import "../src/libraries/PositionUpdater.sol";
-import "./utils/TestDeployer.sol";
+import "./utils/PositionUpdaterHelper.sol";
 
-contract PositionUpdaterTest is TestDeployer, Test {
-    address owner;
-
+contract PositionUpdaterTest is PositionUpdaterHelper, Test {
     DataType.Context private context;
 
     DataType.Vault private vault1;
@@ -831,6 +829,7 @@ contract PositionUpdaterTest is TestDeployer, Test {
         );
     }
 
+    // margin is added or removed if margin mode is MARGIN_USE
     function testUpdateMargin(uint256 _requiredAmount0, uint256 _requiredAmount1) public {
         int256 requiredAmount0 = -int256(bound(_requiredAmount0, 0, 1e10));
         int256 requiredAmount1 = -int256(bound(_requiredAmount1, 0, 1e10));
@@ -859,6 +858,7 @@ contract PositionUpdaterTest is TestDeployer, Test {
         assertEq(result.requiredAmounts.amount1, 0);
     }
 
+    // deposit margin
     function testUpdateMarginUseDeposit(uint256 _requiredAmount0, uint256 _requiredAmount1) public {
         int256 requiredAmount0 = -int256(bound(_requiredAmount0, 0, 1e10));
         int256 requiredAmount1 = -int256(bound(_requiredAmount1, 0, 1e10));
@@ -887,6 +887,7 @@ contract PositionUpdaterTest is TestDeployer, Test {
         assertEq(result.requiredAmounts.amount1, 100);
     }
 
+    // withdraw margin
     function testUpdateMarginUseWithdraw(uint256 _requiredAmount0, uint256 _requiredAmount1) public {
         int256 requiredAmount0 = -int256(bound(_requiredAmount0, 100, 1e10));
         int256 requiredAmount1 = -int256(bound(_requiredAmount1, 100, 1e10));
@@ -915,6 +916,7 @@ contract PositionUpdaterTest is TestDeployer, Test {
         assertEq(result.requiredAmounts.amount1, -100);
     }
 
+    // withdraw full margin
     function testUpdateMarginUseFullWithdraw(uint256 _requiredAmount0, uint256 _requiredAmount1) public {
         int256 requiredAmount0 = -int256(bound(_requiredAmount0, 0, 1e6));
         int256 requiredAmount1 = -int256(bound(_requiredAmount1, 0, 1e6));
@@ -943,6 +945,7 @@ contract PositionUpdaterTest is TestDeployer, Test {
         assertEq(result.requiredAmounts.amount1, requiredAmount1);
     }
 
+    // margin can be negative if the call is liquidationCall
     function testUpdateMarginUseWithdrawLiquidationCall(uint256 _requiredAmount0, uint256 _requiredAmount1) public {
         int256 requiredAmount0 = -int256(bound(_requiredAmount0, 0, 1e10));
         int256 requiredAmount1 = -int256(bound(_requiredAmount1, 0, 1e10));
@@ -976,6 +979,7 @@ contract PositionUpdaterTest is TestDeployer, Test {
         assertEq(result.requiredAmounts.amount1, -100);
     }
 
+    // margin amount is never updated if margin mode is MARGIN_STAY
     function testUpdateMarginStay(uint256 _requiredAmount0, uint256 _requiredAmount1) public {
         int256 requiredAmount0 = -int256(bound(_requiredAmount0, 0, 1e10));
         int256 requiredAmount1 = -int256(bound(_requiredAmount1, 0, 1e10));

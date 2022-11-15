@@ -47,7 +47,7 @@ library LiquidationLogic {
         );
 
         // check that the vault is liquidatable
-        require(!_isVaultSafe(_context, _params, sqrtTwap), "L0");
+        require(!_isVaultSafe(_context.isMarginZero, _params, sqrtTwap), "L0");
 
         // calculate debt value to calculate penalty amount
         (, , uint256 debtValue) = PositionCalculator.calculateCollateralAndDebtValue(
@@ -58,7 +58,7 @@ library LiquidationLogic {
         );
 
         // close all positions in the vault
-        (uint256 penaltyAmount, DataType.PositionUpdateResult memory positionUpdateResult) = reducePosition(
+        uint256 penaltyAmount = reducePosition(
             _vault,
             _subVaults,
             _context,
@@ -119,7 +119,7 @@ library LiquidationLogic {
             _context
         );
 
-        return _isVaultSafe(_context, _params, sqrtPrice);
+        return _isVaultSafe(_context.isMarginZero, _params, sqrtPrice);
     }
 
     function getVaultValue(
@@ -141,12 +141,12 @@ library LiquidationLogic {
     }
 
     function _isVaultSafe(
-        DataType.Context memory _context,
+        bool isMarginZero,
         PositionCalculator.PositionCalculatorParams memory _params,
         uint160 sqrtPrice
     ) internal pure returns (bool) {
         // calculate Min. Deposit by using TWAP.
-        int256 minDeposit = PositionCalculator.calculateMinDeposit(_params, sqrtPrice, _context.isMarginZero);
+        int256 minDeposit = PositionCalculator.calculateMinDeposit(_params, sqrtPrice, isMarginZero);
 
         int256 vaultValue;
         int256 marginValue;
@@ -157,7 +157,7 @@ library LiquidationLogic {
             (marginValue, assetValue, debtValue) = PositionCalculator.calculateCollateralAndDebtValue(
                 _params,
                 sqrtPrice,
-                _context.isMarginZero,
+                isMarginZero,
                 false
             );
 
@@ -179,9 +179,9 @@ library LiquidationLogic {
         mapping(bytes32 => DataType.PerpStatus) storage _ranges,
         DataType.PositionUpdate[] memory _positionUpdates,
         uint256 _penaltyAmount
-    ) public returns (uint256 penaltyAmount, DataType.PositionUpdateResult memory positionUpdateResult) {
+    ) public returns (uint256 penaltyAmount) {
         // reduce position
-        positionUpdateResult = PositionUpdater.updatePosition(
+        DataType.PositionUpdateResult memory positionUpdateResult = PositionUpdater.updatePosition(
             _vault,
             _subVaults,
             _context,
