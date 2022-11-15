@@ -545,6 +545,7 @@ contract ControllerUpdatePositionTest is TestController {
             block.timestamp
         );
 
+        vm.expectRevert(bytes("PU2"));
         (DataType.TokenAmounts memory requiredAmounts, ) = controller.closeVault(
             vaultId,
             DataType.TradeOption(
@@ -560,7 +561,5 @@ contract ControllerUpdatePositionTest is TestController {
             ),
             closePositionOption
         );
-
-        assertGt(requiredAmounts.amount1, 0);
     }
 }

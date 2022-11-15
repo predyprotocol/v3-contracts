@@ -301,6 +301,8 @@ library PositionUpdater {
             _vault.marginAmount0 = _vault.marginAmount0.add(deltaMarginAmount0);
 
             newRequiredAmount0 = deltaMarginAmount0.add(result.requiredAmounts.amount0);
+
+            require(_tradeOption.deltaMarginAmount0 != 0 || newRequiredAmount0 == 0, "PU2");
         } else {
             newRequiredAmount0 = result.requiredAmounts.amount0;
         }
@@ -315,6 +317,8 @@ library PositionUpdater {
             _vault.marginAmount1 = _vault.marginAmount1.add(deltaMarginAmount1);
 
             newRequiredAmount1 = deltaMarginAmount1.add(result.requiredAmounts.amount1);
+
+            require(_tradeOption.deltaMarginAmount1 != 0 || newRequiredAmount1 == 0, "PU2");
         } else {
             newRequiredAmount1 = result.requiredAmounts.amount1;
         }
