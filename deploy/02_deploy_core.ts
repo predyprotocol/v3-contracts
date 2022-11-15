@@ -41,8 +41,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts, ethers, network } = hre
   const { deployer } = await getNamedAccounts()
 
-  return
-
   const { deploy } = deployments
 
   const isMarginZero = false

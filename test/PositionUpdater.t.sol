@@ -33,7 +33,17 @@ contract PositionUpdaterTest is TestDeployer, Test {
         vm.warp(block.timestamp + 1 minutes);
 
         context = getContext();
-        tradeOption = DataType.TradeOption(false, false, false, context.isMarginZero, -1, -1, EMPTY_METADATA);
+        tradeOption = DataType.TradeOption(
+            false,
+            false,
+            false,
+            context.isMarginZero,
+            Constants.MARGIN_STAY,
+            Constants.MARGIN_STAY,
+            0,
+            0,
+            EMPTY_METADATA
+        );
 
         // vault1 is empty
         // vault2 has deposited token
@@ -202,7 +212,17 @@ contract PositionUpdaterTest is TestDeployer, Test {
             context,
             ranges,
             positionUpdates,
-            DataType.TradeOption(false, false, false, context.isMarginZero, 1e8, -1, EMPTY_METADATA)
+            DataType.TradeOption(
+                false,
+                false,
+                false,
+                context.isMarginZero,
+                Constants.MARGIN_USE,
+                Constants.MARGIN_STAY,
+                1e8,
+                0,
+                EMPTY_METADATA
+            )
         );
 
         assertEq(BaseToken.getDebtValue(context.tokenState0, subVaults[vault1.subVaults[0]].balance0), 0);
@@ -283,7 +303,17 @@ contract PositionUpdaterTest is TestDeployer, Test {
             context,
             ranges,
             positionUpdates,
-            DataType.TradeOption(false, true, false, context.isMarginZero, -2, -1, EMPTY_METADATA)
+            DataType.TradeOption(
+                false,
+                true,
+                false,
+                context.isMarginZero,
+                Constants.MARGIN_USE,
+                Constants.MARGIN_STAY,
+                0,
+                0,
+                EMPTY_METADATA
+            )
         );
 
         assertEq(vault3.subVaults.length, 0);
@@ -320,7 +350,17 @@ contract PositionUpdaterTest is TestDeployer, Test {
             context,
             ranges,
             positionUpdates,
-            DataType.TradeOption(false, true, false, context.isMarginZero, -1, -1, EMPTY_METADATA)
+            DataType.TradeOption(
+                false,
+                true,
+                false,
+                context.isMarginZero,
+                Constants.MARGIN_STAY,
+                Constants.MARGIN_STAY,
+                0,
+                0,
+                EMPTY_METADATA
+            )
         );
 
         assertEq(vault1.marginAmount0, int256(0));
@@ -344,6 +384,8 @@ contract PositionUpdaterTest is TestDeployer, Test {
                 true,
                 false,
                 context.isMarginZero,
+                Constants.MARGIN_USE,
+                Constants.MARGIN_USE,
                 int256(_marginAmount0),
                 int256(_marginAmount1),
                 EMPTY_METADATA
@@ -357,7 +399,7 @@ contract PositionUpdaterTest is TestDeployer, Test {
     function testUpdatePositionWithdrawMargin() public {
         DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](0);
 
-        assertEq(vault3.marginAmount0, int256(100 * 1e6));
+        assertEq(vault3.marginAmount0, int256(101 * 1e6));
         assertEq(vault3.marginAmount1, int256(0));
 
         PositionUpdater.updatePosition(
@@ -366,10 +408,49 @@ contract PositionUpdaterTest is TestDeployer, Test {
             context,
             ranges,
             positionUpdates,
-            DataType.TradeOption(false, true, false, context.isMarginZero, 90 * 1e6, -1, EMPTY_METADATA)
+            DataType.TradeOption(
+                false,
+                true,
+                false,
+                context.isMarginZero,
+                Constants.MARGIN_USE,
+                Constants.MARGIN_STAY,
+                -10 * 1e6,
+                0,
+                EMPTY_METADATA
+            )
         );
 
-        assertEq(vault3.marginAmount0, int256(90 * 1e6));
+        assertEq(vault3.marginAmount0, int256(91 * 1e6));
+        assertEq(vault3.marginAmount1, int256(0));
+    }
+
+    function testUpdatePositionWithdrawFullMargin() public {
+        DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](0);
+
+        assertEq(vault3.marginAmount0, int256(101 * 1e6));
+        assertEq(vault3.marginAmount1, int256(0));
+
+        PositionUpdater.updatePosition(
+            vault3,
+            subVaults,
+            context,
+            ranges,
+            positionUpdates,
+            DataType.TradeOption(
+                false,
+                true,
+                false,
+                context.isMarginZero,
+                Constants.MARGIN_USE,
+                Constants.MARGIN_STAY,
+                -200 * 1e6,
+                0,
+                EMPTY_METADATA
+            )
+        );
+
+        assertEq(vault3.marginAmount0, int256(0));
         assertEq(vault3.marginAmount1, int256(0));
     }
 
@@ -391,6 +472,8 @@ contract PositionUpdaterTest is TestDeployer, Test {
                     false,
                     false,
                     context.isMarginZero,
+                    Constants.MARGIN_USE,
+                    Constants.MARGIN_USE,
                     int256(_marginAmount0),
                     int256(_marginAmount1),
                     EMPTY_METADATA
@@ -425,6 +508,8 @@ contract PositionUpdaterTest is TestDeployer, Test {
                     context.isMarginZero,
                     Constants.MARGIN_USE,
                     Constants.MARGIN_USE,
+                    0,
+                    0,
                     EMPTY_METADATA
                 )
             );
@@ -711,5 +796,211 @@ contract PositionUpdaterTest is TestDeployer, Test {
         assertEq(positionUpdate.zeroForOne, true);
         assertEq(positionUpdate.param0, uint256(requiredAmount1));
         assertEq(positionUpdate.param1, 0);
+    }
+
+    /**************************
+     *  Test: updateMargin    *
+     **************************/
+
+    function getTestDataOfUpdateMargin(
+        int256 requiredAmount0,
+        int256 requiredAmount1,
+        uint8 marginMode0,
+        uint8 marginMode1,
+        int256 deltaMarginAmount0,
+        int256 deltaMarginAmount1
+    ) internal returns (DataType.PositionUpdateResult memory, DataType.TradeOption memory) {
+        return (
+            DataType.PositionUpdateResult(
+                DataType.TokenAmounts(requiredAmount0, requiredAmount1),
+                DataType.TokenAmounts(0, 0),
+                DataType.TokenAmounts(0, 0),
+                DataType.TokenAmounts(0, 0)
+            ),
+            DataType.TradeOption(
+                false,
+                false,
+                false,
+                context.isMarginZero,
+                marginMode0,
+                marginMode1,
+                deltaMarginAmount0,
+                deltaMarginAmount1,
+                EMPTY_METADATA
+            )
+        );
+    }
+
+    function testUpdateMargin(uint256 _requiredAmount0, uint256 _requiredAmount1) public {
+        int256 requiredAmount0 = -int256(bound(_requiredAmount0, 0, 1e10));
+        int256 requiredAmount1 = -int256(bound(_requiredAmount1, 0, 1e10));
+
+        (
+            DataType.PositionUpdateResult memory result,
+            DataType.TradeOption memory tradeOption
+        ) = getTestDataOfUpdateMargin(
+                requiredAmount0,
+                requiredAmount1,
+                Constants.MARGIN_USE,
+                Constants.MARGIN_USE,
+                0,
+                0
+            );
+
+        (result.requiredAmounts.amount0, result.requiredAmounts.amount1) = PositionUpdater.updateMargin(
+            vault1,
+            tradeOption,
+            result
+        );
+
+        assertEq(vault1.marginAmount0, -requiredAmount0);
+        assertEq(vault1.marginAmount1, -requiredAmount1);
+        assertEq(result.requiredAmounts.amount0, 0);
+        assertEq(result.requiredAmounts.amount1, 0);
+    }
+
+    function testUpdateMarginUseDeposit(uint256 _requiredAmount0, uint256 _requiredAmount1) public {
+        int256 requiredAmount0 = -int256(bound(_requiredAmount0, 0, 1e10));
+        int256 requiredAmount1 = -int256(bound(_requiredAmount1, 0, 1e10));
+
+        (
+            DataType.PositionUpdateResult memory result,
+            DataType.TradeOption memory tradeOption
+        ) = getTestDataOfUpdateMargin(
+                requiredAmount0,
+                requiredAmount1,
+                Constants.MARGIN_USE,
+                Constants.MARGIN_USE,
+                100,
+                100
+            );
+
+        (result.requiredAmounts.amount0, result.requiredAmounts.amount1) = PositionUpdater.updateMargin(
+            vault1,
+            tradeOption,
+            result
+        );
+
+        assertEq(vault1.marginAmount0, -requiredAmount0 + 100);
+        assertEq(vault1.marginAmount1, -requiredAmount1 + 100);
+        assertEq(result.requiredAmounts.amount0, 100);
+        assertEq(result.requiredAmounts.amount1, 100);
+    }
+
+    function testUpdateMarginUseWithdraw(uint256 _requiredAmount0, uint256 _requiredAmount1) public {
+        int256 requiredAmount0 = -int256(bound(_requiredAmount0, 100, 1e10));
+        int256 requiredAmount1 = -int256(bound(_requiredAmount1, 100, 1e10));
+
+        (
+            DataType.PositionUpdateResult memory result,
+            DataType.TradeOption memory tradeOption
+        ) = getTestDataOfUpdateMargin(
+                requiredAmount0,
+                requiredAmount1,
+                Constants.MARGIN_USE,
+                Constants.MARGIN_USE,
+                -100,
+                -100
+            );
+
+        (result.requiredAmounts.amount0, result.requiredAmounts.amount1) = PositionUpdater.updateMargin(
+            vault1,
+            tradeOption,
+            result
+        );
+
+        assertEq(vault1.marginAmount0, -requiredAmount0 - 100);
+        assertEq(vault1.marginAmount1, -requiredAmount1 - 100);
+        assertEq(result.requiredAmounts.amount0, -100);
+        assertEq(result.requiredAmounts.amount1, -100);
+    }
+
+    function testUpdateMarginUseFullWithdraw(uint256 _requiredAmount0, uint256 _requiredAmount1) public {
+        int256 requiredAmount0 = -int256(bound(_requiredAmount0, 0, 1e6));
+        int256 requiredAmount1 = -int256(bound(_requiredAmount1, 0, 1e6));
+
+        (
+            DataType.PositionUpdateResult memory result,
+            DataType.TradeOption memory tradeOption
+        ) = getTestDataOfUpdateMargin(
+                requiredAmount0,
+                requiredAmount1,
+                Constants.MARGIN_USE,
+                Constants.MARGIN_USE,
+                -1e6,
+                -1e6
+            );
+
+        (result.requiredAmounts.amount0, result.requiredAmounts.amount1) = PositionUpdater.updateMargin(
+            vault1,
+            tradeOption,
+            result
+        );
+
+        assertEq(vault1.marginAmount0, 0);
+        assertEq(vault1.marginAmount1, 0);
+        assertEq(result.requiredAmounts.amount0, requiredAmount0);
+        assertEq(result.requiredAmounts.amount1, requiredAmount1);
+    }
+
+    function testUpdateMarginUseWithdrawLiquidationCall(uint256 _requiredAmount0, uint256 _requiredAmount1) public {
+        int256 requiredAmount0 = -int256(bound(_requiredAmount0, 0, 1e10));
+        int256 requiredAmount1 = -int256(bound(_requiredAmount1, 0, 1e10));
+
+        DataType.PositionUpdateResult memory result = DataType.PositionUpdateResult(
+            DataType.TokenAmounts(requiredAmount0, requiredAmount1),
+            DataType.TokenAmounts(0, 0),
+            DataType.TokenAmounts(0, 0),
+            DataType.TokenAmounts(0, 0)
+        );
+
+        (result.requiredAmounts.amount0, result.requiredAmounts.amount1) = PositionUpdater.updateMargin(
+            vault1,
+            DataType.TradeOption(
+                true,
+                false,
+                false,
+                context.isMarginZero,
+                Constants.MARGIN_USE,
+                Constants.MARGIN_USE,
+                -100,
+                -100,
+                EMPTY_METADATA
+            ),
+            result
+        );
+
+        assertEq(vault1.marginAmount0, -requiredAmount0 - 100);
+        assertEq(vault1.marginAmount1, -requiredAmount1 - 100);
+        assertEq(result.requiredAmounts.amount0, -100);
+        assertEq(result.requiredAmounts.amount1, -100);
+    }
+
+    function testUpdateMarginStay(uint256 _requiredAmount0, uint256 _requiredAmount1) public {
+        int256 requiredAmount0 = -int256(bound(_requiredAmount0, 0, 1e10));
+        int256 requiredAmount1 = -int256(bound(_requiredAmount1, 0, 1e10));
+
+        (
+            DataType.PositionUpdateResult memory result,
+            DataType.TradeOption memory tradeOption
+        ) = getTestDataOfUpdateMargin(
+                requiredAmount0,
+                requiredAmount1,
+                Constants.MARGIN_STAY,
+                Constants.MARGIN_STAY,
+                0,
+                0
+            );
+
+        (result.requiredAmounts.amount0, result.requiredAmounts.amount1) = PositionUpdater.updateMargin(
+            vault1,
+            tradeOption,
+            result
+        );
+
+        assertEq(vault1.marginAmount0, 0);
+        assertEq(vault1.marginAmount1, 0);
+        assertEq(result.requiredAmounts.amount0, requiredAmount0);
+        assertEq(result.requiredAmounts.amount1, requiredAmount1);
     }
 }

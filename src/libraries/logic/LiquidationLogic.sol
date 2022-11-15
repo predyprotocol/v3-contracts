@@ -188,7 +188,17 @@ library LiquidationLogic {
             _ranges,
             _positionUpdates,
             // reduce only
-            DataType.TradeOption(true, true, false, _context.isMarginZero, -2, -2, bytes(""))
+            DataType.TradeOption(
+                true,
+                true,
+                false,
+                _context.isMarginZero,
+                Constants.MARGIN_USE,
+                Constants.MARGIN_USE,
+                0,
+                0,
+                bytes("")
+            )
         );
 
         require(0 == positionUpdateResult.requiredAmounts.amount0, "L2");

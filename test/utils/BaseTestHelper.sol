@@ -166,8 +166,10 @@ abstract contract BaseTestHelper {
             false,
             false,
             _context.isMarginZero,
+            Constants.MARGIN_USE,
+            Constants.MARGIN_STAY,
             _margin,
-            -1,
+            0,
             EMPTY_METADATA
         );
 
@@ -195,7 +197,17 @@ abstract contract BaseTestHelper {
         (vaultId, , ) = controller.updatePosition(
             _vaultId,
             positionUpdates,
-            DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1, EMPTY_METADATA),
+            DataType.TradeOption(
+                false,
+                false,
+                false,
+                getIsMarginZero(),
+                Constants.MARGIN_STAY,
+                Constants.MARGIN_STAY,
+                0,
+                0,
+                EMPTY_METADATA
+            ),
             DataType.OpenPositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 100, block.timestamp)
         );
     }
@@ -230,7 +242,17 @@ abstract contract BaseTestHelper {
         (vaultId, , ) = controller.updatePosition(
             _vaultId,
             positionUpdates,
-            DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1, EMPTY_METADATA),
+            DataType.TradeOption(
+                false,
+                false,
+                false,
+                getIsMarginZero(),
+                Constants.MARGIN_STAY,
+                Constants.MARGIN_STAY,
+                0,
+                0,
+                EMPTY_METADATA
+            ),
             DataType.OpenPositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 100, block.timestamp)
         );
     }
@@ -276,7 +298,17 @@ abstract contract BaseTestHelper {
         (vaultId, , ) = controller.updatePosition(
             _vaultId,
             positionUpdates,
-            DataType.TradeOption(false, true, false, getIsMarginZero(), -1, -1, EMPTY_METADATA),
+            DataType.TradeOption(
+                false,
+                true,
+                false,
+                getIsMarginZero(),
+                Constants.MARGIN_STAY,
+                Constants.MARGIN_STAY,
+                0,
+                0,
+                EMPTY_METADATA
+            ),
             DataType.OpenPositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 0, block.timestamp)
         );
     }
@@ -312,7 +344,17 @@ abstract contract BaseTestHelper {
         (vaultId, , ) = controller.openPosition(
             _vaultId,
             positions[0],
-            DataType.TradeOption(false, false, false, getIsMarginZero(), int256(_margin), -1, EMPTY_METADATA),
+            DataType.TradeOption(
+                false,
+                false,
+                false,
+                getIsMarginZero(),
+                Constants.MARGIN_USE,
+                Constants.MARGIN_STAY,
+                int256(_margin),
+                0,
+                EMPTY_METADATA
+            ),
             DataType.OpenPositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 100, block.timestamp)
         );
     }

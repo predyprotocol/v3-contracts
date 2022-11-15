@@ -186,51 +186,7 @@ library PositionUpdater {
             );
         }
 
-        {
-            // Deposits or withdraw margin
-            // targetMarginAmount0 and targetMarginAmount1 determine the margin target.
-            // -1 means that the margin is no changed.
-            // -2 means that make requiredAmounts 0 by using margin amount.
-            int256 deltaMarginAmount0;
-            int256 deltaMarginAmount1;
-
-            if (_tradeOption.targetMarginAmount0 >= 0) {
-                // update margin amount of token0 to target margin amount
-                deltaMarginAmount0 = _tradeOption.targetMarginAmount0.sub(int256(_vault.marginAmount0));
-
-                _vault.marginAmount0 = _tradeOption.targetMarginAmount0;
-
-                result.requiredAmounts.amount0 = result.requiredAmounts.amount0.add(deltaMarginAmount0);
-            } else if (_tradeOption.targetMarginAmount0 == Constants.MARGIN_USE) {
-                // use margin of token0 to make required amount 0
-                deltaMarginAmount0 = result.requiredAmounts.amount0.mul(-1);
-
-                _vault.marginAmount0 = _vault.marginAmount0.add(deltaMarginAmount0);
-
-                result.requiredAmounts.amount0 = 0;
-            }
-
-            if (_tradeOption.targetMarginAmount1 >= 0) {
-                // update margin amount of token1 to target margin amount
-                deltaMarginAmount1 = _tradeOption.targetMarginAmount1.sub(int256(_vault.marginAmount1));
-
-                _vault.marginAmount1 = _tradeOption.targetMarginAmount1;
-
-                result.requiredAmounts.amount1 = result.requiredAmounts.amount1.add(deltaMarginAmount1);
-            } else if (_tradeOption.targetMarginAmount1 == Constants.MARGIN_USE) {
-                // use margin of token1 to make required amount 0
-                deltaMarginAmount1 = result.requiredAmounts.amount1.mul(-1);
-
-                _vault.marginAmount1 = _vault.marginAmount1.add(deltaMarginAmount1);
-
-                result.requiredAmounts.amount1 = 0;
-            }
-
-            // emit event if needed
-            if (deltaMarginAmount0 != 0 || deltaMarginAmount1 != 0) {
-                emit MarginUpdated(_vault.vaultId, deltaMarginAmount0, deltaMarginAmount1);
-            }
-        }
+        (result.requiredAmounts.amount0, result.requiredAmounts.amount1) = updateMargin(_vault, _tradeOption, result);
 
         if (!_tradeOption.isLiquidationCall) {
             require(_vault.marginAmount0 >= 0 && _vault.marginAmount1 >= 0, "PU2");
@@ -317,6 +273,49 @@ library PositionUpdater {
                 );
         } else {
             return DataType.PositionUpdate(DataType.PositionUpdateType.NOOP, 0, false, 0, 0, 0, 0, 0);
+        }
+    }
+
+    function updateMargin(
+        DataType.Vault storage _vault,
+        DataType.TradeOption memory _tradeOption,
+        DataType.PositionUpdateResult memory result
+    ) internal returns (int256 newRequiredAmount0, int256 newRequiredAmount1) {
+        // Deposits or withdraw margin
+        int256 deltaMarginAmount0;
+        int256 deltaMarginAmount1;
+
+        if (_tradeOption.marginMode0 == Constants.MARGIN_USE) {
+            deltaMarginAmount0 = _tradeOption.deltaMarginAmount0.sub(result.requiredAmounts.amount0);
+
+            if (!_tradeOption.isLiquidationCall && _vault.marginAmount0.add(deltaMarginAmount0) < 0) {
+                deltaMarginAmount0 = _vault.marginAmount0.mul(-1);
+            }
+
+            _vault.marginAmount0 = _vault.marginAmount0.add(deltaMarginAmount0);
+
+            newRequiredAmount0 = deltaMarginAmount0.add(result.requiredAmounts.amount0);
+        } else {
+            newRequiredAmount0 = result.requiredAmounts.amount0;
+        }
+
+        if (_tradeOption.marginMode1 == Constants.MARGIN_USE) {
+            deltaMarginAmount1 = _tradeOption.deltaMarginAmount1.sub(result.requiredAmounts.amount1);
+
+            if (!_tradeOption.isLiquidationCall && _vault.marginAmount1.add(deltaMarginAmount1) < 0) {
+                deltaMarginAmount1 = _vault.marginAmount1.mul(-1);
+            }
+
+            _vault.marginAmount1 = _vault.marginAmount1.add(deltaMarginAmount1);
+
+            newRequiredAmount1 = deltaMarginAmount1.add(result.requiredAmounts.amount1);
+        } else {
+            newRequiredAmount1 = result.requiredAmounts.amount1;
+        }
+
+        // emit event if needed
+        if (deltaMarginAmount0 != 0 || deltaMarginAmount1 != 0) {
+            emit MarginUpdated(_vault.vaultId, deltaMarginAmount0, deltaMarginAmount1);
         }
     }
 

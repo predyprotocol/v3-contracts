@@ -110,8 +110,10 @@ library DataType {
         bool swapAnyway;
         bool quoterMode;
         bool isQuoteZero;
-        int256 targetMarginAmount0;
-        int256 targetMarginAmount1;
+        uint8 marginMode0;
+        uint8 marginMode1;
+        int256 deltaMarginAmount0;
+        int256 deltaMarginAmount1;
         bytes metadata;
     }
 

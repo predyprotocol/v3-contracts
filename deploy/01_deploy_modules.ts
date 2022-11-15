@@ -19,8 +19,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts, ethers, network } = hre
   const { deployer } = await getNamedAccounts()
 
-  return
-
   console.log(`Start deploying with ${deployer}`)
 
   const { deploy } = deployments

@@ -47,7 +47,17 @@ contract ControllerHelperTest is TestDeployer, Test {
         controller.openPosition(
             0,
             position,
-            DataType.TradeOption(false, false, false, false, -1, -1, EMPTY_METADATA),
+            DataType.TradeOption(
+                false,
+                false,
+                false,
+                false,
+                Constants.MARGIN_STAY,
+                Constants.MARGIN_STAY,
+                -1,
+                -1,
+                EMPTY_METADATA
+            ),
             DataType.OpenPositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 100, block.timestamp)
         );
         uint256 afterBalance0 = token0.balanceOf(owner);
@@ -67,7 +77,17 @@ contract ControllerHelperTest is TestDeployer, Test {
         controller.openPosition(
             0,
             position,
-            DataType.TradeOption(false, true, false, getIsMarginZero(), -1, -1, EMPTY_METADATA),
+            DataType.TradeOption(
+                false,
+                true,
+                false,
+                getIsMarginZero(),
+                Constants.MARGIN_STAY,
+                Constants.MARGIN_STAY,
+                -1,
+                -1,
+                EMPTY_METADATA
+            ),
             DataType.OpenPositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 100, block.timestamp)
         );
     }
@@ -82,7 +102,17 @@ contract ControllerHelperTest is TestDeployer, Test {
         controller.openPosition(
             0,
             position,
-            DataType.TradeOption(false, true, false, getIsMarginZero(), -1, -1, EMPTY_METADATA),
+            DataType.TradeOption(
+                false,
+                true,
+                false,
+                getIsMarginZero(),
+                Constants.MARGIN_STAY,
+                Constants.MARGIN_STAY,
+                -1,
+                -1,
+                EMPTY_METADATA
+            ),
             DataType.OpenPositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 100, block.timestamp)
         );
     }
@@ -103,12 +133,22 @@ contract ControllerHelperTest is TestDeployer, Test {
         controller.openPosition(
             0,
             position,
-            DataType.TradeOption(false, true, false, getIsMarginZero(), margin, -1, EMPTY_METADATA),
+            DataType.TradeOption(
+                false,
+                true,
+                false,
+                getIsMarginZero(),
+                Constants.MARGIN_USE,
+                Constants.MARGIN_STAY,
+                margin,
+                -1,
+                EMPTY_METADATA
+            ),
             DataType.OpenPositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 0, block.timestamp)
         );
     }
 
-    function testBorrowLPT(uint256 _swapAmount) public {
+    function testBorrowLPT1(uint256 _swapAmount) public {
         uint256 swapAmount = bound(_swapAmount, 1e16, 10 * 1e18);
 
         slip(owner, true, swapAmount);
@@ -120,14 +160,24 @@ contract ControllerHelperTest is TestDeployer, Test {
         (uint256 vaultId, , ) = controller.openPosition(
             0,
             positions[0],
-            DataType.TradeOption(false, true, false, getIsMarginZero(), margin, -1, EMPTY_METADATA),
+            DataType.TradeOption(
+                false,
+                true,
+                false,
+                getIsMarginZero(),
+                Constants.MARGIN_USE,
+                Constants.MARGIN_STAY,
+                margin,
+                0,
+                EMPTY_METADATA
+            ),
             // deposit margin
             DataType.OpenPositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 100, block.timestamp)
         );
 
         DataType.VaultStatus memory vaultStatus = getVaultStatus(vaultId);
 
-        assertEq(vaultStatus.marginValue, margin);
+        assertLt(vaultStatus.marginValue, margin);
         assertGt(vaultStatus.subVaults[0].values.assetValue, 0);
         assertGt(vaultStatus.subVaults[0].values.debtValue, 0);
     }
@@ -148,7 +198,17 @@ contract ControllerHelperTest is TestDeployer, Test {
         (uint256 vaultId, , ) = controller.openPosition(
             0,
             position,
-            DataType.TradeOption(false, true, false, getIsMarginZero(), int256(margin), -1, EMPTY_METADATA),
+            DataType.TradeOption(
+                false,
+                true,
+                false,
+                getIsMarginZero(),
+                Constants.MARGIN_USE,
+                Constants.MARGIN_STAY,
+                int256(margin),
+                -1,
+                EMPTY_METADATA
+            ),
             DataType.OpenPositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 100, block.timestamp)
         );
 
@@ -170,7 +230,17 @@ contract ControllerHelperTest is TestDeployer, Test {
         controller.openPosition(
             0,
             position,
-            DataType.TradeOption(false, true, false, isMarginZero, -1, -1, EMPTY_METADATA),
+            DataType.TradeOption(
+                false,
+                true,
+                false,
+                isMarginZero,
+                Constants.MARGIN_STAY,
+                Constants.MARGIN_STAY,
+                -1,
+                -1,
+                EMPTY_METADATA
+            ),
             DataType.OpenPositionOption(lowerSqrtPrice, upperSqrtPrice, 100, block.timestamp)
         );
     }
@@ -193,7 +263,17 @@ contract ControllerHelperTest is TestDeployer, Test {
         controller.openPosition(
             0,
             position,
-            DataType.TradeOption(false, false, true, true, -1, -1, EMPTY_METADATA),
+            DataType.TradeOption(
+                false,
+                false,
+                true,
+                true,
+                Constants.MARGIN_STAY,
+                Constants.MARGIN_STAY,
+                -1,
+                -1,
+                EMPTY_METADATA
+            ),
             DataType.OpenPositionOption(lowerSqrtPrice, upperSqrtPrice, 100, block.timestamp)
         );
     }
@@ -210,7 +290,17 @@ contract ControllerHelperTest is TestDeployer, Test {
         controller.openPosition(
             0,
             position,
-            DataType.TradeOption(false, true, false, getIsMarginZero(), int256(margin), -1, EMPTY_METADATA),
+            DataType.TradeOption(
+                false,
+                true,
+                false,
+                getIsMarginZero(),
+                Constants.MARGIN_USE,
+                Constants.MARGIN_STAY,
+                int256(margin),
+                -1,
+                EMPTY_METADATA
+            ),
             DataType.OpenPositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 100, block.timestamp)
         );
     }
@@ -227,7 +317,17 @@ contract ControllerHelperTest is TestDeployer, Test {
         controller.openPosition(
             vaultId,
             position,
-            DataType.TradeOption(false, false, false, getIsMarginZero(), -1, -1, EMPTY_METADATA),
+            DataType.TradeOption(
+                false,
+                false,
+                false,
+                getIsMarginZero(),
+                Constants.MARGIN_STAY,
+                Constants.MARGIN_STAY,
+                -1,
+                -1,
+                EMPTY_METADATA
+            ),
             DataType.OpenPositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 100, block.timestamp)
         );
 
@@ -252,7 +352,17 @@ contract ControllerHelperTest is TestDeployer, Test {
         controller.openPosition(
             vaultId,
             position,
-            DataType.TradeOption(false, false, false, isMarginZero, -1, -1, EMPTY_METADATA),
+            DataType.TradeOption(
+                false,
+                false,
+                false,
+                isMarginZero,
+                Constants.MARGIN_STAY,
+                Constants.MARGIN_STAY,
+                -1,
+                -1,
+                EMPTY_METADATA
+            ),
             DataType.OpenPositionOption(lowerSqrtPrice, upperSqrtPrice, 100, block.timestamp)
         );
     }
@@ -273,7 +383,17 @@ contract ControllerHelperTest is TestDeployer, Test {
         controller.closePosition(
             vaultId,
             positions,
-            DataType.TradeOption(false, true, false, getIsMarginZero(), -2, -2, EMPTY_METADATA),
+            DataType.TradeOption(
+                false,
+                true,
+                false,
+                getIsMarginZero(),
+                Constants.MARGIN_USE,
+                Constants.MARGIN_USE,
+                0,
+                0,
+                EMPTY_METADATA
+            ),
             DataType.ClosePositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 54, 1e4, block.timestamp)
         );
 
@@ -296,7 +416,17 @@ contract ControllerHelperTest is TestDeployer, Test {
         controller.closeSubVault(
             vaultId,
             0,
-            DataType.TradeOption(false, true, false, true, -2, -1, EMPTY_METADATA),
+            DataType.TradeOption(
+                false,
+                true,
+                false,
+                true,
+                Constants.MARGIN_USE,
+                Constants.MARGIN_STAY,
+                0,
+                0,
+                EMPTY_METADATA
+            ),
             DataType.ClosePositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 100, 1e4, block.timestamp)
         );
 
@@ -317,7 +447,17 @@ contract ControllerHelperTest is TestDeployer, Test {
         vm.expectRevert(bytes("P1"));
         controller.closeVault(
             vaultId,
-            DataType.TradeOption(false, false, false, isQuoteZero, -1, -1, EMPTY_METADATA),
+            DataType.TradeOption(
+                false,
+                false,
+                false,
+                isQuoteZero,
+                Constants.MARGIN_STAY,
+                Constants.MARGIN_STAY,
+                -1,
+                -1,
+                EMPTY_METADATA
+            ),
             DataType.ClosePositionOption(1500 * 1e6, 2000, 100, 1e4, block.timestamp)
         );
     }
@@ -338,7 +478,17 @@ contract ControllerHelperTest is TestDeployer, Test {
         uint256 before1 = token1.balanceOf(owner);
         controller.closeVault(
             vaultId,
-            DataType.TradeOption(false, true, false, getIsMarginZero(), -1, -1, EMPTY_METADATA),
+            DataType.TradeOption(
+                false,
+                true,
+                false,
+                getIsMarginZero(),
+                Constants.MARGIN_STAY,
+                Constants.MARGIN_STAY,
+                -1,
+                -1,
+                EMPTY_METADATA
+            ),
             DataType.ClosePositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 100, 1e4, block.timestamp)
         );
         uint256 afterBalance0 = token0.balanceOf(owner);
@@ -360,7 +510,17 @@ contract ControllerHelperTest is TestDeployer, Test {
         // vm.expectRevert(bytes("AS"));
         controller.closeVault(
             vaultId,
-            DataType.TradeOption(false, true, false, true, -1, -1, EMPTY_METADATA),
+            DataType.TradeOption(
+                false,
+                true,
+                false,
+                true,
+                Constants.MARGIN_STAY,
+                Constants.MARGIN_STAY,
+                -1,
+                -1,
+                EMPTY_METADATA
+            ),
             DataType.ClosePositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 100, 1e4, block.timestamp)
         );
     }
@@ -380,8 +540,10 @@ contract ControllerHelperTest is TestDeployer, Test {
             true,
             false,
             getIsMarginZero(),
+            Constants.MARGIN_USE,
+            Constants.MARGIN_STAY,
+            Constants.FULL_WITHDRAWAL,
             0,
-            -1,
             EMPTY_METADATA
         );
         DataType.ClosePositionOption memory closeOption = DataType.ClosePositionOption(
@@ -421,7 +583,17 @@ contract ControllerHelperTest is TestDeployer, Test {
         uint256 before1 = token1.balanceOf(owner);
         controller.closeVault(
             vaultId,
-            DataType.TradeOption(false, true, false, getIsMarginZero(), 0, -1, EMPTY_METADATA),
+            DataType.TradeOption(
+                false,
+                true,
+                false,
+                getIsMarginZero(),
+                Constants.MARGIN_USE,
+                Constants.MARGIN_STAY,
+                Constants.FULL_WITHDRAWAL,
+                0,
+                EMPTY_METADATA
+            ),
             DataType.ClosePositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 54, 1e4, block.timestamp)
         );
         uint256 afterBalance0 = token0.balanceOf(owner);
@@ -447,7 +619,17 @@ contract ControllerHelperTest is TestDeployer, Test {
 
         controller.closeVault(
             vaultId,
-            DataType.TradeOption(false, true, false, true, -2, -1, EMPTY_METADATA),
+            DataType.TradeOption(
+                false,
+                true,
+                false,
+                true,
+                Constants.MARGIN_USE,
+                Constants.MARGIN_STAY,
+                0,
+                0,
+                EMPTY_METADATA
+            ),
             DataType.ClosePositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 100, 1e4, block.timestamp)
         );
 
@@ -464,7 +646,17 @@ contract ControllerHelperTest is TestDeployer, Test {
 
         controller.closeVault(
             vaultId,
-            DataType.TradeOption(false, true, false, getIsMarginZero(), 0, -1, EMPTY_METADATA),
+            DataType.TradeOption(
+                false,
+                true,
+                false,
+                getIsMarginZero(),
+                Constants.MARGIN_USE,
+                Constants.MARGIN_STAY,
+                Constants.FULL_WITHDRAWAL,
+                0,
+                EMPTY_METADATA
+            ),
             DataType.ClosePositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 100, 1e4, block.timestamp)
         );
 
@@ -503,7 +695,17 @@ contract ControllerHelperTest is TestDeployer, Test {
         (uint256 vaultId, , ) = controller.openPosition(
             0,
             position,
-            DataType.TradeOption(false, false, false, getIsMarginZero(), 1000, -1, EMPTY_METADATA),
+            DataType.TradeOption(
+                false,
+                false,
+                false,
+                getIsMarginZero(),
+                Constants.MARGIN_USE,
+                Constants.MARGIN_STAY,
+                1000,
+                0,
+                EMPTY_METADATA
+            ),
             DataType.OpenPositionOption(lowerSqrtPrice, upperSqrtPrice, 100, block.timestamp)
         );
 
