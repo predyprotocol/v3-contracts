@@ -4,34 +4,11 @@ pragma abicoder v2;
 
 import "forge-std/Test.sol";
 import "forge-std/Vm.sol";
-import "forge-std/console.sol";
+import "./controller/Setup.t.sol";
 
-import "./utils/TestDeployer.sol";
-import "../src/Controller.sol";
-import "../src/mocks/MockERC20.sol";
-
-contract ReaderTest is TestDeployer, Test {
-    address owner;
-    bool isQuoteZero;
-
-    uint256 private vaultId1;
-    uint256 private vaultId2;
-
-    function setUp() public {
-        owner = 0x503828976D22510aad0201ac7EC88293211D23Da;
-        vm.startPrank(owner);
-
-        address factory = deployCode(
-            "../node_modules/@uniswap/v3-core/artifacts/contracts/UniswapV3Factory.sol:UniswapV3Factory"
-        );
-
-        deployContracts(owner, factory);
-        vm.warp(block.timestamp + 1 minutes);
-
-        vaultId1 = depositToken(0, 1e10, 5 * 1e18);
-        vaultId2 = depositLPT(0, 0, 202500, 202600, 2 * 1e18);
-
-        isQuoteZero = getIsMarginZero();
+contract ReaderTest is TestController {
+    function setUp() public override {
+        TestController.setUp();
     }
 
     function createPositionForDepositLPT() internal view returns (DataType.Position memory position) {

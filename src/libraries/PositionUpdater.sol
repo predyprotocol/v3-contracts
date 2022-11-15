@@ -276,12 +276,18 @@ library PositionUpdater {
         }
     }
 
+    /**
+     * @notice Updates margin amounts to open position, close position, deposit and withdraw.
+     * If isLiquidationCall is true, margin amounts can be negative value.
+     * margin mode:
+     * - MARGIN_USE means margin amount will be updated.
+     * - MARGIN_STAY means margin amount will be never updated.
+     */
     function updateMargin(
         DataType.Vault storage _vault,
         DataType.TradeOption memory _tradeOption,
         DataType.PositionUpdateResult memory result
     ) internal returns (int256 newRequiredAmount0, int256 newRequiredAmount1) {
-        // Deposits or withdraw margin
         int256 deltaMarginAmount0;
         int256 deltaMarginAmount1;
 
