@@ -7,11 +7,9 @@ import "forge-std/Vm.sol";
 import "forge-std/console.sol";
 
 import "../src/libraries/PositionUpdater.sol";
-import "./utils/TestDeployer.sol";
+import "./utils/PositionUpdaterHelper.sol";
 
-contract PositionUpdaterTest is TestDeployer, Test {
-    address owner;
-
+contract PositionUpdaterTest is PositionUpdaterHelper, Test {
     DataType.Context private context;
 
     DataType.Vault private vault1;

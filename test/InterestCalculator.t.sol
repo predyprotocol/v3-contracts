@@ -11,7 +11,7 @@ import "../src/libraries/InterestCalculator.sol";
 import "./utils/TestDeployer.sol";
 
 contract InterestCalculatorTest is TestDeployer, Test {
-    address private owner;
+    address private owner = vm.addr(uint256(1));
 
     DataType.Context private context;
     DataType.PerpStatus private perpStatus;
@@ -21,7 +21,6 @@ contract InterestCalculatorTest is TestDeployer, Test {
     uint128 private liquidity;
 
     function setUp() public {
-        owner = 0x503828976D22510aad0201ac7EC88293211D23Da;
         vm.startPrank(owner);
 
         address factory = deployCode(
