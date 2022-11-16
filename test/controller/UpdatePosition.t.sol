@@ -387,9 +387,9 @@ contract ControllerUpdatePositionTest is TestController {
             getOpenPositionParams()
         );
 
-        DataType.VaultStatus memory vaultStatus = getVaultStatus(vaultId2);
+        DataType.Vault memory vaultAfter = controller.getVault(vaultId2);
 
-        assertEq(vaultStatus.subVaults.length, 0);
+        assertEq(vaultAfter.subVaults.length, 0);
     }
 
     function testBorrowLPT() public {
@@ -415,7 +415,6 @@ contract ControllerUpdatePositionTest is TestController {
         );
 
         vm.warp(block.timestamp + 1 minutes);
-
         DataType.VaultStatus memory vaultStatus = getVaultStatus(vaultId);
 
         assertGt(vaultStatus.subVaults[0].values.assetValue, 0);
@@ -497,9 +496,9 @@ contract ControllerUpdatePositionTest is TestController {
             getOpenPositionParams()
         );
 
-        DataType.VaultStatus memory vaultStatus = getVaultStatus(vaultId);
+        DataType.Vault memory vaultAfter = controller.getVault(vaultId);
 
-        assertEq(vaultStatus.subVaults.length, 0);
+        assertEq(vaultAfter.subVaults.length, 0);
     }
 
     function testUpdatePositionMarginBecomesNegative() public {

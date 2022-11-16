@@ -69,12 +69,7 @@ library InterestCalculator {
             DataType.SubVault memory subVault = _subVaults[_vault.subVaults[i]];
 
             for (uint256 j = 0; j < subVault.lpts.length; j++) {
-                InterestCalculator.updatePremiumGrowth(
-                    _dpmParams,
-                    _context,
-                    _ranges[subVault.lpts[j].rangeId],
-                    _sqrtPrice
-                );
+                updatePremiumGrowth(_dpmParams, _context, _ranges[subVault.lpts[j].rangeId], _sqrtPrice);
             }
         }
 
@@ -87,7 +82,7 @@ library InterestCalculator {
                 continue;
             }
 
-            InterestCalculator.updatePremiumGrowth(_dpmParams, _context, _ranges[rangeId], _sqrtPrice);
+            updatePremiumGrowth(_dpmParams, _context, _ranges[rangeId], _sqrtPrice);
         }
     }
 
@@ -136,7 +131,7 @@ library InterestCalculator {
         DataType.Context storage _context,
         DataType.PerpStatus storage _perpState,
         uint160 _sqrtPrice
-    ) internal {
+    ) public {
         if (block.timestamp <= _perpState.lastTouchedTimestamp) {
             return;
         }
