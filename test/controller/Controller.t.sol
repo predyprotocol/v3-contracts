@@ -161,6 +161,9 @@ contract ControllerTest is TestController {
         assertLt(vaultStatus.marginValue, margin);
         assertGt(vaultStatus.subVaults[0].values.assetValue, 0);
         assertGt(vaultStatus.subVaults[0].values.debtValue, 0);
+
+        DataType.PerpStatus memory range = controller.getRange(LPTStateLib.getRangeKey(202500, 202600));
+        assertGt(range.fee0Growth, 0);
     }
 
     function testBorrowLPTWithLowPrice(uint256 _swapAmount) public {
@@ -808,7 +811,6 @@ contract ControllerTest is TestController {
 
         assertLt(vault.marginAmount0, 0);
         assertEq(vault.marginAmount1, 0);
-
         assertFalse(controller.checkLiquidatable(vaultId));
     }
 }

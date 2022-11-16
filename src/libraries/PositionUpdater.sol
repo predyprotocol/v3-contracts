@@ -580,7 +580,7 @@ library PositionUpdater {
         }
     }
 
-    function updateFeeGrowthForRange(DataType.Context memory _context, DataType.PerpStatus storage _range) internal {
+    function updateFeeGrowthForRange(DataType.Context memory _context, DataType.PerpStatus storage _range) public {
         if (_range.lastTouchedTimestamp == 0) {
             return;
         }

@@ -46,9 +46,9 @@ contract Reader {
     /**
      * @notice Gets asset status
      **/
-    function getAssetStatus()
+    function getAssetStatus(BaseToken.TokenState memory _tokenState0, BaseToken.TokenState memory _tokenState1)
         external
-        view
+        pure
         returns (
             uint256,
             uint256,
@@ -58,22 +58,20 @@ contract Reader {
             uint256
         )
     {
-        (BaseToken.TokenState memory tokenState0, BaseToken.TokenState memory tokenState1) = controller.getTokenState();
-
         return (
-            BaseToken.getTotalCollateralValue(tokenState0),
-            BaseToken.getTotalDebtValue(tokenState0),
-            BaseToken.getUtilizationRatio(tokenState0),
-            BaseToken.getTotalCollateralValue(tokenState1),
-            BaseToken.getTotalDebtValue(tokenState1),
-            BaseToken.getUtilizationRatio(tokenState1)
+            BaseToken.getTotalCollateralValue(_tokenState0),
+            BaseToken.getTotalDebtValue(_tokenState0),
+            BaseToken.getUtilizationRatio(_tokenState0),
+            BaseToken.getTotalCollateralValue(_tokenState1),
+            BaseToken.getTotalDebtValue(_tokenState1),
+            BaseToken.getUtilizationRatio(_tokenState1)
         );
     }
 
     /**
      * @notice Gets liquidity provider token status
      **/
-    function getLPTStatus(bytes32 _rangeId)
+    function getLPTStatus(DataType.PerpStatus memory _range)
         external
         view
         returns (
@@ -82,13 +80,11 @@ contract Reader {
             uint256
         )
     {
-        DataType.PerpStatus memory range = controller.getRange(_rangeId);
-
-        if (range.lastTouchedTimestamp == 0) {
+        if (_range.lastTouchedTimestamp == 0) {
             return (0, 0, 0);
         }
 
-        return LPTStateLib.getPerpStatus(address(controller), uniswapPool, range);
+        return LPTStateLib.getPerpStatus(address(controller), uniswapPool, _range);
     }
 
     /**

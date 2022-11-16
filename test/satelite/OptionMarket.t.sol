@@ -145,7 +145,7 @@ contract OptionMarketTest is TestDeployer, Test {
         vm.warp(block.timestamp + 1 days + 1 minutes);
 
         assertFalse(controller.checkLiquidatable(optionMarket.vaultId()));
-
+        
         optionMarket.exercise(boardId, 100);
 
         uint256 beforeBalance = token0.balanceOf(owner);

@@ -226,8 +226,6 @@ contract Controller is Initializable, IUniswapV3MintCallback {
             DataType.TokenAmounts memory swapAmounts
         )
     {
-        applyInterest();
-
         (vaultId, requiredAmounts, swapAmounts) = _updatePosition(_vaultId, positionUpdates, _tradeOption);
 
         _checkPrice(_openPositionOptions.lowerSqrtPrice, _openPositionOptions.upperSqrtPrice);
@@ -244,8 +242,6 @@ contract Controller is Initializable, IUniswapV3MintCallback {
         DataType.TradeOption memory _tradeOption,
         DataType.ClosePositionOption memory _closePositionOptions
     ) external returns (DataType.TokenAmounts memory requiredAmounts, DataType.TokenAmounts memory swapAmounts) {
-        applyInterest();
-
         return closePosition(_vaultId, _getPosition(_vaultId), _tradeOption, _closePositionOptions);
     }
 
@@ -262,8 +258,6 @@ contract Controller is Initializable, IUniswapV3MintCallback {
         DataType.TradeOption memory _tradeOption,
         DataType.ClosePositionOption memory _closePositionOptions
     ) external returns (DataType.TokenAmounts memory requiredAmounts, DataType.TokenAmounts memory swapAmounts) {
-        applyInterest();
-
         DataType.Position[] memory positions = new DataType.Position[](1);
 
         positions[0] = _getPositionOfSubVault(_vaultId, _subVaultIndex);
@@ -307,8 +301,6 @@ contract Controller is Initializable, IUniswapV3MintCallback {
      * @param _liquidationOption option parameters for liquidation call
      */
     function liquidate(uint256 _vaultId, DataType.LiquidationOption memory _liquidationOption) external {
-        applyInterest();
-
         DataType.PositionUpdate[] memory positionUpdates = PositionLib.getPositionUpdatesToClose(
             getPosition(_vaultId),
             context.isMarginZero,
@@ -402,14 +394,20 @@ contract Controller is Initializable, IUniswapV3MintCallback {
      * @notice Returns a Liquidity Provider Token (LPT) data
      * @param _rangeId The id of the LPT
      */
-    function getRange(bytes32 _rangeId) external view returns (DataType.PerpStatus memory) {
+    function getRange(bytes32 _rangeId) external returns (DataType.PerpStatus memory) {
+        InterestCalculator.updatePremiumGrowth(ypParams, context, ranges[_rangeId], getSqrtPrice());
+
+        PositionUpdater.updateFeeGrowthForRange(context, ranges[_rangeId]);
+
         return ranges[_rangeId];
     }
 
     /**
      * @notice Returns the status of supplied tokens.
      */
-    function getTokenState() external view returns (BaseToken.TokenState memory, BaseToken.TokenState memory) {
+    function getTokenState() external returns (BaseToken.TokenState memory, BaseToken.TokenState memory) {
+        applyInterest();
+
         return (context.tokenState0, context.tokenState1);
     }
 
@@ -419,8 +417,6 @@ contract Controller is Initializable, IUniswapV3MintCallback {
      * @return isLiquidatable true if the vault is liquidatable, false if the vault is safe.
      */
     function checkLiquidatable(uint256 _vaultId) external returns (bool) {
-        applyInterest();
-
         applyPerpFee(_vaultId);
 
         return !LiquidationLogic.isVaultSafe(vaults[_vaultId], subVaults, context, ranges);
@@ -430,9 +426,10 @@ contract Controller is Initializable, IUniswapV3MintCallback {
      * @notice Returns values and token amounts of the vault.
      * @param _vaultId The id of the vault
      */
-    function getVaultStatus(uint256 _vaultId, uint160 _sqrtPriceX96) external returns (DataType.VaultStatus memory) {
-        applyInterest();
-
+    function getVaultStatus(uint256 _vaultId, uint160 _sqrtPriceX96)
+        external
+        returns (DataType.VaultStatus memory)
+    {
         applyPerpFee(_vaultId);
 
         return vaults[_vaultId].getVaultStatus(subVaults, ranges, context, _sqrtPriceX96);
@@ -456,27 +453,6 @@ contract Controller is Initializable, IUniswapV3MintCallback {
      */
     function getSubVault(uint256 _subVaultId) external view returns (DataType.SubVault memory) {
         return subVaults[_subVaultId];
-    }
-
-    /**
-     * @notice Returns yearly premium to borrow Liquidity Provider Token (LPT).
-     * The function can return yearly premium with specific utilization ratio.
-     * @param _rangeId The id of the range
-     * @param _utilizationRatio Utilization ratio of LPT
-     */
-    function calculateYearlyPremium(bytes32 _rangeId, uint256 _utilizationRatio) external view returns (uint256) {
-        if (ranges[_rangeId].lastTouchedTimestamp == 0) {
-            return 0;
-        }
-
-        return
-            InterestCalculator.calculateYearlyPremium(
-                ypParams,
-                context,
-                ranges[_rangeId],
-                getSqrtPrice(),
-                _utilizationRatio
-            );
     }
 
     // Private Functions
@@ -511,6 +487,8 @@ contract Controller is Initializable, IUniswapV3MintCallback {
      * @notice apply interest, premium and trade fee for ranges that the vault and positionUpdates have.
      */
     function applyPerpFee(uint256 _vaultId, DataType.PositionUpdate[] memory _positionUpdates) internal {
+        applyInterest();
+
         DataType.Vault memory vault = vaults[_vaultId];
 
         InterestCalculator.updatePremiumGrowthForVault(
