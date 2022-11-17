@@ -426,10 +426,7 @@ contract Controller is Initializable, IUniswapV3MintCallback {
      * @notice Returns values and token amounts of the vault.
      * @param _vaultId The id of the vault
      */
-    function getVaultStatus(uint256 _vaultId, uint160 _sqrtPriceX96)
-        external
-        returns (DataType.VaultStatus memory)
-    {
+    function getVaultStatus(uint256 _vaultId, uint160 _sqrtPriceX96) external returns (DataType.VaultStatus memory) {
         applyPerpFee(_vaultId);
 
         return vaults[_vaultId].getVaultStatus(subVaults, ranges, context, _sqrtPriceX96);
