@@ -285,9 +285,9 @@ contract Controller is Initializable, IUniswapV3MintCallback {
         DataType.PositionUpdate[] memory positionUpdates = PositionLib.getPositionUpdatesToClose(
             _positions,
             _tradeOption.isQuoteZero,
+            getSqrtPrice(),
             _closePositionOptions.swapRatio,
-            _closePositionOptions.closeRatio,
-            getSqrtPrice()
+            _closePositionOptions.closeRatio
         );
 
         (, requiredAmounts, swapAmounts) = _updatePosition(_vaultId, positionUpdates, _tradeOption);
@@ -304,9 +304,9 @@ contract Controller is Initializable, IUniswapV3MintCallback {
         DataType.PositionUpdate[] memory positionUpdates = PositionLib.getPositionUpdatesToClose(
             getPosition(_vaultId),
             context.isMarginZero,
+            getSqrtPrice(),
             _liquidationOption.swapRatio,
-            _liquidationOption.closeRatio,
-            getSqrtPrice()
+            _liquidationOption.closeRatio
         );
 
         _liquidate(_vaultId, positionUpdates);
