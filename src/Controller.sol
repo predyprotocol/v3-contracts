@@ -285,9 +285,9 @@ contract Controller is Initializable, IUniswapV3MintCallback {
         DataType.PositionUpdate[] memory positionUpdates = PositionLib.getPositionUpdatesToClose(
             _positions,
             _tradeOption.isQuoteZero,
+            getSqrtPrice(),
             _closePositionOptions.swapRatio,
-            _closePositionOptions.closeRatio,
-            getSqrtPrice()
+            _closePositionOptions.closeRatio
         );
 
         (, requiredAmounts, swapAmounts) = _updatePosition(_vaultId, positionUpdates, _tradeOption);
@@ -304,9 +304,9 @@ contract Controller is Initializable, IUniswapV3MintCallback {
         DataType.PositionUpdate[] memory positionUpdates = PositionLib.getPositionUpdatesToClose(
             getPosition(_vaultId),
             context.isMarginZero,
+            getSqrtPrice(),
             _liquidationOption.swapRatio,
-            _liquidationOption.closeRatio,
-            getSqrtPrice()
+            _liquidationOption.closeRatio
         );
 
         _liquidate(_vaultId, positionUpdates);
@@ -395,7 +395,7 @@ contract Controller is Initializable, IUniswapV3MintCallback {
      * @param _rangeId The id of the LPT
      */
     function getRange(bytes32 _rangeId) external returns (DataType.PerpStatus memory) {
-        InterestCalculator.updatePremiumGrowth(ypParams, context, ranges[_rangeId], getSqrtPrice());
+        InterestCalculator.updatePremiumGrowth(ypParams, context, ranges[_rangeId], getSqrtIndexPrice());
 
         PositionUpdater.updateFeeGrowthForRange(context, ranges[_rangeId]);
 
@@ -495,7 +495,7 @@ contract Controller is Initializable, IUniswapV3MintCallback {
             context,
             _positionUpdates,
             ypParams,
-            getSqrtPrice()
+            getSqrtIndexPrice()
         );
 
         PositionUpdater.updateFeeGrowth(context, vault, subVaults, ranges, _positionUpdates);
@@ -518,7 +518,7 @@ contract Controller is Initializable, IUniswapV3MintCallback {
         return UniHelper.getSqrtPrice(context.uniswapPool);
     }
 
-    function getSqrtIndexPrice() external view returns (uint160) {
+    function getSqrtIndexPrice() public view returns (uint160) {
         return LiquidationLogic.getSqrtIndexPrice(context);
     }
 

@@ -39,6 +39,27 @@ contract PositionLibTest is Test {
         position = DataType.Position(0, 0, 0, 0, 0, lpts);
     }
 
+    function getPositions() internal pure returns (DataType.Position[] memory positions) {
+        positions = new DataType.Position[](0);
+    }
+
+    function testCannotGetPositionUpdatesToOpen() public {
+        DataType.Position memory position = getPosition1();
+
+        vm.expectRevert(bytes("ISR"));
+        PositionLib.getPositionUpdatesToOpen(position, false, 0, 101);
+    }
+
+    function testCannotGetPositionUpdatesToClose() public {
+        DataType.Position[] memory positions = getPositions();
+
+        vm.expectRevert(bytes("ICR"));
+        PositionLib.getPositionUpdatesToClose(positions, false, 0, 0, 1e4 + 1);
+
+        vm.expectRevert(bytes("ISR"));
+        PositionLib.getPositionUpdatesToClose(positions, false, 0, 101, 0);
+    }
+
     function testGetRequiredTokenAmounts() public {
         DataType.LPT[] memory lpts = new DataType.LPT[](0);
 

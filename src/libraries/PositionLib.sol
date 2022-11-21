@@ -20,6 +20,7 @@ library PositionLib {
         uint160 _sqrtPrice,
         uint256 _swapRatio
     ) external pure returns (DataType.PositionUpdate[] memory positionUpdates) {
+        require(_swapRatio <= 100, "ISR");
         uint256 swapIndex;
 
         (positionUpdates, swapIndex) = calculatePositionUpdatesToOpen(_position);
@@ -84,10 +85,13 @@ library PositionLib {
     function getPositionUpdatesToClose(
         DataType.Position[] memory _positions,
         bool _isQuoteZero,
+        uint160 _sqrtPrice,
         uint256 _swapRatio,
-        uint256 _closeRatio,
-        uint160 _sqrtPrice
+        uint256 _closeRatio
     ) external pure returns (DataType.PositionUpdate[] memory positionUpdates) {
+        require(_swapRatio <= 100, "ISR");
+        require(_closeRatio <= 1e4, "ICR");
+
         uint256 swapIndex;
 
         (positionUpdates, swapIndex) = calculatePositionUpdatesToClose(_positions, _closeRatio);
