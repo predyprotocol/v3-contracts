@@ -1,7 +1,7 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { DeployFunction } from 'hardhat-deploy/types'
 
-const vaultTokenName = 'pVault v202'
+const vaultTokenName = 'pVault v3'
 const vaultTokenSymbol = 'PVAULT'
 
 function getVaultTokenBaseURI(network: string) {
@@ -10,8 +10,12 @@ function getVaultTokenBaseURI(network: string) {
       return 'https://metadata.predy.finance/goerli/'
     case 'arbitrum':
       return 'https://metadata.predy.finance/arbitrum/'
+    case 'goerliArbitrumEth':
+      return 'https://metadata.predy.finance/goerliarbitrum/eth/'
+    case 'goerliArbitrumBtc':
+      return 'https://metadata.predy.finance/goerliarbitrum/btc/'
     default:
-      return undefined
+      return ''
   }
 }
 
@@ -58,8 +62,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     },
   })
 
-  // const baseUri = getVaultTokenBaseURI(network.name)
-  // await deploy('VaultNFT', { from: deployer, args: [vaultTokenName, vaultTokenSymbol, baseUri], log: true })
+  const controller = await ethers.getContractOrNull('Controller', deployer)
+
+  if (controller === null) {
+    const baseUri = getVaultTokenBaseURI(network.name)
+    await deploy('VaultNFT', { from: deployer, args: [vaultTokenName, vaultTokenSymbol, baseUri], log: true })
+  }
 }
 
 export default func

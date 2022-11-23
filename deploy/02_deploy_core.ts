@@ -2,16 +2,37 @@ import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { DeployFunction } from 'hardhat-deploy/types'
 import { constants } from 'ethers'
 
-const uniswapPositionManager = '0xC36442b4a4522E871399CD717aBDD847Ab11FE88'
 const uniswapFactoryAddress = '0x1F98431c8aD98523631AE4a59f267346ea31F984'
 const swapRouterAddress = '0xE592427A0AEce92De3Edee1F18E0157C05861564'
 
+function getUniswapFactoryAddress(network: string) {
+  switch (network) {
+    case 'goerliArbitrumEth':
+      return '0xE54143413A7c1407D010f2B68A227be69df2CbFD'
+    default:
+      return uniswapFactoryAddress
+  }
+}
+
+function getSwapRouterAddress(network: string) {
+  switch (network) {
+    case 'goerliArbitrumEth':
+      return '0xAF632841a184947569B70b267f2674Fa80601288'
+    default:
+      return swapRouterAddress
+  }
+}
+
 function getWethAddress(network: string) {
   switch (network) {
-    case 'rinkebyArbitrum':
-      return '0x6466232Bf77e70bEa2535393DC9B2b0d94ea3C22'
+    case 'goerliArbitrumEth':
+      return '0x163691b2153F4e18F3c3F556426b7f5C74a99FA4'
+    case 'goerliArbitrumBtc':
+      return '0x603eFB95394c6cf5b6b29B1c813bd1Ee42A07714'
     case 'goerli':
       return '0x163691b2153F4e18F3c3F556426b7f5C74a99FA4'
+    case 'localhost':
+      return '0x6466232Bf77e70bEa2535393DC9B2b0d94ea3C22'
     default:
       return undefined
   }
@@ -19,10 +40,14 @@ function getWethAddress(network: string) {
 
 function getUsdcAddress(network: string) {
   switch (network) {
-    case 'rinkebyArbitrum':
-      return '0xF61Cffd6071a8DB7cD5E8DF1D3A5450D9903cF1c'
+    case 'goerliArbitrumEth':
+      return '0xE060e715B6D20b899A654687c445ed8BC35f9dFF'
+    case 'goerliArbitrumBtc':
+      return '0xE060e715B6D20b899A654687c445ed8BC35f9dFF'
     case 'goerli':
       return '0x603eFB95394c6cf5b6b29B1c813bd1Ee42A07714'
+    case 'localhost':
+      return '0xF61Cffd6071a8DB7cD5E8DF1D3A5450D9903cF1c'
     default:
       return undefined
   }
@@ -33,7 +58,7 @@ function getChainlinkPriceFeed(network: string) {
     case 'goerli':
       return constants.AddressZero //'0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e'
     default:
-      return undefined
+      return constants.AddressZero
   }
 }
 
@@ -43,7 +68,19 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const { deploy } = deployments
 
-  const isMarginZero = false
+  const weth = getWethAddress(network.name)
+  const usdc = getUsdcAddress(network.name)
+
+  if (weth === undefined || usdc === undefined) {
+    throw new Error('token is not loaded')
+  }
+
+  const isMarginZero = parseInt(usdc, 16) < parseInt(weth, 16)
+
+  console.log('isMarginZero', isMarginZero)
+
+  const token0Addr = isMarginZero ? usdc : weth
+  const token1Addr = isMarginZero ? weth : usdc
 
   const InterestCalculator = await ethers.getContract('InterestCalculator', deployer)
   const LiquidationLogic = await ethers.getContract('LiquidationLogic', deployer)
@@ -72,12 +109,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
           args: [
             {
               feeTier: 500,
-              token0: getWethAddress(network.name),
-              token1: getUsdcAddress(network.name),
+              token0: token0Addr,
+              token1: token1Addr,
               isMarginZero,
             },
-            uniswapFactoryAddress,
-            swapRouterAddress,
+            getUniswapFactoryAddress(network.name),
+            getSwapRouterAddress(network.name),
             getChainlinkPriceFeed(network.name),
             vaultNFT.address,
           ],
