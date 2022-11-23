@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/math/SignedSafeMath.sol";
 import "@uniswap/v3-periphery/libraries/PoolAddress.sol";
 import {TransferHelper} from "@uniswap/v3-periphery/libraries/TransferHelper.sol";
 import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol";
+import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3SwapCallback.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import {IVaultNFT} from "./interfaces/IVaultNFT.sol";
 import {BaseToken} from "./libraries/BaseToken.sol";
@@ -28,7 +29,7 @@ import "./libraries/Constants.sol";
  * P3: caller must be operator
  * P4: cannot create vault with 0 amount
  */
-contract Controller is Initializable, IUniswapV3MintCallback {
+contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCallback {
     using BaseToken for BaseToken.TokenState;
     using SignedSafeMath for int256;
     using VaultLib for DataType.Vault;
@@ -79,6 +80,19 @@ contract Controller is Initializable, IUniswapV3MintCallback {
         require(msg.sender == context.uniswapPool);
         if (amount0 > 0) TransferHelper.safeTransfer(context.token0, msg.sender, amount0);
         if (amount1 > 0) TransferHelper.safeTransfer(context.token1, msg.sender, amount1);
+    }
+
+    /**
+     * @dev Callback for Uniswap V3 pool.
+     */
+    function uniswapV3SwapCallback(
+        int256 amount0Delta,
+        int256 amount1Delta,
+        bytes calldata data
+    ) external override {
+        require(msg.sender == context.uniswapPool);
+        if (amount0Delta > 0) TransferHelper.safeTransfer(context.token0, msg.sender, uint256(amount0Delta));
+        if (amount1Delta > 0) TransferHelper.safeTransfer(context.token1, msg.sender, uint256(amount1Delta));
     }
 
     function initialize(

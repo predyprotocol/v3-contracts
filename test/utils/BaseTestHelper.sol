@@ -5,6 +5,7 @@ pragma abicoder v2;
 import {SwapRouter} from "v3-periphery/SwapRouter.sol";
 import "v3-core/contracts/libraries/TickMath.sol";
 import {NonfungiblePositionManager} from "v3-periphery/NonfungiblePositionManager.sol";
+import "@uniswap/v3-periphery/interfaces/ISwapRouter.sol";
 import "../../src/Controller.sol";
 import "../../src/Reader.sol";
 import "../../src/VaultNFT.sol";
