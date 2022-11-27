@@ -597,6 +597,8 @@ library PositionUpdater {
         uint256 totalLiquidity = LPTStateLib.getTotalLiquidityAmount(address(this), _context.uniswapPool, _range);
 
         if (totalLiquidity == 0) {
+            emit FeeGrowthUpdated(_range.lowerTick, _range.upperTick, _range.fee0Growth, _range.fee1Growth);
+
             return;
         }
 

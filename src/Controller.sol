@@ -466,6 +466,30 @@ contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCall
         return subVaults[_subVaultId];
     }
 
+    function calculateLPTBorrowerAndLenderPremium(
+        bytes32 _rangeId,
+        uint256 _perpUr,
+        uint256 _elapsed
+    )
+        external
+        view
+        returns (
+            uint256 premiumGrowthForBorrower,
+            uint256 premiumGrowthForLender,
+            uint256 protocolFeePerLiquidity
+        )
+    {
+        return
+            InterestCalculator.calculateLPTBorrowerAndLenderPremium(
+                ypParams,
+                context,
+                ranges[_rangeId],
+                getSqrtIndexPrice(),
+                _perpUr,
+                _elapsed
+            );
+    }
+
     // Private Functions
 
     function createOrGetVault(uint256 _vaultId, bool _quoterMode)
