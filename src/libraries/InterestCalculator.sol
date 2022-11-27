@@ -340,7 +340,12 @@ library InterestCalculator {
 
         secondsPerLiquidity = secondsPerLiquidityCumulativeX128s[0];
 
-        (, secondsPerLiquidityInside, ) = uniPool.snapshotCumulativesInside(_lowerTick, _upperTick);
+        (, , , , , , , bool initializedLower) = uniPool.ticks(_lowerTick);
+        (, , , , , , , bool initializedUpper) = uniPool.ticks(_upperTick);
+
+        if (initializedLower && initializedUpper) {
+            (, secondsPerLiquidityInside, ) = uniPool.snapshotCumulativesInside(_lowerTick, _upperTick);
+        }
     }
 
     function calculateInterestRate(IRMParams memory _irmParams, uint256 _utilizationRatio)
