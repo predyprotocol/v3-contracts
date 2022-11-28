@@ -14,6 +14,16 @@ dotenv.config()
 
 const InfuraKey = process.env.INFURA_API_KEY
 
+const GoerliArbitrum = {
+  url: 'https://goerli-rollup.arbitrum.io/rpc',
+  gasPrice: 100000000, // 0.03 gwei
+  gas: 30_000_000,
+  accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+  companionNetworks: {
+    l1: 'goerli',
+  },
+}
+
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html
 task('accounts', 'Prints the list of accounts', async (taskArgs, hre) => {
@@ -27,7 +37,7 @@ task('accounts', 'Prints the list of accounts', async (taskArgs, hre) => {
 const config: HardhatUserConfig = {
   networks: {
     localhost: {
-      url: 'http://localhost:8545',
+      url: 'http://localhost:7545',
     },
     rinkeby: {
       url: `https://rinkeby.infura.io/v3/${InfuraKey}`,
@@ -68,15 +78,8 @@ const config: HardhatUserConfig = {
         l1: 'mainnet',
       },
     },
-    rinkebyArbitrum: {
-      url: 'https://rinkeby.arbitrum.io/rpc',
-      gasPrice: 100000000, // 0.03 gwei
-      gas: 30_000_000,
-      accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
-      companionNetworks: {
-        l1: 'rinkeby',
-      },
-    },
+    goerliArbitrumBtc: GoerliArbitrum,
+    goerliArbitrumEth: GoerliArbitrum,
     kovanOptimism: {
       url: `https://optimism-kovan.infura.io/v3/${InfuraKey}`,
       gasPrice: 1000000000,

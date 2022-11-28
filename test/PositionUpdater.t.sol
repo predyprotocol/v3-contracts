@@ -63,6 +63,15 @@ contract PositionUpdaterTest is PositionUpdaterHelper, Test {
         if (amount1 > 0) TransferHelper.safeTransfer(context.token1, msg.sender, amount1);
     }
 
+    function uniswapV3SwapCallback(
+        int256 amount0Delta,
+        int256 amount1Delta,
+        bytes calldata data
+    ) external {
+        if (amount0Delta > 0) TransferHelper.safeTransfer(context.token0, msg.sender, uint256(amount0Delta));
+        if (amount1Delta > 0) TransferHelper.safeTransfer(context.token1, msg.sender, uint256(amount1Delta));
+    }
+
     /**************************
      *  Test: updatePosition  *
      **************************/
@@ -722,6 +731,94 @@ contract PositionUpdaterTest is PositionUpdaterHelper, Test {
         bytes32 rangeKey = LPTStateLib.getRangeKey(100, 200);
 
         assertEq(uint256(ranges[rangeKey].borrowedLiquidity), 0);
+    }
+
+    /**************************
+     *   Test: swapExactIn     *
+     **************************/
+
+    function testSwapExactInZeroForOne() public {
+        DataType.PositionUpdate memory positionUpdate = DataType.PositionUpdate(
+            DataType.PositionUpdateType.SWAP_EXACT_IN,
+            0,
+            true,
+            500,
+            0,
+            0,
+            1000000,
+            0
+        );
+
+        (int256 requiredAmount0, int256 requiredAmount1) = PositionUpdater.swapExactIn(vault2, context, positionUpdate);
+
+        assertEq(requiredAmount0, 1000000);
+        assertLt(requiredAmount1, 0);
+    }
+
+    function testSwapExactInOneForZero() public {
+        DataType.PositionUpdate memory positionUpdate = DataType.PositionUpdate(
+            DataType.PositionUpdateType.SWAP_EXACT_IN,
+            0,
+            false,
+            500,
+            0,
+            0,
+            1e18,
+            0
+        );
+
+        (int256 requiredAmount0, int256 requiredAmount1) = PositionUpdater.swapExactIn(vault2, context, positionUpdate);
+
+        assertLt(requiredAmount0, 0);
+        assertEq(requiredAmount1, 1e18);
+    }
+
+    /**************************
+     *   Test: swapExactOut     *
+     **************************/
+
+    function testSwapExactOutZeroForOne() public {
+        DataType.PositionUpdate memory positionUpdate = DataType.PositionUpdate(
+            DataType.PositionUpdateType.SWAP_EXACT_OUT,
+            0,
+            true,
+            500,
+            0,
+            0,
+            1e18,
+            0
+        );
+
+        (int256 requiredAmount0, int256 requiredAmount1) = PositionUpdater.swapExactOut(
+            vault2,
+            context,
+            positionUpdate
+        );
+
+        assertGt(requiredAmount0, 0);
+        assertEq(requiredAmount1, -1e18);
+    }
+
+    function testSwapExactOutOneForZero() public {
+        DataType.PositionUpdate memory positionUpdate = DataType.PositionUpdate(
+            DataType.PositionUpdateType.SWAP_EXACT_OUT,
+            0,
+            false,
+            500,
+            0,
+            0,
+            1000000,
+            0
+        );
+
+        (int256 requiredAmount0, int256 requiredAmount1) = PositionUpdater.swapExactOut(
+            vault2,
+            context,
+            positionUpdate
+        );
+
+        assertEq(requiredAmount0, -1000000);
+        assertGt(requiredAmount1, 0);
     }
 
     /**************************

@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/math/SignedSafeMath.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import "@uniswap/v3-periphery/interfaces/ISwapRouter.sol";
 import "@uniswap/v3-periphery/libraries/PositionKey.sol";
 import "./BaseToken.sol";
 import "./Constants.sol";
@@ -472,18 +471,23 @@ library PositionUpdater {
         DataType.Context memory _context,
         DataType.PositionUpdate memory _positionUpdate
     ) internal returns (int256 requiredAmount0, int256 requiredAmount1) {
-        ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
-            tokenIn: _positionUpdate.zeroForOne ? _context.token0 : _context.token1,
-            tokenOut: _positionUpdate.zeroForOne ? _context.token1 : _context.token0,
-            fee: _context.feeTier,
-            recipient: address(this),
-            deadline: block.timestamp,
-            amountIn: _positionUpdate.param0,
-            amountOutMinimum: 0,
-            sqrtPriceLimitX96: 0
-        });
+        uint256 amountOut;
 
-        uint256 amountOut = ISwapRouter(_context.swapRouter).exactInputSingle(params);
+        {
+            (int256 amount0, int256 amount1) = IUniswapV3Pool(_context.uniswapPool).swap(
+                address(this),
+                _positionUpdate.zeroForOne,
+                int256(_positionUpdate.param0),
+                (_positionUpdate.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1),
+                ""
+            );
+
+            if (_positionUpdate.zeroForOne) {
+                amountOut = (-amount1).toUint256();
+            } else {
+                amountOut = (-amount0).toUint256();
+            }
+        }
 
         emit TokenSwap(
             _vault.vaultId,
@@ -505,18 +509,23 @@ library PositionUpdater {
         DataType.Context memory _context,
         DataType.PositionUpdate memory _positionUpdate
     ) internal returns (int256 requiredAmount0, int256 requiredAmount1) {
-        ISwapRouter.ExactOutputSingleParams memory params = ISwapRouter.ExactOutputSingleParams({
-            tokenIn: _positionUpdate.zeroForOne ? _context.token0 : _context.token1,
-            tokenOut: _positionUpdate.zeroForOne ? _context.token1 : _context.token0,
-            fee: _context.feeTier,
-            recipient: address(this),
-            deadline: block.timestamp,
-            amountOut: _positionUpdate.param0,
-            amountInMaximum: type(uint256).max,
-            sqrtPriceLimitX96: 0
-        });
+        uint256 amountIn;
 
-        uint256 amountIn = ISwapRouter(_context.swapRouter).exactOutputSingle(params);
+        {
+            (int256 amount0, int256 amount1) = IUniswapV3Pool(_context.uniswapPool).swap(
+                address(this),
+                _positionUpdate.zeroForOne,
+                -int256(_positionUpdate.param0),
+                (_positionUpdate.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1),
+                ""
+            );
+
+            if (_positionUpdate.zeroForOne) {
+                amountIn = amount0.toUint256();
+            } else {
+                amountIn = amount1.toUint256();
+            }
+        }
 
         emit TokenSwap(
             _vault.vaultId,
@@ -588,6 +597,8 @@ library PositionUpdater {
         uint256 totalLiquidity = LPTStateLib.getTotalLiquidityAmount(address(this), _context.uniswapPool, _range);
 
         if (totalLiquidity == 0) {
+            emit FeeGrowthUpdated(_range.lowerTick, _range.upperTick, _range.fee0Growth, _range.fee1Growth);
+
             return;
         }
 

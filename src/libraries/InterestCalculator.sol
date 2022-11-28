@@ -79,6 +79,8 @@ library InterestCalculator {
 
             // if range is not initialized, skip calculation.
             if (_ranges[rangeId].lastTouchedTimestamp == 0) {
+                emitPremiumGrowthUpdatedEvent(_ranges[rangeId]);
+
                 continue;
             }
 
@@ -139,20 +141,22 @@ library InterestCalculator {
         if (_perpState.borrowedLiquidity > 0) {
             uint256 perpUr = LPTStateLib.getPerpUR(address(this), _context.uniswapPool, _perpState);
 
-            uint256 premium = ((block.timestamp - _perpState.lastTouchedTimestamp) *
-                calculateYearlyPremium(_params, _context, _perpState, _sqrtPrice, perpUr)) / 365 days;
+            (
+                uint256 premiumGrowthForBorrower,
+                uint256 premiumGrowthForLender,
+                uint256 protocolFeePerLiquidity
+            ) = calculateLPTBorrowerAndLenderPremium(
+                    _params,
+                    _context,
+                    _perpState,
+                    _sqrtPrice,
+                    perpUr,
+                    (block.timestamp - _perpState.lastTouchedTimestamp)
+                );
 
-            _perpState.premiumGrowthForBorrower = _perpState.premiumGrowthForBorrower.add(premium);
+            _perpState.premiumGrowthForBorrower = _perpState.premiumGrowthForBorrower.add(premiumGrowthForBorrower);
 
-            uint256 protocolFeePerLiquidity = PredyMath.mulDiv(premium, Constants.LPT_RESERVE_FACTOR, Constants.ONE);
-
-            _perpState.premiumGrowthForLender = _perpState.premiumGrowthForLender.add(
-                PredyMath.mulDiv(
-                    premium.sub(protocolFeePerLiquidity),
-                    _perpState.borrowedLiquidity,
-                    LPTStateLib.getTotalLiquidityAmount(address(this), _context.uniswapPool, _perpState)
-                )
-            );
+            _perpState.premiumGrowthForLender = _perpState.premiumGrowthForLender.add(premiumGrowthForLender);
 
             // accumurate protocol fee
             {
@@ -174,6 +178,10 @@ library InterestCalculator {
 
         _perpState.lastTouchedTimestamp = block.timestamp;
 
+        emitPremiumGrowthUpdatedEvent(_perpState);
+    }
+
+    function emitPremiumGrowthUpdatedEvent(DataType.PerpStatus memory _perpState) internal {
         emit PremiumGrowthUpdated(
             _perpState.lowerTick,
             _perpState.upperTick,
@@ -182,10 +190,43 @@ library InterestCalculator {
         );
     }
 
+    function calculateLPTBorrowerAndLenderPremium(
+        YearlyPremiumParams storage _params,
+        DataType.Context memory _context,
+        DataType.PerpStatus memory _perpState,
+        uint160 _sqrtPrice,
+        uint256 _perpUr,
+        uint256 _elapsed
+    )
+        public
+        view
+        returns (
+            uint256 premiumGrowthForBorrower,
+            uint256 premiumGrowthForLender,
+            uint256 protocolFeePerLiquidity
+        )
+    {
+        premiumGrowthForBorrower =
+            (_elapsed * calculateYearlyPremium(_params, _context, _perpState, _sqrtPrice, _perpUr)) /
+            365 days;
+
+        protocolFeePerLiquidity = PredyMath.mulDiv(
+            premiumGrowthForBorrower,
+            Constants.LPT_RESERVE_FACTOR,
+            Constants.ONE
+        );
+
+        premiumGrowthForLender = PredyMath.mulDiv(
+            premiumGrowthForBorrower.sub(protocolFeePerLiquidity),
+            _perpState.borrowedLiquidity,
+            LPTStateLib.getTotalLiquidityAmount(address(this), _context.uniswapPool, _perpState)
+        );
+    }
+
     function calculateYearlyPremium(
         YearlyPremiumParams storage _params,
         DataType.Context memory _context,
-        DataType.PerpStatus storage _perpState,
+        DataType.PerpStatus memory _perpState,
         uint160 _sqrtPrice,
         uint256 _perpUr
     ) internal view returns (uint256) {
@@ -299,7 +340,12 @@ library InterestCalculator {
 
         secondsPerLiquidity = secondsPerLiquidityCumulativeX128s[0];
 
-        (, secondsPerLiquidityInside, ) = uniPool.snapshotCumulativesInside(_lowerTick, _upperTick);
+        (, , , , , , , bool initializedLower) = uniPool.ticks(_lowerTick);
+        (, , , , , , , bool initializedUpper) = uniPool.ticks(_upperTick);
+
+        if (initializedLower && initializedUpper) {
+            (, secondsPerLiquidityInside, ) = uniPool.snapshotCumulativesInside(_lowerTick, _upperTick);
+        }
     }
 
     function calculateInterestRate(IRMParams memory _irmParams, uint256 _utilizationRatio)
