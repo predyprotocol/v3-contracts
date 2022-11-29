@@ -55,6 +55,16 @@ contract VaultLibTest is Test {
         VaultLib.addSubVault(vault, subVaults, context, 1);
     }
 
+    // cannot add sub-vault if num of sub-vaults exceeds maximum
+    function testCannotAddSubVaultByMaxLimit() public {
+        for (uint256 i = 0; i < 32; i++) {
+            VaultLib.addSubVault(vault, subVaults, context, i);
+        }
+
+        vm.expectRevert(bytes("V1"));
+        VaultLib.addSubVault(vault, subVaults, context, 32);
+    }
+
     /**************************
      *  Test: removeSubVault  *
      **************************/
@@ -69,7 +79,7 @@ contract VaultLibTest is Test {
     function testCannotRemoveSubVault() public {
         VaultLib.addSubVault(vault, subVaults, context, 0);
 
-        vm.expectRevert();
+        vm.expectRevert(bytes("V0"));
         VaultLib.removeSubVault(vault, 1);
     }
 

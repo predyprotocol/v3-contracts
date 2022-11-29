@@ -15,7 +15,8 @@ import "./PositionLib.sol";
 
 /**
  * Error Codes
- * V0: no permission
+ * V0: sub-vault index is out of range
+ * V1: Exceeds max num of sub-vaults
  */
 library VaultLib {
     using SafeMath for uint256;
@@ -41,6 +42,8 @@ library VaultLib {
         uint256 _subVaultIndex
     ) internal returns (DataType.SubVault storage) {
         if (_subVaultIndex == _vault.subVaults.length) {
+            require(_vault.subVaults.length < Constants.MAX_NUM_OF_SUBVAULTS, "V1");
+
             uint256 subVaultId = _context.nextSubVaultId;
 
             _context.nextSubVaultId += 1;
@@ -67,6 +70,8 @@ library VaultLib {
      * @param _subVaultIndex index of sub-vault in the vault to remove
      */
     function removeSubVault(DataType.Vault storage _vault, uint256 _subVaultIndex) internal {
+        require(_subVaultIndex < _vault.subVaults.length, "V0");
+
         uint256 subVaultId = _vault.subVaults[_subVaultIndex];
 
         _vault.subVaults[_subVaultIndex] = _vault.subVaults[_vault.subVaults.length - 1];
