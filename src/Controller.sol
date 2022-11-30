@@ -211,6 +211,9 @@ contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCall
             DataType.TokenAmounts memory swapAmounts
         )
     {
+        // Set subVault index
+        _position.subVaultIndex = vaults[_vaultId].subVaults.length;
+
         DataType.PositionUpdate[] memory positionUpdates = PositionLib.getPositionUpdatesToOpen(
             _position,
             _tradeOption.isQuoteZero,

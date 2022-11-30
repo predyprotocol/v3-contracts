@@ -67,7 +67,7 @@ contract Reader {
             BaseToken.getUtilizationRatio(_tokenState1)
         );
     }
-    
+
     /**
      * @notice Calculates Min. Deposit of the vault.
      * @param _vaultId vault id

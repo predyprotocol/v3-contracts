@@ -319,38 +319,6 @@ contract ControllerTest is TestController {
         assertEq(vaultStatus.subVaults.length, 2);
     }
 
-    function testCannotCreateSubVaults() public {
-        uint256 vaultId = depositLPT(0, 0, 202500, 202600, 1e18);
-
-        (uint128 liquidity, , ) = getLiquidityAndAmountToDeposit(true, 1e18, controller.getSqrtPrice(), 202600, 202700);
-
-        DataType.LPT[] memory lpts = new DataType.LPT[](1);
-        lpts[0] = DataType.LPT(true, liquidity, 202600, 202700);
-        DataType.Position memory position = DataType.Position(2, 0, 0, 0, 0, lpts);
-
-        uint256 lowerSqrtPrice = getLowerSqrtPrice();
-        uint256 upperSqrtPrice = getUpperSqrtPrice();
-        bool isMarginZero = getIsMarginZero();
-
-        vm.expectRevert(bytes("V0"));
-        controller.openPosition(
-            vaultId,
-            position,
-            DataType.TradeOption(
-                false,
-                false,
-                false,
-                isMarginZero,
-                Constants.MARGIN_STAY,
-                Constants.MARGIN_STAY,
-                -1,
-                -1,
-                EMPTY_METADATA
-            ),
-            DataType.OpenPositionOption(lowerSqrtPrice, upperSqrtPrice, 100, block.timestamp)
-        );
-    }
-
     /**************************
      *   Test: closePosition  *
      **************************/
