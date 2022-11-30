@@ -417,6 +417,26 @@ contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCall
     }
 
     /**
+     * @notice Returns the utilization ratio of Liquidity Provider Token (LPT).
+     * @param _rangeId The id of the LPT
+     */
+    function getUtilizationRatio(bytes32 _rangeId)
+        external
+        view
+        returns (
+            uint256,
+            uint256,
+            uint256
+        )
+    {
+        if (ranges[_rangeId].lastTouchedTimestamp == 0) {
+            return (0, 0, 0);
+        }
+
+        return LPTStateLib.getPerpStatus(address(this), context.uniswapPool, ranges[_rangeId]);
+    }
+
+    /**
      * @notice Returns the status of supplied tokens.
      */
     function getTokenState() external returns (BaseToken.TokenState memory, BaseToken.TokenState memory) {

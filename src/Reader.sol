@@ -67,26 +67,7 @@ contract Reader {
             BaseToken.getUtilizationRatio(_tokenState1)
         );
     }
-
-    /**
-     * @notice Gets liquidity provider token status
-     **/
-    function getLPTStatus(DataType.PerpStatus memory _range)
-        external
-        view
-        returns (
-            uint256,
-            uint256,
-            uint256
-        )
-    {
-        if (_range.lastTouchedTimestamp == 0) {
-            return (0, 0, 0);
-        }
-
-        return LPTStateLib.getPerpStatus(address(controller), uniswapPool, _range);
-    }
-
+    
     /**
      * @notice Calculates Min. Deposit of the vault.
      * @param _vaultId vault id
