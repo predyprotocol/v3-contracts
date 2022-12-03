@@ -2,6 +2,7 @@
 pragma solidity ^0.7.6;
 pragma abicoder v2;
 
+import "@openzeppelin/contracts/math/SafeMath.sol";
 import "./Controller.sol";
 import "./libraries/BaseToken.sol";
 import "./libraries/PriceHelper.sol";
@@ -13,6 +14,8 @@ import "./libraries/UniHelper.sol";
  * @notice Reader contract with an controller
  **/
 contract Reader {
+    using SafeMath for uint256;
+
     Controller public controller;
     bool public isMarginZero;
     address public uniswapPool;
@@ -66,6 +69,33 @@ contract Reader {
             BaseToken.getTotalDebtValue(_tokenState1),
             BaseToken.getUtilizationRatio(_tokenState1)
         );
+    }
+
+    function calculateLPTPremium(
+        bytes32 _rangeId,
+        bool _isBorrow,
+        uint256 _deltaLiquidity,
+        uint256 _elapsed
+    )
+        external
+        view
+        returns (
+            uint256 premiumGrowthForBorrower,
+            uint256 premiumGrowthForLender,
+            uint256 protocolFeePerLiquidity
+        )
+    {
+        (uint256 supply, uint256 borrow, ) = controller.getUtilizationRatio(_rangeId);
+
+        if (supply == 0) {
+            return (0, 0, 0);
+        }
+
+        uint256 perpUr = _isBorrow
+            ? borrow.add(_deltaLiquidity).mul(1e18).div(supply)
+            : borrow.mul(1e18).div(supply.add(_deltaLiquidity));
+
+        return controller.calculateLPTBorrowerAndLenderPremium(_rangeId, perpUr, _elapsed);
     }
 
     /**
