@@ -22,6 +22,9 @@ const GoerliArbitrum = {
   companionNetworks: {
     l1: 'goerli',
   },
+  etherscan: {
+    apiKey: process.env.ETHERSCAN_API_KEY,
+  },
 }
 
 // This is a sample Hardhat task. To learn how to create your own go to
@@ -122,6 +125,16 @@ const config: HardhatUserConfig = {
   },
   etherscan: {
     apiKey: process.env.ETHERSCAN_API_KEY,
+    customChains: [
+      {
+        network: "goerliArbitrum",
+        chainId: 421613,
+        urls: {
+          apiURL: "https://api-testnet.arbiscan.io/api",
+          browserURL: "https://testnet.arbiscan.io/",
+        }
+      }
+    ]
   },
   preprocess: {
     eachLine: (hre) => ({
