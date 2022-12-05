@@ -485,7 +485,7 @@ contract ControllerTest is TestController {
 
         slip(user, true, swapAmount);
 
-        vm.warp(block.timestamp + 5 minutes);
+        vm.warp(block.timestamp + 7 hours);
 
         DataType.TradeOption memory tradeOption = DataType.TradeOption(
             false,
@@ -518,6 +518,11 @@ contract ControllerTest is TestController {
         controller.closeVault(vaultId2, tradeOption, closeOption);
 
         controller.closeVault(vaultId1, tradeOption, closeOption);
+
+        // withdraw protocol fee
+        (, , , uint256 protocolFee0, uint256 protocolFee1) = controller.getContext();
+
+        controller.withdrawProtocolFee(protocolFee0, protocolFee1);
     }
 
     function testRepayLPT(uint256 _swapAmount) public {
