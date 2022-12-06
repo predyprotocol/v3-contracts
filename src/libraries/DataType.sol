@@ -51,8 +51,8 @@ library DataType {
         uint256 nextSubVaultId;
         BaseToken.TokenState tokenState0;
         BaseToken.TokenState tokenState1;
-        uint256 accumuratedProtocolFee0;
-        uint256 accumuratedProtocolFee1;
+        uint256 accumulatedProtocolFee0;
+        uint256 accumulatedProtocolFee1;
     }
 
     // Parameters

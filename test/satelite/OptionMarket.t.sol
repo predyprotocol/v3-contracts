@@ -144,7 +144,7 @@ contract OptionMarketTest is TestDeployer, Test {
 
         vm.warp(block.timestamp + 1 days + 1 minutes);
 
-        assertFalse(controller.checkLiquidatable(optionMarket.vaultId()));
+        assertFalse(!controller.isVaultSafe(optionMarket.vaultId()));
 
         optionMarket.exercise(boardId, 100);
 

@@ -150,8 +150,8 @@ contract InterestCalculatorTest is TestDeployer, Test {
         uint256 receivedPremium = (perpStatus.premiumGrowthForLender * (liquidity + perpStatus.borrowedLiquidity)) /
             1e18;
 
-        assertLe(paidPremium, receivedPremium + context.accumuratedProtocolFee0 + 2);
-        assertGe(paidPremium, receivedPremium + context.accumuratedProtocolFee0);
+        assertLe(paidPremium, receivedPremium + context.accumulatedProtocolFee0 + 2);
+        assertGe(paidPremium, receivedPremium + context.accumulatedProtocolFee0);
     }
 
     function testCalculateDailyPremium() public {

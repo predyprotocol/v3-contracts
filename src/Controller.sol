@@ -31,7 +31,7 @@ import "./libraries/Constants.sol";
  * P5: paused
  * P6: unpaused
  * P7: tx too old
- * P8: too much sluppage
+ * P8: too much slippage
  */
 contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCallback {
     using BaseToken for BaseToken.TokenState;
@@ -188,10 +188,10 @@ contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCall
      * @param _amount1 amount of token1 to withdraw
      */
     function withdrawProtocolFee(uint256 _amount0, uint256 _amount1) external onlyOperator {
-        require(context.accumuratedProtocolFee0 >= _amount0 && context.accumuratedProtocolFee1 >= _amount1, "P8");
+        require(context.accumulatedProtocolFee0 >= _amount0 && context.accumulatedProtocolFee1 >= _amount1, "P8");
 
-        context.accumuratedProtocolFee0 -= _amount0;
-        context.accumuratedProtocolFee1 -= _amount1;
+        context.accumulatedProtocolFee0 -= _amount0;
+        context.accumulatedProtocolFee1 -= _amount1;
 
         if (_amount0 > 0) {
             TransferHelper.safeTransfer(context.token0, msg.sender, _amount0);
@@ -443,8 +443,8 @@ contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCall
             context.isMarginZero,
             context.nextSubVaultId,
             context.uniswapPool,
-            context.accumuratedProtocolFee0,
-            context.accumuratedProtocolFee1
+            context.accumulatedProtocolFee0,
+            context.accumulatedProtocolFee1
         );
     }
 
@@ -490,14 +490,14 @@ contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCall
     }
 
     /**
-     * @notice Returns the flag whether a vault can be liquidated or not.
+     * @notice Returns the flag whether a vault is safe or not.
      * @param _vaultId vault id
-     * @return isLiquidatable true if the vault is liquidatable, false if the vault is safe.
+     * @return isSafe true if the vault is safe, false if the vault can be liquidated.
      */
-    function checkLiquidatable(uint256 _vaultId) external returns (bool) {
+    function isVaultSafe(uint256 _vaultId) external returns (bool isSafe) {
         applyPerpFee(_vaultId);
 
-        return !LiquidationLogic.isVaultSafe(vaults[_vaultId], subVaults, context, ranges);
+        return LiquidationLogic.isVaultSafe(vaults[_vaultId], subVaults, context, ranges);
     }
 
     /**

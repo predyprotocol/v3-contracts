@@ -109,10 +109,10 @@ library InterestCalculator {
             365 days
         );
 
-        _context.accumuratedProtocolFee0 = _context.accumuratedProtocolFee0.add(
+        _context.accumulatedProtocolFee0 = _context.accumulatedProtocolFee0.add(
             _context.tokenState0.updateScaler(interest0)
         );
-        _context.accumuratedProtocolFee1 = _context.accumuratedProtocolFee1.add(
+        _context.accumulatedProtocolFee1 = _context.accumulatedProtocolFee1.add(
             _context.tokenState1.updateScaler(interest1)
         );
 
@@ -156,7 +156,7 @@ library InterestCalculator {
 
             _perpState.premiumGrowthForLender = _perpState.premiumGrowthForLender.add(premiumGrowthForLender);
 
-            // accumurate protocol fee
+            // accumulate protocol fee
             {
                 uint256 protocolFee = PredyMath.mulDiv(
                     protocolFeePerLiquidity,
@@ -165,9 +165,9 @@ library InterestCalculator {
                 );
 
                 if (_context.isMarginZero) {
-                    _context.accumuratedProtocolFee0 = _context.accumuratedProtocolFee0.add(protocolFee);
+                    _context.accumulatedProtocolFee0 = _context.accumulatedProtocolFee0.add(protocolFee);
                 } else {
-                    _context.accumuratedProtocolFee1 = _context.accumuratedProtocolFee1.add(protocolFee);
+                    _context.accumulatedProtocolFee1 = _context.accumulatedProtocolFee1.add(protocolFee);
                 }
             }
         }
