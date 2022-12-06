@@ -657,7 +657,7 @@ contract ControllerTest is TestController {
      **************************/
 
     function testCannotLiquidateNonExistingVault() public {
-        assertFalse(controller.checkLiquidatable(100));
+        assertFalse(!controller.isVaultSafe(100));
 
         DataType.LiquidationOption memory option = DataType.LiquidationOption(100, 1e4);
 
@@ -689,7 +689,7 @@ contract ControllerTest is TestController {
             DataType.OpenPositionOption(lowerSqrtPrice, upperSqrtPrice, 100, block.timestamp)
         );
 
-        assertFalse(controller.checkLiquidatable(vaultId));
+        assertFalse(!controller.isVaultSafe(vaultId));
 
         DataType.LiquidationOption memory option = DataType.LiquidationOption(100, 1e4);
 
@@ -704,7 +704,7 @@ contract ControllerTest is TestController {
 
         vm.warp(block.timestamp + 5 minutes);
 
-        assertFalse(controller.checkLiquidatable(vaultId));
+        assertFalse(!controller.isVaultSafe(vaultId));
 
         DataType.LiquidationOption memory option = DataType.LiquidationOption(100, 1e4);
 
@@ -719,7 +719,7 @@ contract ControllerTest is TestController {
 
         vm.warp(block.timestamp + 7 hours);
 
-        assertTrue(controller.checkLiquidatable(vaultId));
+        assertTrue(!controller.isVaultSafe(vaultId));
 
         uint256 beforeBalance0 = token0.balanceOf(user);
         controller.liquidate(vaultId, DataType.LiquidationOption(100, 1e4));
@@ -733,7 +733,7 @@ contract ControllerTest is TestController {
 
         assertEq(vaultStatus.subVaults.length, 0);
 
-        assertFalse(controller.checkLiquidatable(vaultId));
+        assertFalse(!controller.isVaultSafe(vaultId));
     }
 
     function testLiquidateBecauseMarginIsNegative() public {
@@ -748,7 +748,7 @@ contract ControllerTest is TestController {
 
         assertLt(vaultStatus1.marginValue, 0);
 
-        assertTrue(controller.checkLiquidatable(vaultId));
+        assertTrue(!controller.isVaultSafe(vaultId));
 
         uint256 beforeBalance0 = token0.balanceOf(user);
         controller.liquidate(vaultId, DataType.LiquidationOption(100, 1e4));
@@ -762,7 +762,7 @@ contract ControllerTest is TestController {
 
         assertEq(vaultStatus2.subVaults.length, 0);
 
-        assertFalse(controller.checkLiquidatable(vaultId));
+        assertFalse(!controller.isVaultSafe(vaultId));
     }
 
     function testLiquidatePartially() public {
@@ -772,7 +772,7 @@ contract ControllerTest is TestController {
 
         vm.warp(block.timestamp + 7 hours);
 
-        assertTrue(controller.checkLiquidatable(vaultId));
+        assertTrue(!controller.isVaultSafe(vaultId));
 
         uint256 beforeBalance0 = token0.balanceOf(user);
         controller.liquidate(vaultId, DataType.LiquidationOption(100, 5000));
@@ -784,7 +784,7 @@ contract ControllerTest is TestController {
         DataType.VaultStatus memory vaultStatus = getVaultStatus(vaultId);
         assertEq(vaultStatus.subVaults.length, 1);
 
-        assertFalse(controller.checkLiquidatable(vaultId));
+        assertFalse(!controller.isVaultSafe(vaultId));
     }
 
     function testLiquidateDefaultPosition() public {
@@ -794,7 +794,7 @@ contract ControllerTest is TestController {
 
         vm.warp(block.timestamp + 24 hours);
 
-        assertTrue(controller.checkLiquidatable(vaultId));
+        assertTrue(!controller.isVaultSafe(vaultId));
 
         uint256 beforeBalance0 = token0.balanceOf(user);
         controller.liquidate(vaultId, DataType.LiquidationOption(100, 1e4));
@@ -807,6 +807,6 @@ contract ControllerTest is TestController {
 
         assertLt(vault.marginAmount0, 0);
         assertEq(vault.marginAmount1, 0);
-        assertFalse(controller.checkLiquidatable(vaultId));
+        assertFalse(!controller.isVaultSafe(vaultId));
     }
 }
