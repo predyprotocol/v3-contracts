@@ -809,4 +809,27 @@ contract ControllerTest is TestController {
         assertEq(vault.marginAmount1, 0);
         assertFalse(!controller.isVaultSafe(vaultId));
     }
+
+    function testLiquidateAndGetMinPenalty() public {
+        uint256 vaultId = borrowLPT(0, 0, 202600, 202500, 202600, 2 * 1e14, 1e6 + 100);
+
+        swapToSamePrice(user);
+
+        vm.warp(block.timestamp + 1 days);
+
+        assertTrue(!controller.isVaultSafe(vaultId));
+
+        uint256 beforeBalance0 = token0.balanceOf(user);
+        controller.liquidate(vaultId, DataType.LiquidationOption(100, 1e4));
+        uint256 afterBalance0 = token0.balanceOf(user);
+
+        // get penalty amount
+        assertEq(afterBalance0 - beforeBalance0, Constants.MIN_PENALTY);
+
+        DataType.VaultStatus memory vaultStatus = getVaultStatus(vaultId);
+
+        assertEq(vaultStatus.subVaults.length, 0);
+
+        assertFalse(!controller.isVaultSafe(vaultId));
+    }
 }

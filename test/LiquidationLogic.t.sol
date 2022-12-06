@@ -48,4 +48,17 @@ contract LiquidationLogicTest is Test {
 
         assertFalse(LiquidationLogic._isVaultSafe(true, getPositionParams(0, 0, 500, 100), uint160(sqrtPrice)));
     }
+
+    function testCalculateLiquidationSlippageTolerance() public {
+        assertEq(
+            LiquidationLogic.calculateLiquidationSlippageTolerance(1e6),
+            Constants.BASE_LIQ_SLIPPAGE_SQRT_TOLERANCE
+        );
+        assertEq(
+            LiquidationLogic.calculateLiquidationSlippageTolerance(300000 * 1e6),
+            Constants.BASE_LIQ_SLIPPAGE_SQRT_TOLERANCE
+        );
+        assertEq(LiquidationLogic.calculateLiquidationSlippageTolerance(500000 * 1e6), 16556);
+        assertEq(LiquidationLogic.calculateLiquidationSlippageTolerance(1000000 * 1e6), 23000);
+    }
 }
