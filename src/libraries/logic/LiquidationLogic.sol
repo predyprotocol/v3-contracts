@@ -46,7 +46,7 @@ library LiquidationLogic {
             _context
         );
 
-        // check that the vault is liquidatable
+        // check that the vault is not safe
         require(!_isVaultSafe(_context.isMarginZero, _params, sqrtTwap), "L0");
 
         // calculate debt value to calculate penalty amount
@@ -64,8 +64,8 @@ library LiquidationLogic {
             _context,
             _ranges,
             _positionUpdates,
-            // penalty amount is 0.5% of debt value
-            debtValue / 200
+            // penalty amount is 0.4% of debt value
+            PredyMath.max(debtValue / 250, Constants.MIN_PENALTY)
         );
 
         sendReward(_context, msg.sender, penaltyAmount);
@@ -77,7 +77,7 @@ library LiquidationLogic {
             uint256 liquidationSlippageSqrtTolerance = calculateLiquidationSlippageTolerance(debtValue);
 
             require(
-                uint256(sqrtTwap).mul(1e6 - liquidationSlippageSqrtTolerance).div(1e6) <= sqrtPrice &&
+                uint256(sqrtTwap).mul(1e6).div(1e6 + liquidationSlippageSqrtTolerance) <= sqrtPrice &&
                     sqrtPrice <= uint256(sqrtTwap).mul(1e6 + liquidationSlippageSqrtTolerance).div(1e6),
                 "L4"
             );
@@ -88,7 +88,9 @@ library LiquidationLogic {
 
     function calculateLiquidationSlippageTolerance(uint256 _debtValue) internal pure returns (uint256) {
         uint256 liquidationSlippageSqrtTolerance = PredyMath.max(
-            (Constants.LIQ_SLIPPAGE_SQRT_SLOPE * PredyMath.sqrt(_debtValue * 1e6)) / 1e6,
+            (Constants.LIQ_SLIPPAGE_SQRT_SLOPE * PredyMath.sqrt(_debtValue * 1e6)) /
+                1e6 +
+                Constants.LIQ_SLIPPAGE_SQRT_BASE,
             Constants.BASE_LIQ_SLIPPAGE_SQRT_TOLERANCE
         );
 

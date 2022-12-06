@@ -18,6 +18,8 @@ library Constants {
     uint256 internal constant MAX_MARGIN_AMOUNT = 1e32;
     int256 internal constant MIN_MARGIN_AMOUNT = 1e6;
 
+    uint256 internal constant MIN_PENALTY = 2 * 1e5;
+
     uint256 internal constant MIN_SQRT_PRICE = 79228162514264337593;
     uint256 internal constant MAX_SQRT_PRICE = 79228162514264337593543950336000000000;
 
@@ -33,4 +35,6 @@ library Constants {
     uint256 internal constant BASE_LIQ_SLIPPAGE_SQRT_TOLERANCE = 15000;
     // 0.000022
     uint256 internal constant LIQ_SLIPPAGE_SQRT_SLOPE = 22;
+    // 0.001
+    uint256 internal constant LIQ_SLIPPAGE_SQRT_BASE = 1000;
 }
