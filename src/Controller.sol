@@ -28,6 +28,10 @@ import "./libraries/Constants.sol";
  * P2: vault does not exists
  * P3: caller must be operator
  * P4: cannot create vault with 0 amount
+ * P5: paused
+ * P6: unpaused
+ * P7: tx too old
+ * P8: too much sluppage
  */
 contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCallback {
     using BaseToken for BaseToken.TokenState;
@@ -49,8 +53,22 @@ contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCall
 
     address private vaultNFT;
 
+    bool public isSystemPaused;
+
     event OperatorUpdated(address operator);
     event VaultCreated(uint256 vaultId, address owner);
+    event Paused();
+    event UnPaused();
+
+    modifier notPaused() {
+        require(!isSystemPaused, "P5");
+        _;
+    }
+
+    modifier isPaused() {
+        require(isSystemPaused, "P6");
+        _;
+    }
 
     modifier onlyOperator() {
         require(operator == msg.sender, "P3");
@@ -63,7 +81,7 @@ contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCall
     }
 
     modifier checkDeadline(uint256 deadline) {
-        require(block.timestamp <= deadline, "CH1");
+        require(block.timestamp <= deadline, "P7");
         _;
     }
 
@@ -98,7 +116,6 @@ contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCall
     function initialize(
         DataType.InitializationParams memory _initializationParams,
         address _factory,
-        address _swapRouter,
         address _chainlinkPriceFeed,
         address _vaultNFT
     ) public initializer {
@@ -107,7 +124,6 @@ contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCall
         context.token0 = _initializationParams.token0;
         context.token1 = _initializationParams.token1;
         context.isMarginZero = _initializationParams.isMarginZero;
-        context.swapRouter = _swapRouter;
         context.chainlinkPriceFeed = _chainlinkPriceFeed;
 
         PoolAddress.PoolKey memory poolKey = PoolAddress.PoolKey({
@@ -128,9 +144,6 @@ contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCall
         lastTouchedTimestamp = block.timestamp;
 
         operator = msg.sender;
-
-        ERC20(context.token0).approve(address(_swapRouter), type(uint256).max);
-        ERC20(context.token1).approve(address(_swapRouter), type(uint256).max);
     }
 
     /**
@@ -189,6 +202,23 @@ contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCall
         }
     }
 
+    /**
+     * @notice pause the contract
+     */
+    function pause() external onlyOperator notPaused {
+        isSystemPaused = true;
+
+        emit Paused();
+    }
+
+    /**
+     * @notice unpause the contract
+     */
+    function unPause() external onlyOperator isPaused {
+        isSystemPaused = false;
+        emit UnPaused();
+    }
+
     // User API
 
     /**
@@ -205,6 +235,7 @@ contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCall
         DataType.OpenPositionOption memory _openPositionOptions
     )
         external
+        notPaused
         returns (
             uint256 vaultId,
             DataType.TokenAmounts memory requiredAmounts,
@@ -236,6 +267,7 @@ contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCall
         DataType.OpenPositionOption memory _openPositionOptions
     )
         public
+        notPaused
         checkDeadline(_openPositionOptions.deadline)
         returns (
             uint256 vaultId,
@@ -258,7 +290,11 @@ contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCall
         uint256 _vaultId,
         DataType.TradeOption memory _tradeOption,
         DataType.ClosePositionOption memory _closePositionOptions
-    ) external returns (DataType.TokenAmounts memory requiredAmounts, DataType.TokenAmounts memory swapAmounts) {
+    )
+        external
+        notPaused
+        returns (DataType.TokenAmounts memory requiredAmounts, DataType.TokenAmounts memory swapAmounts)
+    {
         return closePosition(_vaultId, _getPosition(_vaultId), _tradeOption, _closePositionOptions);
     }
 
@@ -274,7 +310,11 @@ contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCall
         uint256 _subVaultIndex,
         DataType.TradeOption memory _tradeOption,
         DataType.ClosePositionOption memory _closePositionOptions
-    ) external returns (DataType.TokenAmounts memory requiredAmounts, DataType.TokenAmounts memory swapAmounts) {
+    )
+        external
+        notPaused
+        returns (DataType.TokenAmounts memory requiredAmounts, DataType.TokenAmounts memory swapAmounts)
+    {
         DataType.Position[] memory positions = new DataType.Position[](1);
 
         positions[0] = _getPositionOfSubVault(_vaultId, _subVaultIndex);
@@ -296,6 +336,7 @@ contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCall
         DataType.ClosePositionOption memory _closePositionOptions
     )
         public
+        notPaused
         checkDeadline(_closePositionOptions.deadline)
         returns (DataType.TokenAmounts memory requiredAmounts, DataType.TokenAmounts memory swapAmounts)
     {
@@ -317,7 +358,7 @@ contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCall
      * @param _vaultId The id of the vault
      * @param _liquidationOption option parameters for liquidation call
      */
-    function liquidate(uint256 _vaultId, DataType.LiquidationOption memory _liquidationOption) external {
+    function liquidate(uint256 _vaultId, DataType.LiquidationOption memory _liquidationOption) external notPaused {
         DataType.PositionUpdate[] memory positionUpdates = PositionLib.getPositionUpdatesToClose(
             getPosition(_vaultId),
             context.isMarginZero,
@@ -569,7 +610,7 @@ contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCall
     function _checkPrice(uint256 _lowerSqrtPrice, uint256 _upperSqrtPrice) internal view {
         uint256 sqrtPrice = getSqrtPrice();
 
-        require(_lowerSqrtPrice <= sqrtPrice && sqrtPrice <= _upperSqrtPrice, "CH2");
+        require(_lowerSqrtPrice <= sqrtPrice && sqrtPrice <= _upperSqrtPrice, "P8");
     }
 
     /**

@@ -202,6 +202,29 @@ contract ControllerTest is TestController {
         assertGt(vaultStatus.subVaults[0].values.debtValue, 0);
     }
 
+    function testCannotOpenPositionBecauseTxTooOld() public {
+        DataType.LPT[] memory lpts = new DataType.LPT[](0);
+        DataType.Position memory position = DataType.Position(0, 0, 1e18, 0, 0, lpts);
+
+        vm.expectRevert(bytes("P7"));
+        controller.openPosition(
+            0,
+            position,
+            DataType.TradeOption(
+                false,
+                true,
+                false,
+                true,
+                Constants.MARGIN_STAY,
+                Constants.MARGIN_STAY,
+                -1,
+                -1,
+                EMPTY_METADATA
+            ),
+            DataType.OpenPositionOption(0, 0, 100, block.timestamp - 1)
+        );
+    }
+
     function testCannotOpenPositionBecauseSlippage() public {
         DataType.LPT[] memory lpts = new DataType.LPT[](0);
         DataType.Position memory position = DataType.Position(0, 0, 1e18, 0, 0, lpts);
@@ -210,7 +233,7 @@ contract ControllerTest is TestController {
         uint256 upperSqrtPrice = getSqrtPrice();
         bool isMarginZero = getIsMarginZero();
 
-        vm.expectRevert(bytes("CH2"));
+        vm.expectRevert(bytes("P8"));
         controller.openPosition(
             0,
             position,

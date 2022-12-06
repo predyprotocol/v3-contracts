@@ -79,8 +79,6 @@ library InterestCalculator {
 
             // if range is not initialized, skip calculation.
             if (_ranges[rangeId].lastTouchedTimestamp == 0) {
-                emitPremiumGrowthUpdatedEvent(_ranges[rangeId]);
-
                 continue;
             }
 
