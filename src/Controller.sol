@@ -98,7 +98,6 @@ contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCall
     function initialize(
         DataType.InitializationParams memory _initializationParams,
         address _factory,
-        address _swapRouter,
         address _chainlinkPriceFeed,
         address _vaultNFT
     ) public initializer {
@@ -107,7 +106,6 @@ contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCall
         context.token0 = _initializationParams.token0;
         context.token1 = _initializationParams.token1;
         context.isMarginZero = _initializationParams.isMarginZero;
-        context.swapRouter = _swapRouter;
         context.chainlinkPriceFeed = _chainlinkPriceFeed;
 
         PoolAddress.PoolKey memory poolKey = PoolAddress.PoolKey({
@@ -128,9 +126,6 @@ contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCall
         lastTouchedTimestamp = block.timestamp;
 
         operator = msg.sender;
-
-        ERC20(context.token0).approve(address(_swapRouter), type(uint256).max);
-        ERC20(context.token1).approve(address(_swapRouter), type(uint256).max);
     }
 
     /**

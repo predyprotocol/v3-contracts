@@ -3,7 +3,6 @@ import { DeployFunction } from 'hardhat-deploy/types'
 import { constants } from 'ethers'
 
 const uniswapFactoryAddress = '0x1F98431c8aD98523631AE4a59f267346ea31F984'
-const swapRouterAddress = '0xE592427A0AEce92De3Edee1F18E0157C05861564'
 
 function getUniswapFactoryAddress(network: string) {
   switch (network) {
@@ -11,15 +10,6 @@ function getUniswapFactoryAddress(network: string) {
       return '0xE54143413A7c1407D010f2B68A227be69df2CbFD'
     default:
       return uniswapFactoryAddress
-  }
-}
-
-function getSwapRouterAddress(network: string) {
-  switch (network) {
-    case 'goerliArbitrumEth':
-      return '0xAF632841a184947569B70b267f2674Fa80601288'
-    default:
-      return swapRouterAddress
   }
 }
 
@@ -114,7 +104,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
               isMarginZero,
             },
             getUniswapFactoryAddress(network.name),
-            getSwapRouterAddress(network.name),
             getChainlinkPriceFeed(network.name),
             vaultNFT.address,
           ],

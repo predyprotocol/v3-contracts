@@ -591,8 +591,6 @@ library PositionUpdater {
 
     function updateFeeGrowthForRange(DataType.Context memory _context, DataType.PerpStatus storage _range) public {
         if (_range.lastTouchedTimestamp == 0) {
-            emit FeeGrowthUpdated(_range.lowerTick, _range.upperTick, _range.fee0Growth, _range.fee1Growth);
-
             return;
         }
 
