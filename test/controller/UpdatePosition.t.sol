@@ -276,9 +276,9 @@ contract ControllerUpdatePositionTest is TestController {
                 false,
                 false,
                 false,
-                Constants.MARGIN_STAY,
                 Constants.MARGIN_USE,
-                0,
+                Constants.MARGIN_USE,
+                Constants.MIN_MARGIN_AMOUNT,
                 1e10,
                 EMPTY_METADATA
             ),

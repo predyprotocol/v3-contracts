@@ -138,9 +138,9 @@ abstract contract BaseTestHelper {
                 false,
                 false,
                 getIsMarginZero(),
+                _vaultId == 0 ? Constants.MARGIN_USE : Constants.MARGIN_STAY,
                 Constants.MARGIN_STAY,
-                Constants.MARGIN_STAY,
-                0,
+                _vaultId == 0 ? Constants.MIN_MARGIN_AMOUNT : 0,
                 0,
                 EMPTY_METADATA
             ),

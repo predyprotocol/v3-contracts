@@ -33,9 +33,9 @@ contract ControllerTest is TestController {
                 false,
                 false,
                 false,
+                Constants.MARGIN_USE,
                 Constants.MARGIN_STAY,
-                Constants.MARGIN_STAY,
-                -1,
+                Constants.MIN_MARGIN_AMOUNT,
                 -1,
                 EMPTY_METADATA
             ),
@@ -44,8 +44,8 @@ contract ControllerTest is TestController {
         uint256 afterBalance0 = token0.balanceOf(user);
         uint256 afterBalance1 = token1.balanceOf(user);
 
-        assertEq(beforeBalance0, afterBalance0);
-        assertGt(beforeBalance1, afterBalance1);
+        assertEq(beforeBalance0 - afterBalance0, uint256(Constants.MIN_MARGIN_AMOUNT));
+        assertEq(beforeBalance1 - afterBalance1, 1e18);
     }
 
     function testDepositLPT() public {
@@ -682,7 +682,7 @@ contract ControllerTest is TestController {
                 getIsMarginZero(),
                 Constants.MARGIN_USE,
                 Constants.MARGIN_STAY,
-                1000,
+                1000000,
                 0,
                 EMPTY_METADATA
             ),

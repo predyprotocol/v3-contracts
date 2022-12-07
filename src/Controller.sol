@@ -408,7 +408,11 @@ contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCall
 
         if (_vaultId == 0) {
             // non 0 amount of tokens required to create new vault.
-            require(requiredAmounts.amount0 > 0 || requiredAmounts.amount1 > 0, "P4");
+            if (context.isMarginZero) {
+                require(requiredAmounts.amount0 >= Constants.MIN_MARGIN_AMOUNT, "P4");
+            } else {
+                require(requiredAmounts.amount1 >= Constants.MIN_MARGIN_AMOUNT, "P4");
+            }
         }
     }
 
