@@ -55,7 +55,7 @@ contract LiquidationLogicTest is Test {
             Constants.BASE_LIQ_SLIPPAGE_SQRT_TOLERANCE
         );
         assertEq(
-            LiquidationLogic.calculateLiquidationSlippageTolerance(300000 * 1e6),
+            LiquidationLogic.calculateLiquidationSlippageTolerance(100000 * 1e6),
             Constants.BASE_LIQ_SLIPPAGE_SQRT_TOLERANCE
         );
         assertEq(LiquidationLogic.calculateLiquidationSlippageTolerance(500000 * 1e6), 16556);
