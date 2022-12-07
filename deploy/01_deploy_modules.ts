@@ -1,7 +1,7 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { DeployFunction } from 'hardhat-deploy/types'
 
-const vaultTokenName = 'pVault v3'
+const vaultTokenName = 'pVault-v3-ETH'
 const vaultTokenSymbol = 'PVAULT'
 
 function getVaultTokenBaseURI(network: string) {

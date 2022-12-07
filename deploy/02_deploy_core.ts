@@ -3,6 +3,7 @@ import { DeployFunction } from 'hardhat-deploy/types'
 import { constants } from 'ethers'
 
 const uniswapFactoryAddress = '0x1F98431c8aD98523631AE4a59f267346ea31F984'
+const operatorAddress = '0xb8d843c8E6e0E90eD2eDe80550856b64da92ee30'
 
 function getUniswapFactoryAddress(network: string) {
   switch (network) {
@@ -84,6 +85,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const PositionLib = await ethers.getContract('PositionLib', deployer)
   const vaultNFT = await ethers.getContract('VaultNFT', deployer)
 
+  /*
   const result = await deploy('Controller', {
     from: deployer,
     args: [],
@@ -115,9 +117,37 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       },
     },
   })
+  */
+
+  const result = await deploy('Controller', {
+    from: deployer,
+    args: [],
+    libraries: {
+      UpdatePositionLogic: UpdatePositionLogic.address,
+      LiquidationLogic: LiquidationLogic.address,
+      PositionUpdater: PositionUpdater.address,
+      VaultLib: VaultLib.address,
+      PositionLib: PositionLib.address,
+      InterestCalculator: InterestCalculator.address,
+    },
+    log: true,
+  })
+
 
   if (result.newlyDeployed) {
     const controller = await ethers.getContract('Controller', deployer)
+
+    await controller.initialize(
+      {
+        feeTier: 500,
+        token0: token0Addr,
+        token1: token1Addr,
+        isMarginZero,
+      },
+      getUniswapFactoryAddress(network.name),
+      getChainlinkPriceFeed(network.name),
+      vaultNFT.address
+    )
 
     await vaultNFT.init(controller.address)
 
@@ -141,6 +171,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         slope2: '1562500000000000000',
       },
     )
+
+    await controller.setOperator(operatorAddress);
   }
 }
 
