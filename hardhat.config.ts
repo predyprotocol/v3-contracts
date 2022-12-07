@@ -122,6 +122,16 @@ const config: HardhatUserConfig = {
   },
   etherscan: {
     apiKey: process.env.ETHERSCAN_API_KEY,
+    customChains: [
+      {
+        network: "goerliArbitrum",
+        chainId: 421613,
+        urls: {
+          apiURL: "https://api-testnet.arbiscan.io/api",
+          browserURL: "https://testnet.arbiscan.io/",
+        }
+      }
+    ]
   },
   preprocess: {
     eachLine: (hre) => ({
