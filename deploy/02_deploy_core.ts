@@ -21,6 +21,8 @@ function getWethAddress(network: string) {
       return '0x603eFB95394c6cf5b6b29B1c813bd1Ee42A07714'
     case 'goerli':
       return '0x163691b2153F4e18F3c3F556426b7f5C74a99FA4'
+    case 'arbitrumEth':
+      return '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1'
     case 'localhost':
       return '0x6466232Bf77e70bEa2535393DC9B2b0d94ea3C22'
     default:
@@ -36,6 +38,8 @@ function getUsdcAddress(network: string) {
       return '0xE060e715B6D20b899A654687c445ed8BC35f9dFF'
     case 'goerli':
       return '0x603eFB95394c6cf5b6b29B1c813bd1Ee42A07714'
+    case 'arbitrumEth':
+      return '0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8'
     case 'localhost':
       return '0xF61Cffd6071a8DB7cD5E8DF1D3A5450D9903cF1c'
     default:

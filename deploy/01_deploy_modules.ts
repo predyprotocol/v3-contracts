@@ -8,8 +8,8 @@ function getVaultTokenBaseURI(network: string) {
   switch (network) {
     case 'goerli':
       return 'https://metadata.predy.finance/goerli/'
-    case 'arbitrum':
-      return 'https://metadata.predy.finance/arbitrum/'
+    case 'arbitrumEth':
+      return 'https://metadata.predy.finance/arbitrum/eth/'
     case 'goerliArbitrumEth':
       return 'https://metadata.predy.finance/goerliarbitrum/eth/'
     case 'goerliArbitrumBtc':

@@ -24,6 +24,14 @@ const GoerliArbitrum = {
   },
 }
 
+const Arbitrum = {
+  url: 'https://arb1.arbitrum.io/rpc',
+  accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+  companionNetworks: {
+    l1: 'mainnet',
+  },
+}
+
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html
 task('accounts', 'Prints the list of accounts', async (taskArgs, hre) => {
@@ -71,13 +79,7 @@ const config: HardhatUserConfig = {
       gasPrice: 1000000000,
       accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
     },
-    arbitrum: {
-      url: 'https://arb1.arbitrum.io/rpc',
-      accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
-      companionNetworks: {
-        l1: 'mainnet',
-      },
-    },
+    arbitrumEth: Arbitrum,
     goerliArbitrumBtc: GoerliArbitrum,
     goerliArbitrumEth: GoerliArbitrum,
     kovanOptimism: {
