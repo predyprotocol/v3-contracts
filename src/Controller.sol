@@ -32,6 +32,7 @@ import "./libraries/Constants.sol";
  * P6: unpaused
  * P7: tx too old
  * P8: too much slippage
+ * P9: invalid interest rate model
  */
 contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCallback {
     using BaseToken for BaseToken.TokenState;
@@ -164,6 +165,7 @@ contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCall
      * @param _irmParams New interest rate model parameter
      */
     function updateIRMParams(InterestCalculator.IRMParams memory _irmParams) external onlyOperator {
+        validateIRMParams(_irmParams);
         irmParams = _irmParams;
     }
 
@@ -177,6 +179,8 @@ contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCall
         InterestCalculator.IRMParams memory _irmParams,
         InterestCalculator.IRMParams memory _premiumParams
     ) external onlyOperator {
+        validateIRMParams(_irmParams);
+        validateIRMParams(_premiumParams);
         ypParams.irmParams = _irmParams;
         ypParams.premiumParams = _premiumParams;
     }
@@ -559,6 +563,16 @@ contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCall
     }
 
     // Private Functions
+
+    function validateIRMParams(InterestCalculator.IRMParams memory _irmParams) internal pure {
+        require(
+            _irmParams.baseRate <= 1e18 &&
+                _irmParams.kinkRate <= 1e18 &&
+                _irmParams.slope1 <= 1e18 &&
+                _irmParams.slope2 <= 10 * 1e18,
+            "P9"
+        );
+    }
 
     function createOrGetVault(uint256 _vaultId, bool _quoterMode)
         internal
