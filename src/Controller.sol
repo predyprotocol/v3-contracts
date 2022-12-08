@@ -60,6 +60,7 @@ contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCall
     event VaultCreated(uint256 vaultId, address owner);
     event Paused();
     event UnPaused();
+    event ProtocolFeeWithdrawn(uint256 withdrawnFee0, uint256 withdrawnFee1);
 
     modifier notPaused() {
         require(!isSystemPaused, "P5");
@@ -204,6 +205,8 @@ contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCall
         if (_amount1 > 0) {
             TransferHelper.safeTransfer(context.token1, msg.sender, _amount1);
         }
+
+        emit ProtocolFeeWithdrawn(_amount0, _amount1);
     }
 
     /**
@@ -220,6 +223,7 @@ contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCall
      */
     function unPause() external onlyOperator isPaused {
         isSystemPaused = false;
+
         emit UnPaused();
     }
 
@@ -429,6 +433,8 @@ contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCall
         internal
         checkVaultExists(_vaultId)
     {
+        require(_vaultId > 0);
+
         applyPerpFee(_vaultId, _positionUpdates);
 
         LiquidationLogic.execLiquidation(vaults[_vaultId], subVaults, _positionUpdates, context, ranges);

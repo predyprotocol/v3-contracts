@@ -88,7 +88,7 @@ library LiquidationLogic {
 
     function calculateLiquidationSlippageTolerance(uint256 _debtValue) internal pure returns (uint256) {
         uint256 liquidationSlippageSqrtTolerance = PredyMath.max(
-            (Constants.LIQ_SLIPPAGE_SQRT_SLOPE * PredyMath.sqrt(_debtValue * 1e6)) /
+            Constants.LIQ_SLIPPAGE_SQRT_SLOPE.mul(PredyMath.sqrt(_debtValue.mul(1e6))) /
                 1e6 +
                 Constants.LIQ_SLIPPAGE_SQRT_BASE,
             Constants.BASE_LIQ_SLIPPAGE_SQRT_TOLERANCE
