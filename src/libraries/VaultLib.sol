@@ -272,8 +272,8 @@ library VaultLib {
     ) internal view returns (int256 marginAmount0, int256 marginAmount1) {
         (int256 fee0, int256 fee1) = getPremiumAndFee(_vault, _subVaults, _ranges, _context);
 
-        marginAmount0 = int256(_vault.marginAmount0) + fee0;
-        marginAmount1 = int256(_vault.marginAmount1) + fee1;
+        marginAmount0 = int256(_vault.marginAmount0).add(fee0);
+        marginAmount1 = int256(_vault.marginAmount1).add(fee1);
     }
 
     function getVaultValue(
