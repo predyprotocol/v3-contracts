@@ -602,6 +602,19 @@ library PositionUpdater {
             return;
         }
 
+        {
+            // Skip fee collection if utilization ratio is 100%
+            uint256 availableLiquidity = LPTStateLib.getAvailableLiquidityAmount(
+                address(this),
+                _context.uniswapPool,
+                _range
+            );
+
+            if (availableLiquidity == 0) {
+                return;
+            }
+        }
+
         // burn 0 amount of LPT to collect trade fee from Uniswap pool.
         IUniswapV3Pool(_context.uniswapPool).burn(_range.lowerTick, _range.upperTick, 0);
 

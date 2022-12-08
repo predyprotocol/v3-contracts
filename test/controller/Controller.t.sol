@@ -166,6 +166,50 @@ contract ControllerTest is TestController {
         assertGt(range.fee0Growth, 0);
     }
 
+    function testBorrowLPTAndFullUtilization() public {
+        int256 margin = 500 * 1e6;
+
+        DataType.Position[] memory positions = getBorrowLPTPosition(0, 202600, 202500, 202600, 2 * 1e18);
+
+        (uint256 vaultId, , ) = controller.openPosition(
+            0,
+            positions[0],
+            DataType.TradeOption(
+                false,
+                true,
+                false,
+                getIsMarginZero(),
+                Constants.MARGIN_USE,
+                Constants.MARGIN_STAY,
+                margin,
+                0,
+                EMPTY_METADATA
+            ),
+            // deposit margin
+            DataType.OpenPositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 100, block.timestamp)
+        );
+
+        // Checks utilization ratio is 100%
+        (, , uint256 ur) = controller.getUtilizationRatio(LPTStateLib.getRangeKey(202500, 202600));
+        assertEq(ur, 1e18);
+
+        controller.closeVault(
+            vaultId,
+            DataType.TradeOption(
+                false,
+                false,
+                false,
+                isQuoteZero,
+                Constants.MARGIN_STAY,
+                Constants.MARGIN_STAY,
+                -1,
+                -1,
+                EMPTY_METADATA
+            ),
+            DataType.ClosePositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 100, 1e4, block.timestamp)
+        );
+    }
+
     function testBorrowLPTWithLowPrice(uint256 _swapAmount) public {
         uint256 swapAmount = bound(_swapAmount, 1e16, 10 * 1e18);
 
