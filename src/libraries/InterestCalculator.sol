@@ -304,9 +304,15 @@ library InterestCalculator {
             return 0;
         }
 
-        return
-            (secondsPerLiquidityInside - _params.snapshots[key].lastSecondsPerLiquidityInside).mul(Constants.ONE) /
-            (secondsPerLiquidity - _params.snapshots[key].lastSecondsPerLiquidity);
+        uint256 activeRatio = (secondsPerLiquidityInside - _params.snapshots[key].lastSecondsPerLiquidityInside).mul(
+            Constants.ONE
+        ) / (secondsPerLiquidity - _params.snapshots[key].lastSecondsPerLiquidity);
+
+        if (activeRatio >= Constants.ONE) {
+            return Constants.ONE;
+        }
+
+        return activeRatio;
     }
 
     function takeSnapshot(
