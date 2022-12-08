@@ -133,7 +133,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     log: true,
   })
 
-
   if (result.newlyDeployed) {
     const controller = await ethers.getContract('Controller', deployer)
 
@@ -146,7 +145,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       },
       getUniswapFactoryAddress(network.name),
       getChainlinkPriceFeed(network.name),
-      vaultNFT.address
+      vaultNFT.address,
     )
 
     await vaultNFT.init(controller.address)
@@ -172,7 +171,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       },
     )
 
-    await controller.setOperator(operatorAddress);
+    await controller.setOperator(operatorAddress)
   }
 }
 
