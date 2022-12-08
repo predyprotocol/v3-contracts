@@ -85,7 +85,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const PositionLib = await ethers.getContract('PositionLib', deployer)
   const vaultNFT = await ethers.getContract('VaultNFT', deployer)
 
-  /*
   const result = await deploy('Controller', {
     from: deployer,
     args: [],
@@ -117,36 +116,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       },
     },
   })
-  */
-
-  const result = await deploy('Controller', {
-    from: deployer,
-    args: [],
-    libraries: {
-      UpdatePositionLogic: UpdatePositionLogic.address,
-      LiquidationLogic: LiquidationLogic.address,
-      PositionUpdater: PositionUpdater.address,
-      VaultLib: VaultLib.address,
-      PositionLib: PositionLib.address,
-      InterestCalculator: InterestCalculator.address,
-    },
-    log: true,
-  })
 
   if (result.newlyDeployed) {
     const controller = await ethers.getContract('Controller', deployer)
-
-    await controller.initialize(
-      {
-        feeTier: 500,
-        token0: token0Addr,
-        token1: token1Addr,
-        isMarginZero,
-      },
-      getUniswapFactoryAddress(network.name),
-      getChainlinkPriceFeed(network.name),
-      vaultNFT.address,
-    )
 
     await vaultNFT.init(controller.address)
 
