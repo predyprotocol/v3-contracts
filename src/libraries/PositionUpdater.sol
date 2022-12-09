@@ -19,6 +19,7 @@ import "./UniHelper.sol";
  * Error Codes
  * PU1: reduce only
  * PU2: margin must not be negative
+ * PU3: amount must not be 0
  */
 library PositionUpdater {
     using SafeMath for uint256;
@@ -387,6 +388,8 @@ library PositionUpdater {
     ) internal returns (uint256 requiredAmount0, uint256 requiredAmount1) {
         bytes32 rangeId = LPTStateLib.getRangeKey(_positionUpdate.lowerTick, _positionUpdate.upperTick);
 
+        require(_positionUpdate.liquidity > 0, "PU3");
+
         (requiredAmount0, requiredAmount1) = IUniswapV3Pool(_context.uniswapPool).mint(
             address(this),
             _positionUpdate.lowerTick,
@@ -452,6 +455,8 @@ library PositionUpdater {
         bytes32 rangeId = LPTStateLib.getRangeKey(_positionUpdate.lowerTick, _positionUpdate.upperTick);
 
         uint128 liquidity = _subVault.repayLPT(rangeId, _positionUpdate.liquidity);
+
+        require(liquidity > 0, "PU3");
 
         (requiredAmount0, requiredAmount1) = IUniswapV3Pool(_context.uniswapPool).mint(
             address(this),
@@ -550,6 +555,7 @@ library PositionUpdater {
         DataType.PerpStatus storage _range,
         uint128 _liquidity
     ) internal returns (uint256 amount0, uint256 amount1) {
+        require(_liquidity > 0, "PU3");
         (amount0, amount1) = IUniswapV3Pool(_context.uniswapPool).burn(_range.lowerTick, _range.upperTick, _liquidity);
 
         // collect burned token amounts

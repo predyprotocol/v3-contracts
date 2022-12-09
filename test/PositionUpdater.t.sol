@@ -582,6 +582,22 @@ contract PositionUpdaterTest is PositionUpdaterHelper, Test {
         assertEq(uint256(subVaults[1].lpts[0].liquidityAmount), liquidity * 2);
     }
 
+    function testCannotDepositLPTWithZeroAmount() public {
+        DataType.PositionUpdate memory positionUpdate = DataType.PositionUpdate(
+            DataType.PositionUpdateType.DEPOSIT_LPT,
+            0,
+            false,
+            0,
+            100,
+            200,
+            0,
+            0
+        );
+
+        vm.expectRevert(bytes("PU3"));
+        PositionUpdater.depositLPT(subVaults[1], context, ranges, positionUpdate);
+    }
+
     /**************************
      *    Test: withdrawLPT   *
      **************************/
@@ -675,9 +691,48 @@ contract PositionUpdaterTest is PositionUpdaterHelper, Test {
         PositionUpdater.withdrawLPT(subVaults[1], context, ranges, positionUpdate);
     }
 
+    function testCannotWithdrawLPTWithZeroAmount() public {
+        // deposit LPT
+        createTestDataDepositLPT(1000, 100, 200);
+
+        DataType.PositionUpdate memory positionUpdate = DataType.PositionUpdate(
+            DataType.PositionUpdateType.WITHDRAW_LPT,
+            0,
+            false,
+            0,
+            100,
+            200,
+            0,
+            0
+        );
+
+        vm.expectRevert(bytes("PU3"));
+        PositionUpdater.withdrawLPT(subVaults[1], context, ranges, positionUpdate);
+    }
+
     /**************************
      *    Test: borrowLPT     *
      **************************/
+
+    function testCannotBorrowLPTWithZeroAmount() public {
+        // deposit LPT
+        createTestDataDepositLPT(1000, 100, 200);
+
+        // borrow LPT
+        DataType.PositionUpdate memory positionUpdate = DataType.PositionUpdate(
+            DataType.PositionUpdateType.BORROW_LPT,
+            0,
+            false,
+            0,
+            100,
+            200,
+            0,
+            0
+        );
+
+        vm.expectRevert(bytes("PU3"));
+        PositionUpdater.borrowLPT(subVaults[2], context, ranges, positionUpdate);
+    }
 
     function testBorrowLPT() public {
         // deposit LPT
@@ -729,9 +784,7 @@ contract PositionUpdaterTest is PositionUpdaterHelper, Test {
      *    Test: repayLPT      *
      **************************/
 
-    function testRepayLPT(uint256 _liquidity) public {
-        uint128 liquidity = uint128(bound(_liquidity, 500, 1e20));
-
+    function createTestDataRepayLPT(uint128 liquidity) internal {
         {
             // deposit LPT
             DataType.PositionUpdate memory positionUpdate = DataType.PositionUpdate(
@@ -763,6 +816,12 @@ contract PositionUpdaterTest is PositionUpdaterHelper, Test {
 
             PositionUpdater.borrowLPT(subVaults[2], context, ranges, positionUpdate);
         }
+    }
+
+    function testRepayLPT(uint256 _liquidity) public {
+        uint128 liquidity = uint128(bound(_liquidity, 500, 1e20));
+
+        createTestDataRepayLPT(liquidity);
 
         {
             DataType.PositionUpdate memory positionUpdate = DataType.PositionUpdate(
@@ -782,6 +841,24 @@ contract PositionUpdaterTest is PositionUpdaterHelper, Test {
         bytes32 rangeKey = LPTStateLib.getRangeKey(100, 200);
 
         assertEq(uint256(ranges[rangeKey].borrowedLiquidity), 0);
+    }
+
+    function testCannotRepayLPTWithZeroAmount() public {
+        createTestDataRepayLPT(1000);
+
+        DataType.PositionUpdate memory positionUpdate = DataType.PositionUpdate(
+            DataType.PositionUpdateType.REPAY_LPT,
+            0,
+            false,
+            0,
+            100,
+            200,
+            0,
+            0
+        );
+
+        vm.expectRevert(bytes("PU3"));
+        PositionUpdater.repayLPT(subVaults[2], context, ranges, positionUpdate);
     }
 
     /**************************
