@@ -480,36 +480,4 @@ abstract contract BaseTestHelper {
             liquidity
         );
     }
-
-    function getLiquidityForAmounts(
-        uint160 currentSqrtPrice,
-        int24 _lower,
-        int24 _upper,
-        uint256 _amount0,
-        uint256 _amount1
-    ) internal pure returns (uint128) {
-        return
-            LiquidityAmounts.getLiquidityForAmounts(
-                currentSqrtPrice,
-                TickMath.getSqrtRatioAtTick(_lower),
-                TickMath.getSqrtRatioAtTick(_upper),
-                _amount0,
-                _amount1
-            );
-    }
-
-    function getAmountsForLiquidity(
-        uint160 currentSqrtPrice,
-        int24 _lower,
-        int24 _upper,
-        uint128 _liquidity
-    ) internal pure returns (uint256, uint256) {
-        return
-            LiquidityAmounts.getAmountsForLiquidity(
-                currentSqrtPrice,
-                TickMath.getSqrtRatioAtTick(_lower),
-                TickMath.getSqrtRatioAtTick(_upper),
-                _liquidity
-            );
-    }
 }

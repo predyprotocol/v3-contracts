@@ -586,24 +586,30 @@ contract PositionUpdaterTest is PositionUpdaterHelper, Test {
      *    Test: withdrawLPT   *
      **************************/
 
+    function createTestDataDepositLPT(
+        uint128 _liquidity,
+        int24 _lower,
+        int24 _upper
+    ) internal {
+        DataType.PositionUpdate memory positionUpdate = DataType.PositionUpdate(
+            DataType.PositionUpdateType.DEPOSIT_LPT,
+            0,
+            false,
+            _liquidity,
+            _lower,
+            _upper,
+            0,
+            0
+        );
+
+        PositionUpdater.depositLPT(subVaults[1], context, ranges, positionUpdate);
+    }
+
     function testWithdrawLPT(uint256 _liquidity) public {
         uint128 liquidity = uint128(bound(_liquidity, 1000, 1e20));
 
-        {
-            // deposit LPT
-            DataType.PositionUpdate memory positionUpdate = DataType.PositionUpdate(
-                DataType.PositionUpdateType.DEPOSIT_LPT,
-                0,
-                false,
-                1000,
-                100,
-                200,
-                0,
-                0
-            );
-
-            PositionUpdater.depositLPT(subVaults[1], context, ranges, positionUpdate);
-        }
+        // deposit LPT
+        createTestDataDepositLPT(1000, 100, 200);
 
         {
             // withdraw LPT
@@ -632,26 +638,50 @@ contract PositionUpdaterTest is PositionUpdaterHelper, Test {
         assertEq(liquidityAmount, 0);
     }
 
-    /**************************
-     *    Test: borrowLPT     *
-     **************************/
+    function testCannotWithdrawLPT(uint256 _liquidity) public {
+        uint128 liquidity = uint128(bound(_liquidity, 1000, 1e20));
 
-    function testBorrowLPT() public {
+        // deposit LPT
+        createTestDataDepositLPT(1000, 100, 200);
+
         {
-            // deposit LPT
+            // borrow LPT
             DataType.PositionUpdate memory positionUpdate = DataType.PositionUpdate(
-                DataType.PositionUpdateType.DEPOSIT_LPT,
+                DataType.PositionUpdateType.BORROW_LPT,
                 0,
                 false,
-                1000,
+                500,
                 100,
                 200,
                 0,
                 0
             );
 
-            PositionUpdater.depositLPT(subVaults[1], context, ranges, positionUpdate);
+            PositionUpdater.borrowLPT(subVaults[2], context, ranges, positionUpdate);
         }
+
+        DataType.PositionUpdate memory positionUpdate = DataType.PositionUpdate(
+            DataType.PositionUpdateType.WITHDRAW_LPT,
+            0,
+            false,
+            liquidity,
+            100,
+            200,
+            0,
+            0
+        );
+
+        vm.expectRevert(bytes("LS"));
+        PositionUpdater.withdrawLPT(subVaults[1], context, ranges, positionUpdate);
+    }
+
+    /**************************
+     *    Test: borrowLPT     *
+     **************************/
+
+    function testBorrowLPT() public {
+        // deposit LPT
+        createTestDataDepositLPT(1000, 100, 200);
 
         {
             // borrow LPT
@@ -672,6 +702,27 @@ contract PositionUpdaterTest is PositionUpdaterHelper, Test {
         bytes32 rangeKey = LPTStateLib.getRangeKey(100, 200);
 
         assertEq(uint256(ranges[rangeKey].borrowedLiquidity), 500);
+    }
+
+    // Cannot borrow LPT because the liquidity amount is less than the amount try to borrow
+    function testCannotBorrowLPT() public {
+        // deposit LPT
+        createTestDataDepositLPT(1000, 100, 200);
+
+        // borrow LPT
+        DataType.PositionUpdate memory positionUpdate = DataType.PositionUpdate(
+            DataType.PositionUpdateType.BORROW_LPT,
+            0,
+            false,
+            1001,
+            100,
+            200,
+            0,
+            0
+        );
+
+        vm.expectRevert(bytes("LS"));
+        PositionUpdater.borrowLPT(subVaults[2], context, ranges, positionUpdate);
     }
 
     /**************************

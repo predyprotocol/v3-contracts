@@ -210,6 +210,36 @@ contract ControllerTest is TestController {
         );
     }
 
+    function testCannotBorrowLPTBecauseOfLessLiquidity() public {
+        int256 margin = 500 * 1e6;
+
+        DataType.Position[] memory positions = getBorrowLPTPosition(0, 202600, 202500, 202600, 3 * 1e18);
+
+        bool isMarginZero = getIsMarginZero();
+
+        vm.expectRevert(bytes("LS"));
+        (uint256 vaultId, , ) = controller.openPosition(
+            0,
+            positions[0],
+            DataType.TradeOption(
+                false,
+                true,
+                false,
+                isMarginZero,
+                Constants.MARGIN_USE,
+                Constants.MARGIN_STAY,
+                margin,
+                0,
+                EMPTY_METADATA
+            ),
+            // deposit margin
+            DataType.OpenPositionOption(0, 0, 100, block.timestamp)
+        );
+
+        DataType.PerpStatus memory range = controller.getRange(LPTStateLib.getRangeKey(202500, 202600));
+        assertEq(uint256(range.borrowedLiquidity), 0);
+    }
+
     function testBorrowLPTWithLowPrice(uint256 _swapAmount) public {
         uint256 swapAmount = bound(_swapAmount, 1e16, 10 * 1e18);
 
@@ -353,6 +383,33 @@ contract ControllerTest is TestController {
                 EMPTY_METADATA
             ),
             DataType.OpenPositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 100, block.timestamp)
+        );
+    }
+
+    function testCannotBorrowETH() public {
+        uint256 margin = 5000 * 1e6;
+
+        DataType.LPT[] memory lpts = new DataType.LPT[](0);
+        DataType.Position memory position = DataType.Position(0, 0, 0, 0, 5 * 1e18 + 1, lpts);
+
+        bool isMarginZero = getIsMarginZero();
+
+        vm.expectRevert(bytes("B0"));
+        controller.openPosition(
+            0,
+            position,
+            DataType.TradeOption(
+                false,
+                true,
+                false,
+                isMarginZero,
+                Constants.MARGIN_USE,
+                Constants.MARGIN_STAY,
+                int256(margin),
+                -1,
+                EMPTY_METADATA
+            ),
+            DataType.OpenPositionOption(0, 0, 100, block.timestamp)
         );
     }
 
@@ -542,6 +599,39 @@ contract ControllerTest is TestController {
             ),
             DataType.ClosePositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 100, 1e4, block.timestamp)
         );
+    }
+
+    function testCannotWithdrawLPT(uint256 _swapAmount) public {
+        uint256 swapAmount = bound(_swapAmount, 1e16, 5 * 1e18);
+
+        uint256 vaultId = depositLPT(0, 0, 202500, 202600, 1e18);
+        borrowLPT(0, 0, 202600, 202500, 202600, 25 * 1e17, 100 * 1e6);
+
+        slip(user, true, swapAmount);
+
+        vm.warp(block.timestamp + 7 hours);
+
+        DataType.TradeOption memory tradeOption = DataType.TradeOption(
+            false,
+            true,
+            false,
+            getIsMarginZero(),
+            Constants.MARGIN_USE,
+            Constants.MARGIN_STAY,
+            Constants.FULL_WITHDRAWAL,
+            0,
+            EMPTY_METADATA
+        );
+        DataType.ClosePositionOption memory closeOption = DataType.ClosePositionOption(
+            getLowerSqrtPrice(),
+            getUpperSqrtPrice(),
+            100,
+            1e4,
+            block.timestamp
+        );
+
+        vm.expectRevert(bytes("LS"));
+        controller.closeVault(vaultId, tradeOption, closeOption);
     }
 
     function testWithdrawLPT(uint256 _swapAmount) public {

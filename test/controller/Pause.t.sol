@@ -31,7 +31,7 @@ contract ControllerPauseTest is TestController {
         position = DataType.Position(0, 0, 1e18, 0, 0, lpts);
     }
 
-    function createTradeOption() internal returns (DataType.TradeOption memory tradeOption) {
+    function createTradeOption() internal returns (DataType.TradeOption memory) {
         bool isMarginZero = getIsMarginZero();
 
         return
