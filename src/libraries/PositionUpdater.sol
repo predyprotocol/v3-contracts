@@ -77,7 +77,7 @@ library PositionUpdater {
     ) external returns (DataType.PositionUpdateResult memory result) {
         (result.feeAmounts, result.subVaultsFeeAmounts) = collectFee(_context, _vault, _subVaults, _ranges);
 
-        (result.positionAmounts, result.swapAmounts, result.subVaultsPositionAmounts) = _updatePosition(
+        (result.positionAmounts, result.swapAmounts, result.subVaultsPositionAmounts) = updateVaultPosition(
             _vault,
             _subVaults,
             _context,
@@ -127,16 +127,14 @@ library PositionUpdater {
                 _context,
                 result.subVaultsFeeAmounts,
                 result.swapAmounts,
-                _tradeOption.isQuoteZero,
-                _context.isMarginZero
+                _tradeOption.isQuoteZero
             );
 
             (result.positionAmounts, result.subVaultsPositionAmounts) = recomputeAmounts(
                 _context,
                 result.subVaultsPositionAmounts,
                 result.swapAmounts,
-                _tradeOption.isQuoteZero,
-                _context.isMarginZero
+                _tradeOption.isQuoteZero
             );
         }
 
@@ -179,8 +177,7 @@ library PositionUpdater {
         DataType.Context storage _context,
         DataType.TokenAmounts[] memory amounts,
         DataType.TokenAmounts memory _swapAmount,
-        bool _isQuoteZero,
-        bool _isMarginZero
+        bool _isQuoteZero
     ) internal returns (DataType.TokenAmounts memory totalAmount, DataType.TokenAmounts[] memory resultAmounts) {
         resultAmounts = new DataType.TokenAmounts[](amounts.length);
 
@@ -199,17 +196,17 @@ library PositionUpdater {
                 amount.amount0 = 0;
             }
 
-            if (_isMarginZero) {
-                int256 roundedAmount = PredyMath.floor(amount.amount0);
-                if(roundedAmount > amount.amount0) {
+            if (_context.isMarginZero) {
+                int256 roundedAmount = roundMargin(amount.amount0, Constants.MARGIN_ROUNDED_DECIMALS);
+                if (roundedAmount > amount.amount0) {
                     _context.accumulatedProtocolFee0 = _context.accumulatedProtocolFee0.add(
                         (roundedAmount - amount.amount0).toUint256()
                     );
                 }
                 amount.amount0 = roundedAmount;
             } else {
-                int256 roundedAmount = PredyMath.floor(amount.amount1);
-                if(roundedAmount > amount.amount1) {
+                int256 roundedAmount = roundMargin(amount.amount1, Constants.MARGIN_ROUNDED_DECIMALS);
+                if (roundedAmount > amount.amount1) {
                     _context.accumulatedProtocolFee1 = _context.accumulatedProtocolFee1.add(
                         (roundedAmount - amount.amount1).toUint256()
                     );
@@ -224,7 +221,15 @@ library PositionUpdater {
         }
     }
 
-    function _updatePosition(
+    function roundMargin(int256 _amount, uint256 _roundedDecimals) internal pure returns (int256) {
+        if (_amount > 0) {
+            return int256(PredyMath.mulDivUp(uint256(_amount), 1, _roundedDecimals).mul(_roundedDecimals));
+        } else {
+            return -int256(PredyMath.mulDiv(uint256(-_amount), 1, _roundedDecimals).mul(_roundedDecimals));
+        }
+    }
+
+    function updateVaultPosition(
         DataType.Vault storage _vault,
         mapping(uint256 => DataType.SubVault) storage _subVaults,
         DataType.Context storage _context,
