@@ -301,8 +301,8 @@ contract PositionUpdaterTest is PositionUpdaterHelper, Test {
         );
 
         // test interest rate
-        BaseToken.updateScaler(context.tokenState0, 1e15);
-        BaseToken.updateScaler(context.tokenState1, 1e15);
+        BaseToken.updateScaler(context.tokenState0, 1e16);
+        BaseToken.updateScaler(context.tokenState1, 1e16);
 
         PositionUpdater.updatePosition(
             vault3,
@@ -481,7 +481,7 @@ contract PositionUpdaterTest is PositionUpdaterHelper, Test {
                     context.isMarginZero,
                     Constants.MARGIN_USE,
                     Constants.MARGIN_USE,
-                    int256(_marginAmount0),
+                    PredyMath.floor(int256(_marginAmount0)),
                     int256(_marginAmount1),
                     EMPTY_METADATA
                 )
@@ -1032,14 +1032,9 @@ contract PositionUpdaterTest is PositionUpdaterHelper, Test {
         uint8 marginMode1,
         int256 deltaMarginAmount0,
         int256 deltaMarginAmount1
-    ) internal returns (DataType.PositionUpdateResult memory, DataType.TradeOption memory) {
+    ) internal returns (DataType.TokenAmounts memory, DataType.TradeOption memory) {
         return (
-            DataType.PositionUpdateResult(
-                DataType.TokenAmounts(requiredAmount0, requiredAmount1),
-                DataType.TokenAmounts(0, 0),
-                DataType.TokenAmounts(0, 0),
-                DataType.TokenAmounts(0, 0)
-            ),
+            DataType.TokenAmounts(requiredAmount0, requiredAmount1),
             DataType.TradeOption(
                 false,
                 false,
@@ -1060,7 +1055,7 @@ contract PositionUpdaterTest is PositionUpdaterHelper, Test {
         int256 requiredAmount1 = -int256(bound(_requiredAmount1, 0, 1e10));
 
         (
-            DataType.PositionUpdateResult memory result,
+            DataType.TokenAmounts memory requiredAmounts,
             DataType.TradeOption memory tradeOption
         ) = getTestDataOfUpdateMargin(
                 requiredAmount0,
@@ -1071,16 +1066,16 @@ contract PositionUpdaterTest is PositionUpdaterHelper, Test {
                 0
             );
 
-        (result.requiredAmounts.amount0, result.requiredAmounts.amount1) = PositionUpdater.updateMargin(
+        (requiredAmounts.amount0, requiredAmounts.amount1) = PositionUpdater.updateMargin(
             vault1,
             tradeOption,
-            result
+            requiredAmounts
         );
 
         assertEq(vault1.marginAmount0, -requiredAmount0);
         assertEq(vault1.marginAmount1, -requiredAmount1);
-        assertEq(result.requiredAmounts.amount0, 0);
-        assertEq(result.requiredAmounts.amount1, 0);
+        assertEq(requiredAmounts.amount0, 0);
+        assertEq(requiredAmounts.amount1, 0);
     }
 
     // deposit margin
@@ -1089,7 +1084,7 @@ contract PositionUpdaterTest is PositionUpdaterHelper, Test {
         int256 requiredAmount1 = -int256(bound(_requiredAmount1, 0, 1e10));
 
         (
-            DataType.PositionUpdateResult memory result,
+            DataType.TokenAmounts memory requiredAmounts,
             DataType.TradeOption memory tradeOption
         ) = getTestDataOfUpdateMargin(
                 requiredAmount0,
@@ -1100,16 +1095,16 @@ contract PositionUpdaterTest is PositionUpdaterHelper, Test {
                 100
             );
 
-        (result.requiredAmounts.amount0, result.requiredAmounts.amount1) = PositionUpdater.updateMargin(
+        (requiredAmounts.amount0, requiredAmounts.amount1) = PositionUpdater.updateMargin(
             vault1,
             tradeOption,
-            result
+            requiredAmounts
         );
 
         assertEq(vault1.marginAmount0, -requiredAmount0 + 100);
         assertEq(vault1.marginAmount1, -requiredAmount1 + 100);
-        assertEq(result.requiredAmounts.amount0, 100);
-        assertEq(result.requiredAmounts.amount1, 100);
+        assertEq(requiredAmounts.amount0, 100);
+        assertEq(requiredAmounts.amount1, 100);
     }
 
     // withdraw margin
@@ -1118,7 +1113,7 @@ contract PositionUpdaterTest is PositionUpdaterHelper, Test {
         int256 requiredAmount1 = -int256(bound(_requiredAmount1, 100, 1e10));
 
         (
-            DataType.PositionUpdateResult memory result,
+            DataType.TokenAmounts memory requiredAmounts,
             DataType.TradeOption memory tradeOption
         ) = getTestDataOfUpdateMargin(
                 requiredAmount0,
@@ -1129,16 +1124,16 @@ contract PositionUpdaterTest is PositionUpdaterHelper, Test {
                 -100
             );
 
-        (result.requiredAmounts.amount0, result.requiredAmounts.amount1) = PositionUpdater.updateMargin(
+        (requiredAmounts.amount0, requiredAmounts.amount1) = PositionUpdater.updateMargin(
             vault1,
             tradeOption,
-            result
+            requiredAmounts
         );
 
         assertEq(vault1.marginAmount0, -requiredAmount0 - 100);
         assertEq(vault1.marginAmount1, -requiredAmount1 - 100);
-        assertEq(result.requiredAmounts.amount0, -100);
-        assertEq(result.requiredAmounts.amount1, -100);
+        assertEq(requiredAmounts.amount0, -100);
+        assertEq(requiredAmounts.amount1, -100);
     }
 
     // withdraw full margin
@@ -1147,7 +1142,7 @@ contract PositionUpdaterTest is PositionUpdaterHelper, Test {
         int256 requiredAmount1 = -int256(bound(_requiredAmount1, 0, 1e6));
 
         (
-            DataType.PositionUpdateResult memory result,
+            DataType.TokenAmounts memory requiredAmounts,
             DataType.TradeOption memory tradeOption
         ) = getTestDataOfUpdateMargin(
                 requiredAmount0,
@@ -1158,16 +1153,16 @@ contract PositionUpdaterTest is PositionUpdaterHelper, Test {
                 -1e6
             );
 
-        (result.requiredAmounts.amount0, result.requiredAmounts.amount1) = PositionUpdater.updateMargin(
+        (requiredAmounts.amount0, requiredAmounts.amount1) = PositionUpdater.updateMargin(
             vault1,
             tradeOption,
-            result
+            requiredAmounts
         );
 
         assertEq(vault1.marginAmount0, 0);
         assertEq(vault1.marginAmount1, 0);
-        assertEq(result.requiredAmounts.amount0, requiredAmount0);
-        assertEq(result.requiredAmounts.amount1, requiredAmount1);
+        assertEq(requiredAmounts.amount0, requiredAmount0);
+        assertEq(requiredAmounts.amount1, requiredAmount1);
     }
 
     // margin can be negative if the call is liquidationCall
@@ -1175,14 +1170,9 @@ contract PositionUpdaterTest is PositionUpdaterHelper, Test {
         int256 requiredAmount0 = -int256(bound(_requiredAmount0, 0, 1e10));
         int256 requiredAmount1 = -int256(bound(_requiredAmount1, 0, 1e10));
 
-        DataType.PositionUpdateResult memory result = DataType.PositionUpdateResult(
-            DataType.TokenAmounts(requiredAmount0, requiredAmount1),
-            DataType.TokenAmounts(0, 0),
-            DataType.TokenAmounts(0, 0),
-            DataType.TokenAmounts(0, 0)
-        );
+        DataType.TokenAmounts memory requiredAmounts = DataType.TokenAmounts(requiredAmount0, requiredAmount1);
 
-        (result.requiredAmounts.amount0, result.requiredAmounts.amount1) = PositionUpdater.updateMargin(
+        (requiredAmounts.amount0, requiredAmounts.amount1) = PositionUpdater.updateMargin(
             vault1,
             DataType.TradeOption(
                 true,
@@ -1195,13 +1185,13 @@ contract PositionUpdaterTest is PositionUpdaterHelper, Test {
                 -100,
                 EMPTY_METADATA
             ),
-            result
+            requiredAmounts
         );
 
         assertEq(vault1.marginAmount0, -requiredAmount0 - 100);
         assertEq(vault1.marginAmount1, -requiredAmount1 - 100);
-        assertEq(result.requiredAmounts.amount0, -100);
-        assertEq(result.requiredAmounts.amount1, -100);
+        assertEq(requiredAmounts.amount0, -100);
+        assertEq(requiredAmounts.amount1, -100);
     }
 
     // margin amount is never updated if margin mode is MARGIN_STAY
@@ -1210,7 +1200,7 @@ contract PositionUpdaterTest is PositionUpdaterHelper, Test {
         int256 requiredAmount1 = -int256(bound(_requiredAmount1, 0, 1e10));
 
         (
-            DataType.PositionUpdateResult memory result,
+            DataType.TokenAmounts memory requiredAmounts,
             DataType.TradeOption memory tradeOption
         ) = getTestDataOfUpdateMargin(
                 requiredAmount0,
@@ -1221,15 +1211,15 @@ contract PositionUpdaterTest is PositionUpdaterHelper, Test {
                 0
             );
 
-        (result.requiredAmounts.amount0, result.requiredAmounts.amount1) = PositionUpdater.updateMargin(
+        (requiredAmounts.amount0, requiredAmounts.amount1) = PositionUpdater.updateMargin(
             vault1,
             tradeOption,
-            result
+            requiredAmounts
         );
 
         assertEq(vault1.marginAmount0, 0);
         assertEq(vault1.marginAmount1, 0);
-        assertEq(result.requiredAmounts.amount0, requiredAmount0);
-        assertEq(result.requiredAmounts.amount1, requiredAmount1);
+        assertEq(requiredAmounts.amount0, requiredAmount0);
+        assertEq(requiredAmounts.amount1, requiredAmount1);
     }
 }

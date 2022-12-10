@@ -148,4 +148,12 @@ library PredyMath {
     function abs(int256 x) internal pure returns (uint256) {
         return uint256(x >= 0 ? x : -x);
     }
+
+    function floor(int256 _amount) internal pure returns (int256) {
+        if (_amount > 0) {
+            return int256(mulDivUp(uint256(_amount), 1, 1e4).mul(1e4));
+        } else {
+            return -int256(mulDiv(uint256(-_amount), 1, 1e4).mul(1e4));
+        }
+    }
 }

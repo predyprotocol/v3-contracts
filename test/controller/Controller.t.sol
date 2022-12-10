@@ -634,7 +634,9 @@ contract ControllerTest is TestController {
         controller.closeVault(vaultId, tradeOption, closeOption);
     }
 
-    function testWithdrawLPT(uint256 _swapAmount) public {
+    function testWithdrawLPT1() public /*uint256 _swapAmount*/
+    {
+        uint256 _swapAmount = 0;
         uint256 swapAmount = bound(_swapAmount, 1e16, 5 * 1e18);
 
         uint256 vaultId = depositLPT(0, 0, 202500, 202600, 1e18);
@@ -945,7 +947,7 @@ contract ControllerTest is TestController {
     }
 
     function testLiquidateAndGetMinPenalty() public {
-        uint256 vaultId = borrowLPT(0, 0, 202600, 202500, 202600, 2 * 1e14, 1e6 + 100);
+        uint256 vaultId = borrowLPT(0, 0, 202600, 202500, 202600, 2 * 1e14, 1e6 + 1e4);
 
         swapToSamePrice(user);
 
