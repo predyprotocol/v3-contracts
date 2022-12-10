@@ -124,6 +124,7 @@ library PositionUpdater {
             result.positionAmounts.amount1 = 0;
 
             (result.feeAmounts, result.subVaultsFeeAmounts) = recomputeAmounts(
+                _context,
                 result.subVaultsFeeAmounts,
                 result.swapAmounts,
                 _tradeOption.isQuoteZero,
@@ -131,6 +132,7 @@ library PositionUpdater {
             );
 
             (result.positionAmounts, result.subVaultsPositionAmounts) = recomputeAmounts(
+                _context,
                 result.subVaultsPositionAmounts,
                 result.swapAmounts,
                 _tradeOption.isQuoteZero,
@@ -174,11 +176,12 @@ library PositionUpdater {
     }
 
     function recomputeAmounts(
+        DataType.Context storage _context,
         DataType.TokenAmounts[] memory amounts,
         DataType.TokenAmounts memory _swapAmount,
         bool _isQuoteZero,
         bool _isMarginZero
-    ) internal pure returns (DataType.TokenAmounts memory totalAmount, DataType.TokenAmounts[] memory resultAmounts) {
+    ) internal returns (DataType.TokenAmounts memory totalAmount, DataType.TokenAmounts[] memory resultAmounts) {
         resultAmounts = new DataType.TokenAmounts[](amounts.length);
 
         for (uint256 i = 0; i < amounts.length; i++) {
@@ -197,9 +200,21 @@ library PositionUpdater {
             }
 
             if (_isMarginZero) {
-                amount.amount0 = PredyMath.floor(amount.amount0);
+                int256 roundedAmount = PredyMath.floor(amount.amount0);
+                if(roundedAmount > amount.amount0) {
+                    _context.accumulatedProtocolFee0 = _context.accumulatedProtocolFee0.add(
+                        (roundedAmount - amount.amount0).toUint256()
+                    );
+                }
+                amount.amount0 = roundedAmount;
             } else {
-                amount.amount1 = PredyMath.floor(amount.amount1);
+                int256 roundedAmount = PredyMath.floor(amount.amount1);
+                if(roundedAmount > amount.amount1) {
+                    _context.accumulatedProtocolFee1 = _context.accumulatedProtocolFee1.add(
+                        (roundedAmount - amount.amount1).toUint256()
+                    );
+                }
+                amount.amount1 = roundedAmount;
             }
 
             resultAmounts[i] = amount;
@@ -316,16 +331,10 @@ library PositionUpdater {
         } else if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.SWAP_EXACT_IN) {
             (int256 amount0, int256 amount1) = swapExactIn(_vault, _context, positionUpdate);
 
-            // positionAmounts.amount0 = positionAmounts.amount0.add(amount0);
-            // positionAmounts.amount1 = positionAmounts.amount1.add(amount1);
-
             swapAmounts.amount0 = swapAmounts.amount0.add(amount0);
             swapAmounts.amount1 = swapAmounts.amount1.add(amount1);
         } else if (positionUpdate.positionUpdateType == DataType.PositionUpdateType.SWAP_EXACT_OUT) {
             (int256 amount0, int256 amount1) = swapExactOut(_vault, _context, positionUpdate);
-
-            // positionAmounts.amount0 = positionAmounts.amount0.add(amount0);
-            // positionAmounts.amount1 = positionAmounts.amount1.add(amount1);
 
             swapAmounts.amount0 = swapAmounts.amount0.add(amount0);
             swapAmounts.amount1 = swapAmounts.amount1.add(amount1);
