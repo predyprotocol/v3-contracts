@@ -16,8 +16,8 @@ const InfuraKey = process.env.INFURA_API_KEY
 
 const GoerliArbitrum = {
   url: 'https://goerli-rollup.arbitrum.io/rpc',
-  gasPrice: 100000000, // 0.03 gwei
-  gas: 30_000_000,
+  gasPrice: 200000000, // 0.03 gwei
+  gas: 50_000_000,
   accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
   companionNetworks: {
     l1: 'goerli',
