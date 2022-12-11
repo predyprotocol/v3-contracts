@@ -19,12 +19,14 @@ contract PositionUpdaterHelpersTest is TestPositionUpdater {
      **************************/
 
     function testRecomputeAmountsWithEmpty() public {
-        DataType.TokenAmounts[] memory amounts = new DataType.TokenAmounts[](1);
-        amounts[0] = DataType.TokenAmounts(0, 0);
+        DataType.SubVaultTokenAmounts[] memory amounts = new DataType.SubVaultTokenAmounts[](1);
+        amounts[0] = DataType.SubVaultTokenAmounts(0, 0, 0);
         DataType.TokenAmounts memory swapAmount = DataType.TokenAmounts(0, 0);
 
-        (DataType.TokenAmounts memory totalAmount, DataType.TokenAmounts[] memory resultAmounts) = PositionUpdater
-            .recomputeAmounts(context, amounts, swapAmount, true);
+        (
+            DataType.TokenAmounts memory totalAmount,
+            DataType.SubVaultTokenAmounts[] memory resultAmounts
+        ) = PositionUpdater.recomputeAmounts(context, amounts, swapAmount, true);
 
         assertEq(totalAmount.amount0, 0);
         assertEq(totalAmount.amount1, 0);
@@ -36,11 +38,13 @@ contract PositionUpdaterHelpersTest is TestPositionUpdater {
     // swap 2 ETH for 300 USDC
     // get 200 USDC
     function testRecomputeAmounts1() public {
-        DataType.TokenAmounts[] memory amounts = new DataType.TokenAmounts[](1);
-        amounts[0] = DataType.TokenAmounts(-2, 100);
+        DataType.SubVaultTokenAmounts[] memory amounts = new DataType.SubVaultTokenAmounts[](1);
+        amounts[0] = DataType.SubVaultTokenAmounts(0, -2, 100);
 
-        (DataType.TokenAmounts memory totalAmount, DataType.TokenAmounts[] memory resultAmounts) = PositionUpdater
-            .recomputeAmounts(context, amounts, DataType.TokenAmounts(2, -300), false);
+        (
+            DataType.TokenAmounts memory totalAmount,
+            DataType.SubVaultTokenAmounts[] memory resultAmounts
+        ) = PositionUpdater.recomputeAmounts(context, amounts, DataType.TokenAmounts(2, -300), false);
 
         assertEq(totalAmount.amount0, 0);
         assertEq(totalAmount.amount1, -200);
@@ -53,11 +57,13 @@ contract PositionUpdaterHelpersTest is TestPositionUpdater {
     // swap 600 USDC for 2 ETH
     // required 400 USDC
     function testRecomputeAmounts2() public {
-        DataType.TokenAmounts[] memory amounts = new DataType.TokenAmounts[](1);
-        amounts[0] = DataType.TokenAmounts(-2, 100);
+        DataType.SubVaultTokenAmounts[] memory amounts = new DataType.SubVaultTokenAmounts[](1);
+        amounts[0] = DataType.SubVaultTokenAmounts(0, -2, 100);
 
-        (DataType.TokenAmounts memory totalAmount, DataType.TokenAmounts[] memory resultAmounts) = PositionUpdater
-            .recomputeAmounts(context, amounts, DataType.TokenAmounts(2, 300), false);
+        (
+            DataType.TokenAmounts memory totalAmount,
+            DataType.SubVaultTokenAmounts[] memory resultAmounts
+        ) = PositionUpdater.recomputeAmounts(context, amounts, DataType.TokenAmounts(2, 300), false);
 
         assertEq(totalAmount.amount0, 0);
         assertEq(totalAmount.amount1, 400);
@@ -71,12 +77,14 @@ contract PositionUpdaterHelpersTest is TestPositionUpdater {
     // swap 800 USDC for 1 ETH
     // required 900 USDC
     function testRecomputeAmounts3() public {
-        DataType.TokenAmounts[] memory amounts = new DataType.TokenAmounts[](2);
-        amounts[0] = DataType.TokenAmounts(-2, 100);
-        amounts[1] = DataType.TokenAmounts(-5, 100);
+        DataType.SubVaultTokenAmounts[] memory amounts = new DataType.SubVaultTokenAmounts[](2);
+        amounts[0] = DataType.SubVaultTokenAmounts(0, -2, 100);
+        amounts[1] = DataType.SubVaultTokenAmounts(0, -5, 100);
 
-        (DataType.TokenAmounts memory totalAmount, DataType.TokenAmounts[] memory resultAmounts) = PositionUpdater
-            .recomputeAmounts(context, amounts, DataType.TokenAmounts(7, 700), false);
+        (
+            DataType.TokenAmounts memory totalAmount,
+            DataType.SubVaultTokenAmounts[] memory resultAmounts
+        ) = PositionUpdater.recomputeAmounts(context, amounts, DataType.TokenAmounts(7, 700), false);
 
         assertEq(totalAmount.amount0, 0);
         assertEq(totalAmount.amount1, 900);
@@ -91,12 +99,14 @@ contract PositionUpdaterHelpersTest is TestPositionUpdater {
     // swap 400 USDC for 2 ETH
     // required 100 USDC
     function testRecomputeAmounts4() public {
-        DataType.TokenAmounts[] memory amounts = new DataType.TokenAmounts[](2);
-        amounts[0] = DataType.TokenAmounts(1, -100);
-        amounts[1] = DataType.TokenAmounts(1, -200);
+        DataType.SubVaultTokenAmounts[] memory amounts = new DataType.SubVaultTokenAmounts[](2);
+        amounts[0] = DataType.SubVaultTokenAmounts(0, 1, -100);
+        amounts[1] = DataType.SubVaultTokenAmounts(0, 1, -200);
 
-        (DataType.TokenAmounts memory totalAmount, DataType.TokenAmounts[] memory resultAmounts) = PositionUpdater
-            .recomputeAmounts(context, amounts, DataType.TokenAmounts(-2, 400), false);
+        (
+            DataType.TokenAmounts memory totalAmount,
+            DataType.SubVaultTokenAmounts[] memory resultAmounts
+        ) = PositionUpdater.recomputeAmounts(context, amounts, DataType.TokenAmounts(-2, 400), false);
 
         assertEq(totalAmount.amount0, 0);
         assertEq(totalAmount.amount1, 100);

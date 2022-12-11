@@ -175,14 +175,17 @@ library PositionUpdater {
 
     function recomputeAmounts(
         DataType.Context storage _context,
-        DataType.TokenAmounts[] memory amounts,
+        DataType.SubVaultTokenAmounts[] memory amounts,
         DataType.TokenAmounts memory _swapAmount,
         bool _isQuoteZero
-    ) internal returns (DataType.TokenAmounts memory totalAmount, DataType.TokenAmounts[] memory resultAmounts) {
-        resultAmounts = new DataType.TokenAmounts[](amounts.length);
+    )
+        internal
+        returns (DataType.TokenAmounts memory totalAmount, DataType.SubVaultTokenAmounts[] memory resultAmounts)
+    {
+        resultAmounts = new DataType.SubVaultTokenAmounts[](amounts.length);
 
         for (uint256 i = 0; i < amounts.length; i++) {
-            DataType.TokenAmounts memory amount = amounts[i];
+            DataType.SubVaultTokenAmounts memory amount = amounts[i];
 
             if (_isQuoteZero && _swapAmount.amount1 != 0) {
                 amount.amount0 = amount.amount0.add(
@@ -241,11 +244,11 @@ library PositionUpdater {
         returns (
             DataType.TokenAmounts memory totalPositionAmounts,
             DataType.TokenAmounts memory totalSwapAmount,
-            DataType.TokenAmounts[] memory positionAmounts
+            DataType.SubVaultTokenAmounts[] memory positionAmounts
         )
     {
         // reserve space for new sub-vault index
-        positionAmounts = new DataType.TokenAmounts[](_vault.subVaults.length + 1);
+        positionAmounts = new DataType.SubVaultTokenAmounts[](_vault.subVaults.length + 1);
 
         for (uint256 i = 0; i < _positionUpdates.length; i++) {
             DataType.PositionUpdate memory positionUpdate = _positionUpdates[i];
@@ -262,6 +265,7 @@ library PositionUpdater {
                 _tradeOption
             );
 
+            positionAmounts[positionUpdate.subVaultIndex].subVaultId = subVault.id;
             positionAmounts[positionUpdate.subVaultIndex].amount0 = positionAmounts[positionUpdate.subVaultIndex]
                 .amount0
                 .add(positionAmount.amount0);
@@ -705,14 +709,18 @@ library PositionUpdater {
         DataType.Vault memory _vault,
         mapping(uint256 => DataType.SubVault) storage _subVaults,
         mapping(bytes32 => DataType.PerpStatus) storage _ranges
-    ) internal returns (DataType.TokenAmounts memory totalFeeAmounts, DataType.TokenAmounts[] memory feeAmounts) {
-        feeAmounts = new DataType.TokenAmounts[](_vault.subVaults.length);
+    )
+        internal
+        returns (DataType.TokenAmounts memory totalFeeAmounts, DataType.SubVaultTokenAmounts[] memory feeAmounts)
+    {
+        feeAmounts = new DataType.SubVaultTokenAmounts[](_vault.subVaults.length);
 
         for (uint256 i = 0; i < _vault.subVaults.length; i++) {
             DataType.SubVault storage subVault = _subVaults[_vault.subVaults[i]];
 
             (int256 feeAmount0, int256 feeAmount1) = collectFeeOfSubVault(_context, subVault, _ranges);
 
+            feeAmounts[i].subVaultId = _vault.subVaults[i];
             feeAmounts[i].amount0 = feeAmount0;
             feeAmounts[i].amount1 = feeAmount1;
             totalFeeAmounts.amount0 = totalFeeAmounts.amount0.add(feeAmount0);
