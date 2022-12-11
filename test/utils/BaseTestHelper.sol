@@ -480,4 +480,8 @@ abstract contract BaseTestHelper {
             liquidity
         );
     }
+
+    function blockTimestamp() internal view returns (uint256) {
+        return block.timestamp;
+    }
 }

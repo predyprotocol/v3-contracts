@@ -4,7 +4,6 @@ pragma abicoder v2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/math/SignedSafeMath.sol";
-import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@uniswap/v3-periphery/libraries/LiquidityAmounts.sol";
 import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
@@ -22,7 +21,6 @@ import "../PriceHelper.sol";
 library LiquidationLogic {
     using SafeMath for uint256;
     using SignedSafeMath for int256;
-    using SafeCast for int256;
 
     event Liquidated(uint256 indexed vaultId, address liquidator, uint256 penaltyAmount);
 
