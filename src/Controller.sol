@@ -469,7 +469,7 @@ contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCall
     function getRange(bytes32 _rangeId) external returns (DataType.PerpStatus memory) {
         InterestCalculator.updatePremiumGrowth(ypParams, context, ranges[_rangeId], getSqrtIndexPrice());
 
-        PositionUpdater.updateFeeGrowthForRange(context, ranges[_rangeId]);
+        InterestCalculator.updateFeeGrowthForRange(context, ranges[_rangeId]);
 
         return ranges[_rangeId];
     }
@@ -624,7 +624,7 @@ contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCall
             getSqrtIndexPrice()
         );
 
-        PositionUpdater.updateFeeGrowth(context, vault, subVaults, ranges, _positionUpdates);
+        InterestCalculator.updateFeeGrowth(context, vault, subVaults, ranges, _positionUpdates);
     }
 
     function applyInterest() internal {

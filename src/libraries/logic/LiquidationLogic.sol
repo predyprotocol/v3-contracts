@@ -64,8 +64,7 @@ library LiquidationLogic {
             _context,
             _ranges,
             _positionUpdates,
-            // penalty amount is 0.4% of debt value
-            PredyMath.max(debtValue / 250, Constants.MIN_PENALTY)
+            calculatePenaltyAmount(debtValue)
         );
 
         sendReward(_context, msg.sender, penaltyAmount);
@@ -99,6 +98,15 @@ library LiquidationLogic {
         }
 
         return liquidationSlippageSqrtTolerance;
+    }
+
+    function calculatePenaltyAmount(uint256 _debtValue) internal pure returns (uint256) {
+        // penalty amount is 0.4% of debt value
+        return
+            PredyMath.max(
+                ((_debtValue / 250) / Constants.MARGIN_ROUNDED_DECIMALS).mul(Constants.MARGIN_ROUNDED_DECIMALS),
+                Constants.MIN_PENALTY
+            );
     }
 
     /**

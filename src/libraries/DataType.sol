@@ -188,5 +188,7 @@ library DataType {
         TokenAmounts feeAmounts;
         TokenAmounts positionAmounts;
         TokenAmounts swapAmounts;
+        TokenAmounts[] subVaultsFeeAmounts;
+        TokenAmounts[] subVaultsPositionAmounts;
     }
 }

@@ -945,7 +945,7 @@ contract ControllerTest is TestController {
     }
 
     function testLiquidateAndGetMinPenalty() public {
-        uint256 vaultId = borrowLPT(0, 0, 202600, 202500, 202600, 2 * 1e14, 1e6 + 100);
+        uint256 vaultId = borrowLPT(0, 0, 202600, 202500, 202600, 2 * 1e14, 1e6 + 1e4);
 
         swapToSamePrice(user);
 
