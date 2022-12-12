@@ -30,6 +30,7 @@ library InterestCalculator {
         uint256 premiumGrowthForBorrower,
         uint256 premiumGrowthForLender
     );
+    event FeeGrowthUpdated(int24 lowerTick, int24 upperTick, uint256 fee0Growth, uint256 fee1Growth);
 
     struct TickSnapshot {
         uint256 lastSecondsPerLiquidityInside;
@@ -188,6 +189,77 @@ library InterestCalculator {
         );
     }
 
+    /**
+     * @notice Collects trade fee and updates fee growth.
+     */
+    function updateFeeGrowth(
+        DataType.Context memory _context,
+        DataType.Vault memory _vault,
+        mapping(uint256 => DataType.SubVault) storage _subVaults,
+        mapping(bytes32 => DataType.PerpStatus) storage _ranges,
+        DataType.PositionUpdate[] memory _positionUpdates
+    ) external {
+        // calculate trade fee for ranges that the vault has
+        for (uint256 i = 0; i < _vault.subVaults.length; i++) {
+            DataType.SubVault memory subVault = _subVaults[_vault.subVaults[i]];
+
+            for (uint256 j = 0; j < subVault.lpts.length; j++) {
+                updateFeeGrowthForRange(_context, _ranges[subVault.lpts[j].rangeId]);
+            }
+        }
+
+        // calculate trade fee for ranges that trader would open
+        for (uint256 i = 0; i < _positionUpdates.length; i++) {
+            bytes32 rangeId = LPTStateLib.getRangeKey(_positionUpdates[i].lowerTick, _positionUpdates[i].upperTick);
+
+            updateFeeGrowthForRange(_context, _ranges[rangeId]);
+        }
+    }
+
+    function updateFeeGrowthForRange(DataType.Context memory _context, DataType.PerpStatus storage _range) public {
+        if (_range.lastTouchedTimestamp == 0) {
+            return;
+        }
+
+        uint256 totalLiquidity = LPTStateLib.getTotalLiquidityAmount(address(this), _context.uniswapPool, _range);
+
+        if (totalLiquidity == 0) {
+            emit FeeGrowthUpdated(_range.lowerTick, _range.upperTick, _range.fee0Growth, _range.fee1Growth);
+
+            return;
+        }
+
+        {
+            // Skip fee collection if utilization ratio is 100%
+            uint256 availableLiquidity = LPTStateLib.getAvailableLiquidityAmount(
+                address(this),
+                _context.uniswapPool,
+                _range
+            );
+
+            if (availableLiquidity == 0) {
+                return;
+            }
+        }
+
+        // burn 0 amount of LPT to collect trade fee from Uniswap pool.
+        IUniswapV3Pool(_context.uniswapPool).burn(_range.lowerTick, _range.upperTick, 0);
+
+        // collect trade fee
+        (uint256 collect0, uint256 collect1) = IUniswapV3Pool(_context.uniswapPool).collect(
+            address(this),
+            _range.lowerTick,
+            _range.upperTick,
+            type(uint128).max,
+            type(uint128).max
+        );
+
+        _range.fee0Growth = _range.fee0Growth.add(PredyMath.mulDiv(collect0, Constants.ONE, totalLiquidity));
+        _range.fee1Growth = _range.fee1Growth.add(PredyMath.mulDiv(collect1, Constants.ONE, totalLiquidity));
+
+        emit FeeGrowthUpdated(_range.lowerTick, _range.upperTick, _range.fee0Growth, _range.fee1Growth);
+    }
+
     function calculateLPTBorrowerAndLenderPremium(
         YearlyPremiumParams storage _params,
         DataType.Context memory _context,
@@ -304,9 +376,15 @@ library InterestCalculator {
             return 0;
         }
 
-        return
-            (secondsPerLiquidityInside - _params.snapshots[key].lastSecondsPerLiquidityInside).mul(Constants.ONE) /
-            (secondsPerLiquidity - _params.snapshots[key].lastSecondsPerLiquidity);
+        uint256 activeRatio = (secondsPerLiquidityInside - _params.snapshots[key].lastSecondsPerLiquidityInside).mul(
+            Constants.ONE
+        ) / (secondsPerLiquidity - _params.snapshots[key].lastSecondsPerLiquidity);
+
+        if (activeRatio >= Constants.ONE) {
+            return Constants.ONE;
+        }
+
+        return activeRatio;
     }
 
     function takeSnapshot(

@@ -32,6 +32,7 @@ import "./libraries/Constants.sol";
  * P6: unpaused
  * P7: tx too old
  * P8: too much slippage
+ * P9: invalid interest rate model
  */
 contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCallback {
     using BaseToken for BaseToken.TokenState;
@@ -59,6 +60,7 @@ contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCall
     event VaultCreated(uint256 vaultId, address owner);
     event Paused();
     event UnPaused();
+    event ProtocolFeeWithdrawn(uint256 withdrawnFee0, uint256 withdrawnFee1);
 
     modifier notPaused() {
         require(!isSystemPaused, "P5");
@@ -164,6 +166,7 @@ contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCall
      * @param _irmParams New interest rate model parameter
      */
     function updateIRMParams(InterestCalculator.IRMParams memory _irmParams) external onlyOperator {
+        validateIRMParams(_irmParams);
         irmParams = _irmParams;
     }
 
@@ -177,6 +180,8 @@ contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCall
         InterestCalculator.IRMParams memory _irmParams,
         InterestCalculator.IRMParams memory _premiumParams
     ) external onlyOperator {
+        validateIRMParams(_irmParams);
+        validateIRMParams(_premiumParams);
         ypParams.irmParams = _irmParams;
         ypParams.premiumParams = _premiumParams;
     }
@@ -200,6 +205,8 @@ contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCall
         if (_amount1 > 0) {
             TransferHelper.safeTransfer(context.token1, msg.sender, _amount1);
         }
+
+        emit ProtocolFeeWithdrawn(_amount0, _amount1);
     }
 
     /**
@@ -216,6 +223,7 @@ contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCall
      */
     function unPause() external onlyOperator isPaused {
         isSystemPaused = false;
+
         emit UnPaused();
     }
 
@@ -408,7 +416,11 @@ contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCall
 
         if (_vaultId == 0) {
             // non 0 amount of tokens required to create new vault.
-            require(requiredAmounts.amount0 > 0 || requiredAmounts.amount1 > 0, "P4");
+            if (context.isMarginZero) {
+                require(requiredAmounts.amount0 >= Constants.MIN_MARGIN_AMOUNT, "P4");
+            } else {
+                require(requiredAmounts.amount1 >= Constants.MIN_MARGIN_AMOUNT, "P4");
+            }
         }
     }
 
@@ -421,6 +433,8 @@ contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCall
         internal
         checkVaultExists(_vaultId)
     {
+        require(_vaultId > 0);
+
         applyPerpFee(_vaultId, _positionUpdates);
 
         LiquidationLogic.execLiquidation(vaults[_vaultId], subVaults, _positionUpdates, context, ranges);
@@ -455,7 +469,7 @@ contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCall
     function getRange(bytes32 _rangeId) external returns (DataType.PerpStatus memory) {
         InterestCalculator.updatePremiumGrowth(ypParams, context, ranges[_rangeId], getSqrtIndexPrice());
 
-        PositionUpdater.updateFeeGrowthForRange(context, ranges[_rangeId]);
+        InterestCalculator.updateFeeGrowthForRange(context, ranges[_rangeId]);
 
         return ranges[_rangeId];
     }
@@ -556,6 +570,16 @@ contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCall
 
     // Private Functions
 
+    function validateIRMParams(InterestCalculator.IRMParams memory _irmParams) internal pure {
+        require(
+            _irmParams.baseRate <= 1e18 &&
+                _irmParams.kinkRate <= 1e18 &&
+                _irmParams.slope1 <= 1e18 &&
+                _irmParams.slope2 <= 10 * 1e18,
+            "P9"
+        );
+    }
+
     function createOrGetVault(uint256 _vaultId, bool _quoterMode)
         internal
         returns (uint256 vaultId, DataType.Vault storage)
@@ -600,7 +624,7 @@ contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCall
             getSqrtIndexPrice()
         );
 
-        PositionUpdater.updateFeeGrowth(context, vault, subVaults, ranges, _positionUpdates);
+        InterestCalculator.updateFeeGrowth(context, vault, subVaults, ranges, _positionUpdates);
     }
 
     function applyInterest() internal {

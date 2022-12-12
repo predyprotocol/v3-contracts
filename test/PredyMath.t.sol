@@ -5,6 +5,24 @@ import "forge-std/Test.sol";
 import "../src/libraries/PredyMath.sol";
 
 contract PredyMathTest is Test {
+    function testMulDiv(
+        uint256 a,
+        uint256 b,
+        uint256 c
+    ) public {
+        a = bound(a, 0, type(uint128).max);
+        b = bound(b, 0, type(uint128).max);
+        c = bound(c, 1, type(uint256).max);
+        uint256 r = PredyMath.mulDiv(a, b, c);
+
+        assertEq(r, (a * b) / c);
+    }
+
+    function testCannotMulDivByDivByZero(uint256 a, uint256 b) public {
+        vm.expectRevert();
+        PredyMath.mulDiv(a, b, 0);
+    }
+
     function testSubRewardReturnReward() public {
         (int256 a, uint256 b) = PredyMath.subReward(100, 10);
 

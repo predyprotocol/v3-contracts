@@ -10,7 +10,7 @@ const files = [
     'VaultLib.json'
 ]
 
-const deployments = files.map(filename => fs.readFileSync(path.join(__dirname, '../deployments/goerli', filename)).toString()).map(str => JSON.parse(str))
+const deployments = files.map(filename => fs.readFileSync(path.join(__dirname, '../deployments/goerliArbitrumEth', filename)).toString()).map(str => JSON.parse(str))
 
 const abis = deployments.map(deployment => deployment.abi).reduce((abis, abi) => abis.concat(abi), [])
 

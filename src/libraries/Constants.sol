@@ -17,6 +17,7 @@ library Constants {
 
     uint256 internal constant MAX_MARGIN_AMOUNT = 1e32;
     int256 internal constant MIN_MARGIN_AMOUNT = 1e6;
+    uint256 internal constant MARGIN_ROUNDED_DECIMALS = 1e4;
 
     uint256 internal constant MIN_PENALTY = 2 * 1e5;
 
@@ -31,8 +32,8 @@ library Constants {
     uint256 internal constant BASE_MIN_COLLATERAL_WITH_DEBT = 20000;
     // 0.00005
     uint256 internal constant MIN_COLLATERAL_WITH_DEBT_SLOPE = 50;
-    // 3% scaled by 1e6
-    uint256 internal constant BASE_LIQ_SLIPPAGE_SQRT_TOLERANCE = 15000;
+    // 2.5% scaled by 1e6
+    uint256 internal constant BASE_LIQ_SLIPPAGE_SQRT_TOLERANCE = 12422;
     // 0.000022
     uint256 internal constant LIQ_SLIPPAGE_SQRT_SLOPE = 22;
     // 0.001
