@@ -61,8 +61,8 @@ library BaseToken {
 
             accountState.lastAssetGrowth = tokenState.assetGrowth;
 
-            accountState.assetAmount += _amount;
-            tokenState.totalNormalDeposited += _amount;
+            accountState.assetAmount = accountState.assetAmount.add(_amount);
+            tokenState.totalNormalDeposited = tokenState.totalNormalDeposited.add(_amount);
 
             accountState.interestType = InterestType.NORMAL;
         }
@@ -93,8 +93,8 @@ library BaseToken {
 
             accountState.lastDebtGrowth = tokenState.debtGrowth;
 
-            accountState.debtAmount += _amount;
-            tokenState.totalNormalBorrowed += _amount;
+            accountState.debtAmount = accountState.debtAmount.add(_amount);
+            tokenState.totalNormalBorrowed = tokenState.totalNormalBorrowed.add(_amount);
 
             accountState.interestType = InterestType.NORMAL;
         }
@@ -275,14 +275,16 @@ library BaseToken {
 
     function getTotalCollateralValue(TokenState memory tokenState) internal pure returns (uint256) {
         return
-            PredyMath.mulDiv(tokenState.totalCompoundDeposited, tokenState.assetScaler, Constants.ONE) +
-            tokenState.totalNormalDeposited;
+            PredyMath.mulDiv(tokenState.totalCompoundDeposited, tokenState.assetScaler, Constants.ONE).add(
+                tokenState.totalNormalDeposited
+            );
     }
 
     function getTotalDebtValue(TokenState memory tokenState) internal pure returns (uint256) {
         return
-            PredyMath.mulDiv(tokenState.totalCompoundBorrowed, tokenState.debtScaler, Constants.ONE) +
-            tokenState.totalNormalBorrowed;
+            PredyMath.mulDiv(tokenState.totalCompoundBorrowed, tokenState.debtScaler, Constants.ONE).add(
+                tokenState.totalNormalBorrowed
+            );
     }
 
     function getAvailableCollateralValue(TokenState memory tokenState) internal pure returns (uint256) {

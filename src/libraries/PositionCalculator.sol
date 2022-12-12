@@ -233,7 +233,9 @@ library PositionCalculator {
                 debtAmount1 = debtAmount1.add(
                     (
                         uint256(lpt.liquidity).mul(
-                            TickMath.getSqrtRatioAtTick(lpt.upperTick) - TickMath.getSqrtRatioAtTick(lpt.lowerTick)
+                            uint256(TickMath.getSqrtRatioAtTick(lpt.upperTick)).sub(
+                                TickMath.getSqrtRatioAtTick(lpt.lowerTick)
+                            )
                         )
                     ).div(Q96)
                 );

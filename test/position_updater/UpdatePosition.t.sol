@@ -473,7 +473,8 @@ contract PositionUpdaterUpdatePositionTest is TestPositionUpdater {
      **************************/
 
     function testDepositTokens(uint256 _amount0, uint256 _amount1) public {
-        vm.assume(0 < _amount0 && 0 < _amount1);
+        uint256 amount0 = bound(_amount0, 1, 1e32);
+        uint256 amount1 = bound(_amount1, 1, 1e32);
 
         DataType.PositionUpdate memory positionUpdate = DataType.PositionUpdate(
             DataType.PositionUpdateType.DEPOSIT_TOKEN,
@@ -482,14 +483,14 @@ contract PositionUpdaterUpdatePositionTest is TestPositionUpdater {
             0,
             0,
             0,
-            _amount0,
-            _amount1
+            amount0,
+            amount1
         );
 
         PositionUpdater.depositTokens(subVaults[100], context, positionUpdate);
 
-        assertEq(subVaults[100].balance0.assetAmount, _amount0);
-        assertEq(subVaults[100].balance1.assetAmount, _amount1);
+        assertEq(subVaults[100].balance0.assetAmount, amount0);
+        assertEq(subVaults[100].balance1.assetAmount, amount1);
     }
 
     /**************************
