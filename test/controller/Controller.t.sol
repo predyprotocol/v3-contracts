@@ -489,9 +489,11 @@ contract ControllerTest is TestController {
 
         vm.warp(block.timestamp + 5 minutes);
 
+        DataType.Vault memory vault = controller.getVault(vaultId);
+
         controller.closeSubVault(
             vaultId,
-            0,
+            vault.subVaults[0],
             DataType.TradeOption(
                 false,
                 true,
