@@ -95,7 +95,13 @@ contract Reader {
             ? borrow.add(_deltaLiquidity).mul(1e18).div(supply)
             : borrow.mul(1e18).div(supply.add(_deltaLiquidity));
 
-        return controller.calculateLPTBorrowerAndLenderPremium(_rangeId, perpUr, _elapsed);
+        (premiumGrowthForBorrower, , protocolFeePerLiquidity) = controller.calculateLPTBorrowerAndLenderPremium(
+            _rangeId,
+            perpUr,
+            _elapsed
+        );
+
+        premiumGrowthForLender = premiumGrowthForBorrower.sub(protocolFeePerLiquidity).mul(perpUr).div(1e18);
     }
 
     /**
