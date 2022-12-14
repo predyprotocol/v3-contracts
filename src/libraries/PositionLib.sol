@@ -310,7 +310,7 @@ library PositionLib {
             if (!lpt.isCollateral) {
                 positionUpdates[index] = DataType.PositionUpdate(
                     DataType.PositionUpdateType.BORROW_LPT,
-                    _position.subVaultIndex,
+                    _position.subVaultId,
                     false,
                     lpt.liquidity,
                     lpt.lowerTick,
@@ -325,7 +325,7 @@ library PositionLib {
         if (_position.asset0 > 0 || _position.asset1 > 0) {
             positionUpdates[index] = DataType.PositionUpdate(
                 DataType.PositionUpdateType.DEPOSIT_TOKEN,
-                _position.subVaultIndex,
+                _position.subVaultId,
                 false,
                 0,
                 0,
@@ -339,7 +339,7 @@ library PositionLib {
         if (_position.debt0 > 0 || _position.debt1 > 0) {
             positionUpdates[index] = DataType.PositionUpdate(
                 DataType.PositionUpdateType.BORROW_TOKEN,
-                _position.subVaultIndex,
+                _position.subVaultId,
                 false,
                 0,
                 0,
@@ -358,7 +358,7 @@ library PositionLib {
             if (lpt.isCollateral) {
                 positionUpdates[index] = DataType.PositionUpdate(
                     DataType.PositionUpdateType.DEPOSIT_LPT,
-                    _position.subVaultIndex,
+                    _position.subVaultId,
                     false,
                     lpt.liquidity,
                     lpt.lowerTick,
@@ -386,7 +386,7 @@ library PositionLib {
                 if (lpt.isCollateral) {
                     positionUpdates[index] = DataType.PositionUpdate(
                         DataType.PositionUpdateType.WITHDRAW_LPT,
-                        _positions[i].subVaultIndex,
+                        _positions[i].subVaultId,
                         false,
                         uint256(lpt.liquidity).mul(_closeRatio).div(1e4).toUint128(),
                         lpt.lowerTick,
@@ -408,7 +408,7 @@ library PositionLib {
                 if (!lpt.isCollateral) {
                     positionUpdates[index] = DataType.PositionUpdate(
                         DataType.PositionUpdateType.REPAY_LPT,
-                        _positions[i].subVaultIndex,
+                        _positions[i].subVaultId,
                         false,
                         uint256(lpt.liquidity).mul(_closeRatio).div(1e4).toUint128(),
                         lpt.lowerTick,
@@ -425,13 +425,13 @@ library PositionLib {
             if (_positions[i].asset0 > 0 || _positions[i].asset1 > 0) {
                 positionUpdates[index] = DataType.PositionUpdate(
                     DataType.PositionUpdateType.WITHDRAW_TOKEN,
-                    _positions[i].subVaultIndex,
+                    _positions[i].subVaultId,
                     false,
                     0,
                     0,
                     0,
-                    _closeRatio == 1e4 ? type(uint256).max : _positions[i].asset0.mul(_closeRatio).div(1e4),
-                    _closeRatio == 1e4 ? type(uint256).max : _positions[i].asset1.mul(_closeRatio).div(1e4)
+                    _closeRatio == 1e4 ? type(uint128).max : _positions[i].asset0.mul(_closeRatio).div(1e4),
+                    _closeRatio == 1e4 ? type(uint128).max : _positions[i].asset1.mul(_closeRatio).div(1e4)
                 );
                 index++;
             }
@@ -441,13 +441,13 @@ library PositionLib {
             if (_positions[i].debt0 > 0 || _positions[i].debt1 > 0) {
                 positionUpdates[index] = DataType.PositionUpdate(
                     DataType.PositionUpdateType.REPAY_TOKEN,
-                    _positions[i].subVaultIndex,
+                    _positions[i].subVaultId,
                     false,
                     0,
                     0,
                     0,
-                    _closeRatio == 1e4 ? type(uint256).max : _positions[i].debt0.mul(_closeRatio).div(1e4),
-                    _closeRatio == 1e4 ? type(uint256).max : _positions[i].debt1.mul(_closeRatio).div(1e4)
+                    _closeRatio == 1e4 ? type(uint128).max : _positions[i].debt0.mul(_closeRatio).div(1e4),
+                    _closeRatio == 1e4 ? type(uint128).max : _positions[i].debt1.mul(_closeRatio).div(1e4)
                 );
                 index++;
             }

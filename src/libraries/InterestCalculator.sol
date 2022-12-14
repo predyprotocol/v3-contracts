@@ -276,9 +276,11 @@ library InterestCalculator {
             uint256 protocolFeePerLiquidity
         )
     {
-        premiumGrowthForBorrower =
-            (_elapsed * calculateYearlyPremium(_params, _context, _perpState, _sqrtPrice, _perpUr)) /
-            365 days;
+        premiumGrowthForBorrower = PredyMath.mulDiv(
+            _elapsed,
+            calculateYearlyPremium(_params, _context, _perpState, _sqrtPrice, _perpUr),
+            365 days
+        );
 
         protocolFeePerLiquidity = PredyMath.mulDiv(
             premiumGrowthForBorrower,
@@ -288,8 +290,8 @@ library InterestCalculator {
 
         premiumGrowthForLender = PredyMath.mulDiv(
             premiumGrowthForBorrower.sub(protocolFeePerLiquidity),
-            _perpState.borrowedLiquidity,
-            LPTStateLib.getTotalLiquidityAmount(address(this), _context.uniswapPool, _perpState)
+            _perpUr,
+            Constants.ONE
         );
     }
 

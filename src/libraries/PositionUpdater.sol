@@ -19,7 +19,8 @@ import "./UniHelper.sol";
  * Error Codes
  * PU1: reduce only
  * PU2: margin must not be negative
- * PU3: amount must not be 0
+ * PU3: liquidity amount must not be 0
+ * PU4: amount must not be 0
  */
 library PositionUpdater {
     using SafeMath for uint256;
@@ -250,34 +251,66 @@ library PositionUpdater {
         // reserve space for new sub-vault index
         positionAmounts = new DataType.SubVaultTokenAmounts[](_vault.subVaults.length + 1);
 
+        uint256 newSubVaultId = 0;
+
         for (uint256 i = 0; i < _positionUpdates.length; i++) {
-            DataType.PositionUpdate memory positionUpdate = _positionUpdates[i];
+            DataType.SubVault storage subVault;
+            uint256 subVaultIndex;
 
             // create new sub-vault if needed
-            DataType.SubVault storage subVault = _vault.addSubVault(_subVaults, _context, positionUpdate.subVaultIndex);
+            (subVault, subVaultIndex, newSubVaultId) = createOrGetSubVault(
+                _vault,
+                _subVaults,
+                _context,
+                _positionUpdates[i].subVaultId,
+                newSubVaultId
+            );
 
             (DataType.TokenAmounts memory positionAmount, DataType.TokenAmounts memory swapAmount) = updateSubVault(
                 _vault,
                 subVault,
                 _context,
                 _ranges,
-                positionUpdate,
+                _positionUpdates[i],
                 _tradeOption
             );
 
-            positionAmounts[positionUpdate.subVaultIndex].subVaultId = subVault.id;
-            positionAmounts[positionUpdate.subVaultIndex].amount0 = positionAmounts[positionUpdate.subVaultIndex]
-                .amount0
-                .add(positionAmount.amount0);
-            positionAmounts[positionUpdate.subVaultIndex].amount1 = positionAmounts[positionUpdate.subVaultIndex]
-                .amount1
-                .add(positionAmount.amount1);
+            positionAmounts[subVaultIndex].subVaultId = subVault.id;
+            positionAmounts[subVaultIndex].amount0 = positionAmounts[subVaultIndex].amount0.add(positionAmount.amount0);
+            positionAmounts[subVaultIndex].amount1 = positionAmounts[subVaultIndex].amount1.add(positionAmount.amount1);
 
             totalPositionAmounts.amount0 = totalPositionAmounts.amount0.add(positionAmount.amount0);
             totalPositionAmounts.amount1 = totalPositionAmounts.amount1.add(positionAmount.amount1);
 
             totalSwapAmount.amount0 = totalSwapAmount.amount0.add(swapAmount.amount0);
             totalSwapAmount.amount1 = totalSwapAmount.amount1.add(swapAmount.amount1);
+        }
+    }
+
+    function createOrGetSubVault(
+        DataType.Vault storage _vault,
+        mapping(uint256 => DataType.SubVault) storage _subVaults,
+        DataType.Context storage _context,
+        uint256 _subVaultId,
+        uint256 _newSubVaultId
+    )
+        internal
+        returns (
+            DataType.SubVault storage subVault,
+            uint256 subVaultIndex,
+            uint256 newSubVaultId
+        )
+    {
+        (subVault, subVaultIndex) = _vault.addSubVault(
+            _subVaults,
+            _context,
+            _subVaultId > 0 ? _subVaultId : _newSubVaultId
+        );
+
+        if (_newSubVaultId == 0 && _subVaultId == 0) {
+            newSubVaultId = subVault.id;
+        } else {
+            newSubVaultId = _newSubVaultId;
         }
     }
 
@@ -470,7 +503,7 @@ library PositionUpdater {
         DataType.Context storage _context,
         DataType.PositionUpdate memory _positionUpdate
     ) internal {
-        require(_positionUpdate.param0 > 0 || _positionUpdate.param1 > 0);
+        require(_positionUpdate.param0 > 0 || _positionUpdate.param1 > 0, "PU4");
         _context.tokenState0.addAsset(_subVault.balance0, _positionUpdate.param0, _positionUpdate.zeroForOne);
         _context.tokenState1.addAsset(_subVault.balance1, _positionUpdate.param1, _positionUpdate.zeroForOne);
 
@@ -482,7 +515,7 @@ library PositionUpdater {
         DataType.Context storage _context,
         DataType.PositionUpdate memory _positionUpdate
     ) internal returns (uint256 withdrawAmount0, uint256 withdrawAmount1) {
-        require(_positionUpdate.param0 > 0 || _positionUpdate.param1 > 0);
+        require(_positionUpdate.param0 > 0 || _positionUpdate.param1 > 0, "PU4");
 
         withdrawAmount0 = _context.tokenState0.removeAsset(_subVault.balance0, _positionUpdate.param0);
         withdrawAmount1 = _context.tokenState1.removeAsset(_subVault.balance1, _positionUpdate.param1);
@@ -495,7 +528,7 @@ library PositionUpdater {
         DataType.Context storage _context,
         DataType.PositionUpdate memory _positionUpdate
     ) internal {
-        require(_positionUpdate.param0 > 0 || _positionUpdate.param1 > 0);
+        require(_positionUpdate.param0 > 0 || _positionUpdate.param1 > 0, "PU4");
 
         _context.tokenState0.addDebt(_subVault.balance0, _positionUpdate.param0, _positionUpdate.zeroForOne);
         _context.tokenState1.addDebt(_subVault.balance1, _positionUpdate.param1, _positionUpdate.zeroForOne);
@@ -508,7 +541,7 @@ library PositionUpdater {
         DataType.Context storage _context,
         DataType.PositionUpdate memory _positionUpdate
     ) internal returns (uint256 requiredAmount0, uint256 requiredAmount1) {
-        require(_positionUpdate.param0 > 0 || _positionUpdate.param1 > 0);
+        require(_positionUpdate.param0 > 0 || _positionUpdate.param1 > 0, "PU4");
 
         requiredAmount0 = _context.tokenState0.removeDebt(_subVault.balance0, _positionUpdate.param0);
         requiredAmount1 = _context.tokenState1.removeDebt(_subVault.balance1, _positionUpdate.param1);
@@ -630,13 +663,7 @@ library PositionUpdater {
             }
         }
 
-        emit TokenSwap(
-            _vault.vaultId,
-            _vault.subVaults[_positionUpdate.subVaultIndex],
-            _positionUpdate.zeroForOne,
-            _positionUpdate.param0,
-            amountOut
-        );
+        emit TokenSwap(_vault.vaultId, 0, _positionUpdate.zeroForOne, _positionUpdate.param0, amountOut);
 
         if (_positionUpdate.zeroForOne) {
             return (int256(_positionUpdate.param0), -int256(amountOut));
@@ -668,13 +695,7 @@ library PositionUpdater {
             }
         }
 
-        emit TokenSwap(
-            _vault.vaultId,
-            _vault.subVaults[_positionUpdate.subVaultIndex],
-            _positionUpdate.zeroForOne,
-            amountIn,
-            _positionUpdate.param0
-        );
+        emit TokenSwap(_vault.vaultId, 0, _positionUpdate.zeroForOne, amountIn, _positionUpdate.param0);
 
         if (_positionUpdate.zeroForOne) {
             return (int256(amountIn), -int256(_positionUpdate.param0));

@@ -38,6 +38,7 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
     address private vaultNFT;
 
     uint256 public vaultId;
+    uint256 public subVaultId;
 
     struct Range {
         uint256 id;
@@ -279,6 +280,9 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
             openPositionOption
         );
 
+        // Set SubVault ID
+        subVaultId = controller.getVault(vaultId).subVaults[0];
+
         poolPosition.usdcAmount = PredyMath.addDelta(
             poolPosition.usdcAmount,
             reader.isMarginZero() ? -requiredAmounts.amount0 : -requiredAmounts.amount1
@@ -476,6 +480,8 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
             tradeOption,
             openPositionOption
         );
+        // Set SubVault ID
+        subVaultId = controller.getVault(vaultId).subVaults[0];
 
         poolPosition.usdcAmount = PredyMath.addDelta(
             poolPosition.usdcAmount,
@@ -495,7 +501,7 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
             return
                 DataType.PositionUpdate(
                     DataType.PositionUpdateType.BORROW_TOKEN,
-                    0,
+                    subVaultId,
                     false,
                     0,
                     0,
@@ -507,7 +513,7 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
             return
                 DataType.PositionUpdate(
                     DataType.PositionUpdateType.DEPOSIT_TOKEN,
-                    0,
+                    subVaultId,
                     false,
                     0,
                     0,
@@ -542,7 +548,7 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
         if (_amount > 0) {
             positionUpdates[0] = DataType.PositionUpdate(
                 DataType.PositionUpdateType.DEPOSIT_LPT,
-                0,
+                subVaultId,
                 false,
                 uint128(uint256(_amount).mul(ranges[currentRangeId].liquidity) / 1e18),
                 ranges[currentRangeId].lowerTick,
@@ -553,7 +559,7 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
         } else if (_amount < 0) {
             positionUpdates[0] = DataType.PositionUpdate(
                 DataType.PositionUpdateType.WITHDRAW_LPT,
-                0,
+                subVaultId,
                 false,
                 uint128(uint256(-_amount).mul(ranges[currentRangeId].liquidity) / 1e18),
                 ranges[currentRangeId].lowerTick,
@@ -573,7 +579,7 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
 
         positionUpdates[0] = DataType.PositionUpdate(
             DataType.PositionUpdateType.WITHDRAW_LPT,
-            0,
+            subVaultId,
             false,
             uint128(_amount.mul(ranges[_prevRangeId].liquidity) / 1e18),
             ranges[_prevRangeId].lowerTick,
@@ -583,7 +589,7 @@ contract FutureMarket is ERC20, IERC721Receiver, Ownable {
         );
         positionUpdates[1] = DataType.PositionUpdate(
             DataType.PositionUpdateType.DEPOSIT_LPT,
-            0,
+            subVaultId,
             false,
             uint128(_amount.mul(ranges[_nextRangeId].liquidity) / 1e18),
             ranges[_nextRangeId].lowerTick,

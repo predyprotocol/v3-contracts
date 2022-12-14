@@ -68,7 +68,7 @@ contract PositionUpdaterUpdatePositionTest is TestPositionUpdater {
 
         positionUpdates[0] = DataType.PositionUpdate(
             DataType.PositionUpdateType.WITHDRAW_TOKEN,
-            0,
+            vault2.subVaults[0],
             false,
             0,
             0,
@@ -87,7 +87,7 @@ contract PositionUpdaterUpdatePositionTest is TestPositionUpdater {
 
         positionUpdates[0] = DataType.PositionUpdate(
             DataType.PositionUpdateType.WITHDRAW_TOKEN,
-            0,
+            vault4.subVaults[0],
             false,
             0,
             0,
@@ -184,7 +184,7 @@ contract PositionUpdaterUpdatePositionTest is TestPositionUpdater {
 
         positionUpdates[0] = DataType.PositionUpdate(
             DataType.PositionUpdateType.REPAY_TOKEN,
-            0,
+            vault3.subVaults[0],
             false,
             0,
             0,
@@ -203,7 +203,7 @@ contract PositionUpdaterUpdatePositionTest is TestPositionUpdater {
 
         positionUpdates[0] = DataType.PositionUpdate(
             DataType.PositionUpdateType.REPAY_TOKEN,
-            0,
+            vault5.subVaults[0],
             false,
             0,
             0,
@@ -222,7 +222,7 @@ contract PositionUpdaterUpdatePositionTest is TestPositionUpdater {
 
         positionUpdates[0] = DataType.PositionUpdate(
             DataType.PositionUpdateType.WITHDRAW_TOKEN,
-            0,
+            vault3.subVaults[0],
             false,
             0,
             0,
@@ -233,7 +233,7 @@ contract PositionUpdaterUpdatePositionTest is TestPositionUpdater {
 
         positionUpdates[1] = DataType.PositionUpdate(
             DataType.PositionUpdateType.REPAY_TOKEN,
-            0,
+            vault3.subVaults[0],
             false,
             0,
             0,
@@ -605,7 +605,7 @@ contract PositionUpdaterUpdatePositionTest is TestPositionUpdater {
 
         {
             // borrow LPT
-            DataType.PositionUpdate memory positionUpdate = DataType.PositionUpdate(
+            DataType.PositionUpdate memory positionUpdateToBorrow = DataType.PositionUpdate(
                 DataType.PositionUpdateType.BORROW_LPT,
                 0,
                 false,
@@ -616,7 +616,7 @@ contract PositionUpdaterUpdatePositionTest is TestPositionUpdater {
                 0
             );
 
-            PositionUpdater.borrowLPT(subVaults[2], context, ranges, positionUpdate);
+            PositionUpdater.borrowLPT(subVaults[2], context, ranges, positionUpdateToBorrow);
         }
 
         DataType.PositionUpdate memory positionUpdate = DataType.PositionUpdate(
@@ -727,7 +727,7 @@ contract PositionUpdaterUpdatePositionTest is TestPositionUpdater {
      *    Test: repayLPT      *
      **************************/
 
-    function createTestDataRepayLPT(uint128 liquidity) internal {
+    function createTestDataRepayLPT() internal {
         {
             // deposit LPT
             DataType.PositionUpdate memory positionUpdate = DataType.PositionUpdate(
@@ -764,7 +764,7 @@ contract PositionUpdaterUpdatePositionTest is TestPositionUpdater {
     function testRepayLPT(uint256 _liquidity) public {
         uint128 liquidity = uint128(bound(_liquidity, 500, 1e20));
 
-        createTestDataRepayLPT(liquidity);
+        createTestDataRepayLPT();
 
         {
             DataType.PositionUpdate memory positionUpdate = DataType.PositionUpdate(
@@ -787,7 +787,7 @@ contract PositionUpdaterUpdatePositionTest is TestPositionUpdater {
     }
 
     function testCannotRepayLPTWithZeroAmount() public {
-        createTestDataRepayLPT(1000);
+        createTestDataRepayLPT();
 
         DataType.PositionUpdate memory positionUpdate = DataType.PositionUpdate(
             DataType.PositionUpdateType.REPAY_LPT,

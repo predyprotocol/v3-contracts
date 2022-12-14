@@ -38,9 +38,11 @@ contract ProtocolInsolvencyTest is TestController {
     ) internal returns (uint256 vaultId) {
         DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](1);
 
+        DataType.Vault memory vault = controller.getVault((_vaultId));
+
         positionUpdates[0] = DataType.PositionUpdate(
             _isWithdraw ? DataType.PositionUpdateType.WITHDRAW_TOKEN : DataType.PositionUpdateType.DEPOSIT_TOKEN,
-            0,
+            _isWithdraw ? vault.subVaults[0] : 0,
             false,
             0,
             0,
@@ -158,7 +160,7 @@ contract ProtocolInsolvencyTest is TestController {
 
         uint256 supplyVaultId = supplyToken(1e10, 1e18);
 
-        openShortPut(supplyVaultId, 1, 202500, 202700, 1e18);
+        openShortPut(supplyVaultId, 0, 202500, 202700, 1e18);
 
         uint256 borrowVaultId = borrowLPT(0, 0, 202600, 202500, 202600, ethAmount, 100 * 1e6);
 

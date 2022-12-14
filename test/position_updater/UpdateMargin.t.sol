@@ -25,7 +25,7 @@ contract PositionUpdaterUpdateMarginTest is TestPositionUpdater {
         uint8 marginMode1,
         int256 deltaMarginAmount0,
         int256 deltaMarginAmount1
-    ) internal returns (DataType.TokenAmounts memory, DataType.TradeOption memory) {
+    ) internal view returns (DataType.TokenAmounts memory, DataType.TradeOption memory) {
         return (
             DataType.TokenAmounts(requiredAmount0, requiredAmount1),
             DataType.TradeOption(

@@ -72,7 +72,7 @@ library DataType {
     }
 
     struct Position {
-        uint256 subVaultIndex;
+        uint256 subVaultId;
         uint256 asset0;
         uint256 asset1;
         uint256 debt0;
@@ -96,7 +96,7 @@ library DataType {
 
     struct PositionUpdate {
         PositionUpdateType positionUpdateType;
-        uint256 subVaultIndex;
+        uint256 subVaultId;
         bool zeroForOne;
         uint128 liquidity;
         int24 lowerTick;

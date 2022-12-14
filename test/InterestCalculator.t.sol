@@ -110,8 +110,8 @@ contract InterestCalculatorTest is TestDeployer, Test {
         assertEq(ir60, 210001000000000000);
     }
 
-    function testUpdatePremiumGrowth(uint256 amountIn) public {
-        uint256 amountIn = bound(amountIn, 1, 1e14);
+    function testUpdatePremiumGrowth(uint256 _amountIn) public {
+        uint256 amountIn = bound(_amountIn, 1, 1e14);
 
         vm.warp(block.timestamp + 30 minutes);
 

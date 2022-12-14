@@ -68,6 +68,8 @@ contract OptionMarket is ERC20, IERC721Receiver, Ownable {
 
     uint256 public vaultId;
 
+    uint256 public subVaultId;
+
     uint256 private strikeCount;
 
     uint256 private boardCount;
@@ -526,6 +528,8 @@ contract OptionMarket is ERC20, IERC721Receiver, Ownable {
 
         (vaultId, requiredAmounts, ) = controller.openPosition(vaultId, position, tradeOption, openPositionOption);
 
+        updateSubVaultId();
+
         if (reader.isMarginZero()) {
             return requiredAmounts.amount0;
         } else {
@@ -551,6 +555,8 @@ contract OptionMarket is ERC20, IERC721Receiver, Ownable {
         DataType.TokenAmounts memory requiredAmounts;
 
         (vaultId, requiredAmounts, ) = controller.openPosition(vaultId, position, tradeOption, openPositionOption);
+
+        updateSubVaultId();
 
         if (reader.isMarginZero()) {
             return requiredAmounts.amount0;
@@ -581,6 +587,8 @@ contract OptionMarket is ERC20, IERC721Receiver, Ownable {
 
         (requiredAmounts, ) = controller.closePosition(vaultId, positions, tradeOption, closePositionOption);
 
+        updateSubVaultId();
+
         if (reader.isMarginZero()) {
             return requiredAmounts.amount0;
         } else {
@@ -610,10 +618,24 @@ contract OptionMarket is ERC20, IERC721Receiver, Ownable {
 
         (requiredAmounts, ) = controller.closePosition(vaultId, positions, tradeOption, closePositionOption);
 
+        updateSubVaultId();
+
         if (reader.isMarginZero()) {
             return requiredAmounts.amount0;
         } else {
             return requiredAmounts.amount1;
+        }
+    }
+
+    function updateSubVaultId() internal {
+        // Set SubVault ID
+        DataType.Vault memory vault = controller.getVault(vaultId);
+
+        if (vault.subVaults.length > 0) {
+            subVaultId = vault.subVaults[0];
+        } else {
+            // if subVault removed
+            subVaultId = 0;
         }
     }
 
@@ -663,9 +685,9 @@ contract OptionMarket is ERC20, IERC721Receiver, Ownable {
             );
 
             if (_isPut) {
-                return getPosition(0, (baseUsdcAmount * _amount) / 1e8, 0, 0, 0, lpts);
+                return getPosition((baseUsdcAmount * _amount) / 1e8, 0, 0, 0, lpts);
             } else {
-                return getPosition(0, 0, (1e18 * _amount) / 1e8, 0, 0, lpts);
+                return getPosition(0, (1e18 * _amount) / 1e8, 0, 0, lpts);
             }
         } else {
             lpts[0] = DataType.LPT(
@@ -676,9 +698,9 @@ contract OptionMarket is ERC20, IERC721Receiver, Ownable {
             );
 
             if (_isPut) {
-                return getPosition(0, 0, 0, ((baseUsdcAmount * _amount) * 75) / 1e10, 0, lpts);
+                return getPosition(0, 0, ((baseUsdcAmount * _amount) * 75) / 1e10, 0, lpts);
             } else {
-                return getPosition(0, ((baseUsdcAmount * _amount) * 25) / 1e10, 0, 0, (1e18 * _amount) / 1e8, lpts);
+                return getPosition(((baseUsdcAmount * _amount) * 25) / 1e10, 0, 0, (1e18 * _amount) / 1e8, lpts);
             }
         }
     }
@@ -759,7 +781,6 @@ contract OptionMarket is ERC20, IERC721Receiver, Ownable {
     }
 
     function getPosition(
-        uint256 subVaultIndex,
         uint256 asset0,
         uint256 asset1,
         uint256 debt0,
@@ -767,9 +788,9 @@ contract OptionMarket is ERC20, IERC721Receiver, Ownable {
         DataType.LPT[] memory lpts
     ) internal view returns (DataType.Position memory) {
         if (reader.isMarginZero()) {
-            return DataType.Position(subVaultIndex, asset0, asset1, debt0, debt1, lpts);
+            return DataType.Position(subVaultId, asset0, asset1, debt0, debt1, lpts);
         } else {
-            return DataType.Position(subVaultIndex, asset0, asset1, debt0, debt1, lpts);
+            return DataType.Position(subVaultId, asset0, asset1, debt0, debt1, lpts);
         }
     }
 }

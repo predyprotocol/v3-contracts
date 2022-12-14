@@ -140,13 +140,13 @@ contract Reader {
 
     function quoteCloseSubVault(
         uint256 _vaultId,
-        uint256 _subVaultIndex,
+        uint256 _subVaultId,
         DataType.TradeOption memory _tradeOption,
         DataType.ClosePositionOption memory _closePositionOptions
     ) external returns (DataType.PositionUpdateResult memory result) {
         require(_vaultId > 0);
         require(_tradeOption.quoterMode);
-        try controller.closeSubVault(_vaultId, _subVaultIndex, _tradeOption, _closePositionOptions) {} catch (
+        try controller.closeSubVault(_vaultId, _subVaultId, _tradeOption, _closePositionOptions) {} catch (
             bytes memory reason
         ) {
             return handleRevert(reason);

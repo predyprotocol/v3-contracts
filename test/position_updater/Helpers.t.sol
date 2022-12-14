@@ -116,6 +116,66 @@ contract PositionUpdaterHelpersTest is TestPositionUpdater {
         assertEq(resultAmounts[1].amount1, 0);
     }
 
+    /*****************************
+     * Test: createOrGetSubVault *
+     *****************************/
+
+    function testGetSubVault1() public {
+        // get 1
+        (DataType.SubVault storage subVault, , uint256 newSubVaultId) = PositionUpdater.createOrGetSubVault(
+            vault2,
+            subVaults,
+            context,
+            1,
+            0
+        );
+
+        assertEq(subVault.id, 1);
+        assertEq(newSubVaultId, 0);
+    }
+
+    function testGetSubVault1WithNewId() public {
+        // get 1
+        (DataType.SubVault storage subVault, , uint256 newSubVaultId) = PositionUpdater.createOrGetSubVault(
+            vault2,
+            subVaults,
+            context,
+            1,
+            5
+        );
+
+        assertEq(subVault.id, 1);
+        assertEq(newSubVaultId, 5);
+    }
+
+    function testCannotGetSubVault() public {
+        vm.expectRevert(bytes("V0"));
+        PositionUpdater.createOrGetSubVault(vault2, subVaults, context, 0, 100);
+    }
+
+    function testCreateNewSubVault() public {
+        (DataType.SubVault storage subVault, , uint256 newSubVaultId) = PositionUpdater.createOrGetSubVault(
+            vault2,
+            subVaults,
+            context,
+            0,
+            0
+        );
+
+        assertEq(subVault.id, 5);
+        assertEq(newSubVaultId, 5);
+
+        (DataType.SubVault storage subVault2, , ) = PositionUpdater.createOrGetSubVault(
+            vault2,
+            subVaults,
+            context,
+            0,
+            newSubVaultId
+        );
+
+        assertEq(subVault2.id, newSubVaultId);
+    }
+
     /**************************
      *   Test: roundMargin    *
      **************************/

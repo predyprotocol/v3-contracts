@@ -31,7 +31,7 @@ contract FutureMarketTest is TestDeployer, Test {
         deployContracts(owner, factory);
         vm.warp(block.timestamp + 1 minutes);
 
-        depositToken(0, 50000 * 1e6, 50 * 1e18);
+        depositToken(0, 50000 * 1e6, 50 * 1e18, false);
         uint256 lpVaultId = depositLPT(0, 0, 202000, 202500, 10 * 1e18);
         depositLPT(lpVaultId, 0, 202500, 202700, 10 * 1e18);
         depositLPT(lpVaultId, 0, 202700, 203200, 10 * 1e18);

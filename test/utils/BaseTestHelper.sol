@@ -70,12 +70,49 @@ abstract contract BaseTestHelper {
     function depositToken(
         uint256 _vaultId,
         uint256 _amount0,
-        uint256 _amount1
+        uint256 _amount1,
+        bool _withCompound
     ) public returns (uint256 vaultId) {
         DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](1);
 
         positionUpdates[0] = DataType.PositionUpdate(
             DataType.PositionUpdateType.DEPOSIT_TOKEN,
+            0,
+            _withCompound,
+            0,
+            0,
+            0,
+            _amount0,
+            _amount1
+        );
+
+        (vaultId, , ) = controller.updatePosition(
+            _vaultId,
+            positionUpdates,
+            DataType.TradeOption(
+                false,
+                false,
+                false,
+                getIsMarginZero(),
+                Constants.MARGIN_STAY,
+                Constants.MARGIN_STAY,
+                0,
+                0,
+                EMPTY_METADATA
+            ),
+            DataType.OpenPositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 100, block.timestamp)
+        );
+    }
+
+    function borrowToken(
+        uint256 _vaultId,
+        uint256 _amount0,
+        uint256 _amount1
+    ) public returns (uint256 vaultId) {
+        DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](1);
+
+        positionUpdates[0] = DataType.PositionUpdate(
+            DataType.PositionUpdateType.BORROW_TOKEN,
             0,
             false,
             0,
@@ -112,7 +149,7 @@ abstract contract BaseTestHelper {
     ) public returns (uint256 vaultId) {
         DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](1);
 
-        (uint128 liquidity, uint256 amount0, uint256 amount1) = getLiquidityAndAmountToDeposit(
+        (uint128 liquidity, , ) = getLiquidityAndAmountToDeposit(
             getIsMarginZero(),
             _amount,
             controller.getSqrtPrice(),
@@ -157,7 +194,7 @@ abstract contract BaseTestHelper {
     ) public returns (uint256 vaultId) {
         DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](2);
 
-        (uint128 liquidity, uint256 amount0, uint256 amount1) = getLiquidityAndAmountToDeposit(
+        (uint128 liquidity, uint256 amount0, ) = getLiquidityAndAmountToDeposit(
             getIsMarginZero(),
             _amount,
             controller.getSqrtPrice(),
@@ -210,7 +247,7 @@ abstract contract BaseTestHelper {
         int24 _lower,
         int24 _upper,
         uint256 _amount
-    ) internal returns (DataType.Position[] memory positions) {
+    ) internal pure returns (DataType.Position[] memory positions) {
         (uint128 liquidity, , ) = getLiquidityAndAmountToBorrow(true, _amount, _tick, _lower, _upper);
 
         DataType.LPT[] memory lpts = new DataType.LPT[](1);

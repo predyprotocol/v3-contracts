@@ -32,7 +32,7 @@ contract OptionMarketTest is TestDeployer, Test {
         deployContracts(owner, factory);
         vm.warp(block.timestamp + 1 minutes);
 
-        depositToken(0, 20000 * 1e6, 30 * 1e18);
+        depositToken(0, 20000 * 1e6, 30 * 1e18, false);
         depositLPT(0, 0, 202500, 202700, 10 * 1e18);
 
         isQuoteZero = getIsMarginZero();
