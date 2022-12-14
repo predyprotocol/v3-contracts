@@ -48,4 +48,6 @@ interface IController {
     function getSqrtPrice() external view returns (uint160 sqrtPriceX96);
 
     function getVaultValue(uint256 _vaultId) external view returns (int256);
+
+    function getVault(uint256 _vaultId) external view returns (DataType.Vault memory);
 }

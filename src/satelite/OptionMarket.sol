@@ -624,7 +624,14 @@ contract OptionMarket is ERC20, IERC721Receiver, Ownable {
         DataType.TokenAmounts memory requiredAmounts;
         DataType.TokenAmounts memory swapAmounts;
 
-        (requiredAmounts, swapAmounts) = controller.closeSubVault(vaultId, 0, tradeOption, closePositionOption);
+        DataType.Vault memory vault = controller.getVault(vaultId);
+
+        (requiredAmounts, swapAmounts) = controller.closeSubVault(
+            vaultId,
+            vault.subVaults[0],
+            tradeOption,
+            closePositionOption
+        );
 
         indexPrice = SateliteLib.getEntryPrice(reader.isMarginZero(), swapAmounts);
 
