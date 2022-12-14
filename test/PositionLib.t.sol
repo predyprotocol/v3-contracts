@@ -34,7 +34,7 @@ contract PositionLibTest is Test {
 
     function getPosition4() internal view returns (DataType.Position memory position) {
         DataType.LPT[] memory lpts = new DataType.LPT[](2);
-        lpts[0] = DataType.LPT(true, liquidity, lower, upper);
+        lpts[0] = DataType.LPT(false, liquidity, lower, upper);
         lpts[1] = DataType.LPT(true, liquidity, lower2, upper2);
         position = DataType.Position(0, 0, 0, 0, 0, lpts);
     }
@@ -134,13 +134,15 @@ contract PositionLibTest is Test {
 
         assertEq(positionUpdates.length, 3);
 
+        // Borrow LPT
+        assertEq(uint256(positionUpdates[0].positionUpdateType), uint256(DataType.PositionUpdateType.BORROW_LPT));
+        assertEq(uint256(positionUpdates[0].liquidity), uint256(liquidity));
+
         // empty for swap
-        assertEq(swapIndex, 0);
+        assertEq(swapIndex, 1);
 
         // Deposit LPT
-        assertEq(uint256(positionUpdates[1].liquidity), uint256(liquidity));
-
-        // Deposit LPT
+        assertEq(uint256(positionUpdates[2].positionUpdateType), uint256(DataType.PositionUpdateType.DEPOSIT_LPT));
         assertEq(uint256(positionUpdates[2].liquidity), uint256(liquidity));
     }
 
@@ -179,5 +181,78 @@ contract PositionLibTest is Test {
         assertEq(uint256(positionUpdates[5].positionUpdateType), uint256(DataType.PositionUpdateType.REPAY_TOKEN));
         assertEq(uint256(positionUpdates[6].positionUpdateType), uint256(DataType.PositionUpdateType.REPAY_TOKEN));
         assertEq(positionUpdates.length, 7);
+    }
+
+    function testConcat() public {
+        DataType.Position[] memory positions = new DataType.Position[](2);
+        positions[0] = getPosition2();
+        positions[1] = getPosition4();
+
+        DataType.Position memory position = PositionLib.concat(positions);
+
+        assertEq(position.asset0, 1e18);
+        assertEq(position.asset1, 0);
+        assertEq(position.debt0, 0);
+        assertEq(position.debt1, 0);
+        assertEq(position.lpts.length, 3);
+        assertEq(position.lpts[0].isCollateral, true);
+        assertEq(position.lpts[0].lowerTick, lower);
+        assertEq(position.lpts[0].upperTick, upper);
+        assertEq(uint256(position.lpts[0].liquidity), uint256(liquidity));
+
+        assertEq(position.lpts[1].isCollateral, false);
+        assertEq(position.lpts[1].lowerTick, lower);
+        assertEq(position.lpts[1].upperTick, upper);
+        assertEq(uint256(position.lpts[1].liquidity), uint256(liquidity));
+
+        assertEq(position.lpts[2].isCollateral, true);
+        assertEq(position.lpts[2].lowerTick, lower2);
+        assertEq(position.lpts[2].upperTick, upper2);
+        assertEq(uint256(position.lpts[2].liquidity), uint256(liquidity));
+    }
+
+    function testConcat2() public {
+        DataType.Position[] memory positions = new DataType.Position[](2);
+        positions[0] = getPosition2();
+        positions[1] = getPosition4();
+
+        DataType.Position memory position = PositionLib.concat(positions, getPosition3());
+
+        assertEq(position.asset0, 2 * 1e18);
+        assertEq(position.asset1, 0);
+        assertEq(position.debt0, 0);
+        assertEq(position.debt1, 1e10);
+        assertEq(position.lpts.length, 4);
+        assertEq(position.lpts[0].isCollateral, true);
+        assertEq(position.lpts[0].lowerTick, lower);
+        assertEq(position.lpts[0].upperTick, upper);
+        assertEq(uint256(position.lpts[0].liquidity), uint256(liquidity));
+
+        assertEq(position.lpts[1].isCollateral, false);
+        assertEq(position.lpts[1].lowerTick, lower);
+        assertEq(position.lpts[1].upperTick, upper);
+        assertEq(uint256(position.lpts[1].liquidity), uint256(liquidity));
+
+        assertEq(position.lpts[2].isCollateral, true);
+        assertEq(position.lpts[2].lowerTick, lower2);
+        assertEq(position.lpts[2].upperTick, upper2);
+        assertEq(uint256(position.lpts[2].liquidity), uint256(liquidity));
+
+        assertEq(position.lpts[3].isCollateral, true);
+        assertEq(position.lpts[3].lowerTick, lower);
+        assertEq(position.lpts[3].upperTick, upper);
+        assertEq(uint256(position.lpts[3].liquidity), uint256(liquidity));
+    }
+
+    function testConcatEmpty() public {
+        DataType.Position[] memory positions = new DataType.Position[](0);
+
+        DataType.Position memory position = PositionLib.concat(positions);
+
+        assertEq(position.asset0, 0);
+        assertEq(position.asset1, 0);
+        assertEq(position.debt0, 0);
+        assertEq(position.debt1, 0);
+        assertEq(position.lpts.length, 0);
     }
 }
