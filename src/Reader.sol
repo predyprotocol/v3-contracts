@@ -75,33 +75,37 @@ contract Reader {
         bytes32 _rangeId,
         bool _isBorrow,
         uint256 _deltaLiquidity,
-        uint256 _elapsed
+        uint256 _elapsed,
+        uint256 _baseTradeFeePerLiquidity
     )
         external
         view
         returns (
             uint256 premiumGrowthForBorrower,
             uint256 premiumGrowthForLender,
-            uint256 protocolFeePerLiquidity
+            uint256 protocolFeePerLiquidity,
+            uint256 tradeFeePerLiquidity
         )
     {
         (uint256 supply, uint256 borrow, ) = controller.getUtilizationRatio(_rangeId);
 
         if (supply == 0) {
-            return (0, 0, 0);
+            return (0, 0, 0, _baseTradeFeePerLiquidity);
         }
 
-        uint256 perpUr = _isBorrow
+        uint256 afterUr = _isBorrow
             ? borrow.add(_deltaLiquidity).mul(1e18).div(supply)
             : borrow.mul(1e18).div(supply.add(_deltaLiquidity));
 
         (premiumGrowthForBorrower, , protocolFeePerLiquidity) = controller.calculateLPTBorrowerAndLenderPremium(
             _rangeId,
-            perpUr,
+            afterUr,
             _elapsed
         );
 
-        premiumGrowthForLender = premiumGrowthForBorrower.sub(protocolFeePerLiquidity).mul(perpUr).div(1e18);
+        premiumGrowthForLender = premiumGrowthForBorrower.sub(protocolFeePerLiquidity).mul(afterUr).div(1e18);
+
+        tradeFeePerLiquidity = _baseTradeFeePerLiquidity.mul(uint256(1e18).sub(afterUr)).div(1e18);
     }
 
     /**
