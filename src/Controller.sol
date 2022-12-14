@@ -243,16 +243,12 @@ contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCall
         DataType.OpenPositionOption memory _openPositionOptions
     )
         external
-        notPaused
         returns (
             uint256 vaultId,
             DataType.TokenAmounts memory requiredAmounts,
             DataType.TokenAmounts memory swapAmounts
         )
     {
-        // Set subVault index
-        _position.subVaultIndex = vaults[_vaultId].subVaults.length;
-
         DataType.PositionUpdate[] memory positionUpdates = PositionLib.getPositionUpdatesToOpen(
             _position,
             _tradeOption.isQuoteZero,
@@ -325,7 +321,7 @@ contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCall
     {
         DataType.Position[] memory positions = new DataType.Position[](1);
 
-        positions[0] = _getPositionOfSubVault(_vaultId, _subVaultId);
+        positions[0] = _getPositionOfSubVault(_subVaultId);
 
         return closePosition(_vaultId, positions, _tradeOption, _closePositionOptions);
     }
@@ -668,24 +664,7 @@ contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCall
         return vault.getPositionCalculatorParams(subVaults, ranges, context);
     }
 
-    function _getPositionOfSubVault(uint256 _vaultId, uint256 _subVaultId)
-        internal
-        view
-        returns (DataType.Position memory)
-    {
-        DataType.Vault memory vault = vaults[_vaultId];
-
-        uint256 subVaultIndex = type(uint256).max;
-
-        for (uint256 i = 0; i < vault.subVaults.length; i++) {
-            if (vault.subVaults[i] == _subVaultId) {
-                subVaultIndex = i;
-                break;
-            }
-        }
-
-        require(subVaultIndex <= Constants.MAX_NUM_OF_SUBVAULTS, "subvault not found");
-
-        return VaultLib.getPositionOfSubVault(subVaultIndex, subVaults[_subVaultId], ranges, context);
+    function _getPositionOfSubVault(uint256 _subVaultId) internal view returns (DataType.Position memory) {
+        return VaultLib.getPositionOfSubVault(subVaults[_subVaultId], ranges, context);
     }
 }

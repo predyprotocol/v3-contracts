@@ -22,16 +22,16 @@ contract ControllerPauseTest is TestController {
     }
 
     // Helper Functions
-    function createEmptyPositionUpdate() internal returns (DataType.PositionUpdate[] memory positionUpdates) {
+    function createEmptyPositionUpdate() internal pure returns (DataType.PositionUpdate[] memory positionUpdates) {
         positionUpdates = new DataType.PositionUpdate[](0);
     }
 
-    function createEmptyPosition() internal returns (DataType.Position memory position) {
+    function createEmptyPosition() internal pure returns (DataType.Position memory position) {
         DataType.LPT[] memory lpts = new DataType.LPT[](0);
         position = DataType.Position(0, 0, 1e18, 0, 0, lpts);
     }
 
-    function createTradeOption() internal returns (DataType.TradeOption memory) {
+    function createTradeOption() internal view returns (DataType.TradeOption memory) {
         bool isMarginZero = getIsMarginZero();
 
         return
@@ -48,7 +48,7 @@ contract ControllerPauseTest is TestController {
             );
     }
 
-    function createOpenPositionParams() internal returns (DataType.OpenPositionOption memory) {
+    function createOpenPositionParams() internal view returns (DataType.OpenPositionOption memory) {
         return DataType.OpenPositionOption(0, 0, 100, block.timestamp);
     }
 

@@ -49,7 +49,7 @@ contract ControllerUpdatePositionTest is TestController {
         );
     }
 
-    function createPositionUpdatesForWithdrawLPT(uint128 _liquidity)
+    function createPositionUpdatesForWithdrawLPT(uint256 _subVaultId, uint128 _liquidity)
         internal
         pure
         returns (DataType.PositionUpdate[] memory positionUpdates)
@@ -58,7 +58,7 @@ contract ControllerUpdatePositionTest is TestController {
 
         positionUpdates[0] = DataType.PositionUpdate(
             DataType.PositionUpdateType.WITHDRAW_LPT,
-            0,
+            _subVaultId,
             false,
             _liquidity,
             202500,
@@ -110,6 +110,7 @@ contract ControllerUpdatePositionTest is TestController {
     }
 
     function createPositionUpdatesForRepayLPT(
+        uint256 _subVaultId,
         uint128 _liquidity,
         uint256 _margin,
         uint256 _ethAmountToSwap
@@ -118,7 +119,7 @@ contract ControllerUpdatePositionTest is TestController {
 
         positionUpdates[0] = DataType.PositionUpdate(
             DataType.PositionUpdateType.WITHDRAW_TOKEN,
-            0,
+            _subVaultId,
             false,
             0,
             0,
@@ -140,7 +141,7 @@ contract ControllerUpdatePositionTest is TestController {
 
         positionUpdates[2] = DataType.PositionUpdate(
             DataType.PositionUpdateType.REPAY_LPT,
-            0,
+            _subVaultId,
             false,
             _liquidity,
             202500,
@@ -150,7 +151,7 @@ contract ControllerUpdatePositionTest is TestController {
         );
     }
 
-    function getOpenPositionParams() internal returns (DataType.OpenPositionOption memory) {
+    function getOpenPositionParams() internal view returns (DataType.OpenPositionOption memory) {
         return DataType.OpenPositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 100, block.timestamp);
     }
 
@@ -336,6 +337,9 @@ contract ControllerUpdatePositionTest is TestController {
     function testDepositLPTOnExistentVault() public {
         (DataType.PositionUpdate[] memory positionUpdates, , ) = createPositionUpdatesForDepositLPT();
 
+        DataType.Vault memory vault = controller.getVault(vaultId2);
+        positionUpdates[0].subVaultId = vault.subVaults[0];
+
         controller.updatePosition(
             vaultId2,
             positionUpdates,
@@ -353,9 +357,9 @@ contract ControllerUpdatePositionTest is TestController {
             getOpenPositionParams()
         );
 
-        DataType.Vault memory vault = controller.getVault(vaultId2);
         DataType.SubVault memory subVault = controller.getSubVault(vault.subVaults[0]);
 
+        assertEq(controller.getVault(vaultId2).subVaults.length, 1);
         assertEq(subVault.lpts.length, 2);
     }
 
@@ -366,6 +370,7 @@ contract ControllerUpdatePositionTest is TestController {
         DataType.SubVault memory subVault = controller.getSubVault(vault.subVaults[0]);
 
         DataType.PositionUpdate[] memory positionUpdates = createPositionUpdatesForWithdrawLPT(
+            subVault.id,
             subVault.lpts[0].liquidityAmount
         );
 
@@ -474,6 +479,7 @@ contract ControllerUpdatePositionTest is TestController {
         DataType.SubVault memory subVault = controller.getSubVault(vault.subVaults[0]);
 
         DataType.PositionUpdate[] memory positionUpdates2 = createPositionUpdatesForRepayLPT(
+            subVault.id,
             subVault.lpts[0].liquidityAmount,
             margin,
             62 * 1e16

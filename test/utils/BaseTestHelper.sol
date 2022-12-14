@@ -112,7 +112,7 @@ abstract contract BaseTestHelper {
     ) public returns (uint256 vaultId) {
         DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](1);
 
-        (uint128 liquidity, uint256 amount0, uint256 amount1) = getLiquidityAndAmountToDeposit(
+        (uint128 liquidity, , ) = getLiquidityAndAmountToDeposit(
             getIsMarginZero(),
             _amount,
             controller.getSqrtPrice(),
@@ -157,7 +157,7 @@ abstract contract BaseTestHelper {
     ) public returns (uint256 vaultId) {
         DataType.PositionUpdate[] memory positionUpdates = new DataType.PositionUpdate[](2);
 
-        (uint128 liquidity, uint256 amount0, uint256 amount1) = getLiquidityAndAmountToDeposit(
+        (uint128 liquidity, uint256 amount0, ) = getLiquidityAndAmountToDeposit(
             getIsMarginZero(),
             _amount,
             controller.getSqrtPrice(),
@@ -210,7 +210,7 @@ abstract contract BaseTestHelper {
         int24 _lower,
         int24 _upper,
         uint256 _amount
-    ) internal returns (DataType.Position[] memory positions) {
+    ) internal pure returns (DataType.Position[] memory positions) {
         (uint128 liquidity, , ) = getLiquidityAndAmountToBorrow(true, _amount, _tick, _lower, _upper);
 
         DataType.LPT[] memory lpts = new DataType.LPT[](1);

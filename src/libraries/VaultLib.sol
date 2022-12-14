@@ -15,7 +15,7 @@ import "./PositionLib.sol";
 
 /**
  * Error Codes
- * V0: sub-vault index is out of range
+ * V0: sub-vault not found
  * V1: Exceeds max num of sub-vaults
  */
 library VaultLib {
@@ -33,34 +33,36 @@ library VaultLib {
      * @param _vault vault object
      * @param _subVaults sub-vaults map
      * @param _context context object
-     * @param _subVaultIndex index of sub-vault in the vault to add
+     * @param _subVaultId index of sub-vault in the vault to add
      */
     function addSubVault(
         DataType.Vault storage _vault,
         mapping(uint256 => DataType.SubVault) storage _subVaults,
         DataType.Context storage _context,
-        uint256 _subVaultIndex
-    ) internal returns (DataType.SubVault storage) {
-        if (_subVaultIndex == _vault.subVaults.length) {
+        uint256 _subVaultId
+    ) internal returns (DataType.SubVault storage subVault, uint256 subVaultIndex) {
+        if (_subVaultId == 0) {
             require(_vault.subVaults.length < Constants.MAX_NUM_OF_SUBVAULTS, "V1");
 
             uint256 subVaultId = _context.nextSubVaultId;
 
             _context.nextSubVaultId += 1;
 
+            subVaultIndex = _vault.subVaults.length;
+
             _vault.subVaults.push(subVaultId);
 
-            emit SubVaultCreated(_vault.vaultId, _subVaultIndex, subVaultId);
+            emit SubVaultCreated(_vault.vaultId, subVaultIndex, subVaultId);
 
             _subVaults[subVaultId].id = subVaultId;
 
-            return _subVaults[subVaultId];
-        } else if (_subVaultIndex < _vault.subVaults.length) {
-            uint256 subVaultId = _vault.subVaults[_subVaultIndex];
-
-            return _subVaults[subVaultId];
+            subVault = _subVaults[subVaultId];
         } else {
-            revert("V0");
+            subVaultIndex = getSubVaultIndex(_vault, _subVaultId);
+
+            uint256 subVaultId = _vault.subVaults[subVaultIndex];
+
+            subVault = _subVaults[subVaultId];
         }
     }
 
@@ -78,6 +80,21 @@ library VaultLib {
         _vault.subVaults.pop();
 
         emit SubVaultRemoved(_vault.vaultId, _subVaultIndex, subVaultId);
+    }
+
+    function getSubVaultIndex(DataType.Vault memory _vault, uint256 _subVaultId) internal pure returns (uint256) {
+        uint256 subVaultIndex = type(uint256).max;
+
+        for (uint256 i = 0; i < _vault.subVaults.length; i++) {
+            if (_vault.subVaults[i] == _subVaultId) {
+                subVaultIndex = i;
+                break;
+            }
+        }
+
+        require(subVaultIndex <= Constants.MAX_NUM_OF_SUBVAULTS, "V0");
+
+        return subVaultIndex;
     }
 
     function depositLPT(
@@ -553,7 +570,6 @@ library VaultLib {
     }
 
     function getPositionOfSubVault(
-        uint256 _subVaultIndex,
         DataType.SubVault memory _subVault,
         mapping(bytes32 => DataType.PerpStatus) storage _ranges,
         DataType.Context memory _context
@@ -572,7 +588,7 @@ library VaultLib {
         }
 
         position = DataType.Position(
-            _subVaultIndex,
+            _subVault.id,
             _context.tokenState0.getAssetValue(_subVault.balance0),
             _context.tokenState1.getAssetValue(_subVault.balance1),
             _context.tokenState0.getDebtValue(_subVault.balance0),
@@ -590,7 +606,7 @@ library VaultLib {
         positions = new DataType.Position[](_vault.subVaults.length);
 
         for (uint256 i = 0; i < _vault.subVaults.length; i++) {
-            positions[i] = getPositionOfSubVault(i, _subVaults[_vault.subVaults[i]], _ranges, _context);
+            positions[i] = getPositionOfSubVault(_subVaults[_vault.subVaults[i]], _ranges, _context);
         }
     }
 

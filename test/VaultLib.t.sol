@@ -48,6 +48,16 @@ contract VaultLibTest is Test {
         VaultLib.addSubVault(vault, subVaults, context, 0);
 
         assertEq(vault.subVaults.length, 1);
+
+        (DataType.SubVault memory addedSubVault, uint256 subVaultIndex) = VaultLib.addSubVault(
+            vault,
+            subVaults,
+            context,
+            1
+        );
+
+        assertEq(addedSubVault.id, 1);
+        assertEq(subVaultIndex, 0);
     }
 
     function testCannotAddSubVault() public {
@@ -58,11 +68,11 @@ contract VaultLibTest is Test {
     // cannot add sub-vault if num of sub-vaults exceeds maximum
     function testCannotAddSubVaultByMaxLimit() public {
         for (uint256 i = 0; i < 32; i++) {
-            VaultLib.addSubVault(vault, subVaults, context, i);
+            VaultLib.addSubVault(vault, subVaults, context, 0);
         }
 
         vm.expectRevert(bytes("V1"));
-        VaultLib.addSubVault(vault, subVaults, context, 32);
+        VaultLib.addSubVault(vault, subVaults, context, 0);
     }
 
     /**************************

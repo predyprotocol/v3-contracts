@@ -218,7 +218,7 @@ contract ControllerTest is TestController {
         bool isMarginZero = getIsMarginZero();
 
         vm.expectRevert(bytes("LS"));
-        (uint256 vaultId, , ) = controller.openPosition(
+        controller.openPosition(
             0,
             positions[0],
             DataType.TradeOption(
@@ -420,7 +420,7 @@ contract ControllerTest is TestController {
 
         DataType.LPT[] memory lpts = new DataType.LPT[](1);
         lpts[0] = DataType.LPT(true, liquidity, 202600, 202700);
-        DataType.Position memory position = DataType.Position(1, 0, 0, 0, 0, lpts);
+        DataType.Position memory position = DataType.Position(0, 0, 0, 0, 0, lpts);
 
         controller.openPosition(
             vaultId,
@@ -454,7 +454,15 @@ contract ControllerTest is TestController {
 
         vm.warp(block.timestamp + 5 minutes);
 
-        DataType.Position[] memory positions = getBorrowLPTPosition(0, 202600, 202500, 202600, 1e18 / 2);
+        DataType.Vault memory vault = controller.getVault(vaultId);
+
+        DataType.Position[] memory positions = getBorrowLPTPosition(
+            vault.subVaults[0],
+            202600,
+            202500,
+            202600,
+            1e18 / 2
+        );
 
         controller.closePosition(
             vaultId,
@@ -485,7 +493,7 @@ contract ControllerTest is TestController {
 
     function testCloseOneSubVault() public {
         uint256 vaultId = depositLPT(0, 0, 202500, 202600, 1e18);
-        depositLPT(vaultId, 1, 202600, 202700, 1e18);
+        depositLPT(vaultId, 0, 202600, 202700, 1e18);
 
         vm.warp(block.timestamp + 5 minutes);
 
@@ -729,7 +737,7 @@ contract ControllerTest is TestController {
 
     function testCloseSubVaults() public {
         uint256 vaultId = openShortPut(0, 0, 202500, 202600, 1e18);
-        openShortPut(vaultId, 1, 202600, 202700, 1e18);
+        openShortPut(vaultId, 0, 202600, 202700, 1e18);
 
         vm.warp(block.timestamp + 5 minutes);
 
