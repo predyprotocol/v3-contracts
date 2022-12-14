@@ -430,8 +430,8 @@ library PositionLib {
                     0,
                     0,
                     0,
-                    _closeRatio == 1e4 ? type(uint256).max : _positions[i].asset0.mul(_closeRatio).div(1e4),
-                    _closeRatio == 1e4 ? type(uint256).max : _positions[i].asset1.mul(_closeRatio).div(1e4)
+                    _closeRatio == 1e4 ? type(uint128).max : _positions[i].asset0.mul(_closeRatio).div(1e4),
+                    _closeRatio == 1e4 ? type(uint128).max : _positions[i].asset1.mul(_closeRatio).div(1e4)
                 );
                 index++;
             }
@@ -446,8 +446,8 @@ library PositionLib {
                     0,
                     0,
                     0,
-                    _closeRatio == 1e4 ? type(uint256).max : _positions[i].debt0.mul(_closeRatio).div(1e4),
-                    _closeRatio == 1e4 ? type(uint256).max : _positions[i].debt1.mul(_closeRatio).div(1e4)
+                    _closeRatio == 1e4 ? type(uint128).max : _positions[i].debt0.mul(_closeRatio).div(1e4),
+                    _closeRatio == 1e4 ? type(uint128).max : _positions[i].debt1.mul(_closeRatio).div(1e4)
                 );
                 index++;
             }

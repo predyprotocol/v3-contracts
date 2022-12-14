@@ -20,7 +20,7 @@ contract TestController is TestDeployer, Test {
         deployContracts(user, factory);
         vm.warp(block.timestamp + 1 minutes);
 
-        vaultId1 = depositToken(0, 1e10, 5 * 1e18);
+        vaultId1 = depositToken(0, 1e10, 5 * 1e18, false);
         vaultId2 = depositLPT(0, 0, 202500, 202600, 2 * 1e18);
 
         isQuoteZero = getIsMarginZero();

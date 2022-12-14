@@ -520,6 +520,36 @@ contract ControllerTest is TestController {
         assertEq(vaultStatus.subVaults.length, 1);
     }
 
+    function testCloseLendingSubVault() public {
+        uint256 vaultId = depositToken(0, 1e11, 0, true);
+        uint256 vaultId2 = depositToken(0, 1e11, 0, false);
+        borrowToken(vaultId2, 7 * 1e10, 0);
+
+        vm.warp(block.timestamp + 1 days);
+
+        DataType.Vault memory vault = controller.getVault(vaultId);
+
+        controller.closeSubVault(
+            vaultId,
+            vault.subVaults[0],
+            DataType.TradeOption(
+                false,
+                true,
+                false,
+                true,
+                Constants.MARGIN_USE,
+                Constants.MARGIN_USE,
+                0,
+                0,
+                EMPTY_METADATA
+            ),
+            DataType.ClosePositionOption(getLowerSqrtPrice(), getUpperSqrtPrice(), 100, 1e4, block.timestamp)
+        );
+
+        DataType.VaultStatus memory vaultStatus = getVaultStatus(vaultId);
+        assertEq(vaultStatus.subVaults.length, 0);
+    }
+
     /**************************
      *   Test: closeVault     *
      **************************/
@@ -882,7 +912,7 @@ contract ControllerTest is TestController {
 
     function testLiquidateBecauseMarginIsNegative() public {
         uint256 vaultId = borrowLPT(0, 0, 202600, 202500, 202600, 1e18, 100 * 1e6);
-        depositToken(vaultId, 1e11, 0);
+        depositToken(vaultId, 1e11, 0, false);
 
         swapToSamePrice(user);
 

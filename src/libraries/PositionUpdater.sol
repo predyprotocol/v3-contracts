@@ -19,7 +19,8 @@ import "./UniHelper.sol";
  * Error Codes
  * PU1: reduce only
  * PU2: margin must not be negative
- * PU3: amount must not be 0
+ * PU3: liquidity amount must not be 0
+ * PU4: amount must not be 0
  */
 library PositionUpdater {
     using SafeMath for uint256;
@@ -502,7 +503,7 @@ library PositionUpdater {
         DataType.Context storage _context,
         DataType.PositionUpdate memory _positionUpdate
     ) internal {
-        require(_positionUpdate.param0 > 0 || _positionUpdate.param1 > 0);
+        require(_positionUpdate.param0 > 0 || _positionUpdate.param1 > 0, "PU4");
         _context.tokenState0.addAsset(_subVault.balance0, _positionUpdate.param0, _positionUpdate.zeroForOne);
         _context.tokenState1.addAsset(_subVault.balance1, _positionUpdate.param1, _positionUpdate.zeroForOne);
 
@@ -514,7 +515,7 @@ library PositionUpdater {
         DataType.Context storage _context,
         DataType.PositionUpdate memory _positionUpdate
     ) internal returns (uint256 withdrawAmount0, uint256 withdrawAmount1) {
-        require(_positionUpdate.param0 > 0 || _positionUpdate.param1 > 0);
+        require(_positionUpdate.param0 > 0 || _positionUpdate.param1 > 0, "PU4");
 
         withdrawAmount0 = _context.tokenState0.removeAsset(_subVault.balance0, _positionUpdate.param0);
         withdrawAmount1 = _context.tokenState1.removeAsset(_subVault.balance1, _positionUpdate.param1);
@@ -527,7 +528,7 @@ library PositionUpdater {
         DataType.Context storage _context,
         DataType.PositionUpdate memory _positionUpdate
     ) internal {
-        require(_positionUpdate.param0 > 0 || _positionUpdate.param1 > 0);
+        require(_positionUpdate.param0 > 0 || _positionUpdate.param1 > 0, "PU4");
 
         _context.tokenState0.addDebt(_subVault.balance0, _positionUpdate.param0, _positionUpdate.zeroForOne);
         _context.tokenState1.addDebt(_subVault.balance1, _positionUpdate.param1, _positionUpdate.zeroForOne);
@@ -540,7 +541,7 @@ library PositionUpdater {
         DataType.Context storage _context,
         DataType.PositionUpdate memory _positionUpdate
     ) internal returns (uint256 requiredAmount0, uint256 requiredAmount1) {
-        require(_positionUpdate.param0 > 0 || _positionUpdate.param1 > 0);
+        require(_positionUpdate.param0 > 0 || _positionUpdate.param1 > 0, "PU4");
 
         requiredAmount0 = _context.tokenState0.removeDebt(_subVault.balance0, _positionUpdate.param0);
         requiredAmount1 = _context.tokenState1.removeDebt(_subVault.balance1, _positionUpdate.param1);
