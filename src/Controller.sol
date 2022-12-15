@@ -487,6 +487,10 @@ contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCall
             return (0, 0, 0);
         }
 
+        if (ranges[_rangeId].borrowedLiquidity == 0) {
+            return (LPTStateLib.getTotalLiquidityAmount(address(this), context.uniswapPool, ranges[_rangeId]), 0, 0);
+        }
+
         return LPTStateLib.getPerpStatus(address(this), context.uniswapPool, ranges[_rangeId]);
     }
 

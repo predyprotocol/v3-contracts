@@ -97,6 +97,10 @@ contract Reader {
             ? borrow.add(_deltaLiquidity).mul(1e18).div(supply)
             : borrow.mul(1e18).div(supply.add(_deltaLiquidity));
 
+        if (afterUr > 1e18) {
+            afterUr = 1e18;
+        }
+
         (premiumGrowthForBorrower, , protocolFeePerLiquidity) = controller.calculateLPTBorrowerAndLenderPremium(
             _rangeId,
             afterUr,
