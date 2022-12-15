@@ -30,7 +30,8 @@ library UpdatePositionLogic {
         DataType.Context storage _context,
         mapping(bytes32 => DataType.PerpStatus) storage _ranges,
         DataType.PositionUpdate[] memory _positionUpdates,
-        DataType.TradeOption memory _tradeOption
+        DataType.TradeOption memory _tradeOption,
+        address _vaultOwner
     ) external returns (DataType.PositionUpdateResult memory positionUpdateResult) {
         require(!_tradeOption.isLiquidationCall);
 
@@ -61,7 +62,7 @@ library UpdatePositionLogic {
         } else if (positionUpdateResult.requiredAmounts.amount0 < 0) {
             TransferHelper.safeTransfer(
                 _context.token0,
-                msg.sender,
+                _vaultOwner,
                 uint256(-positionUpdateResult.requiredAmounts.amount0)
             );
         }
@@ -76,7 +77,7 @@ library UpdatePositionLogic {
         } else if (positionUpdateResult.requiredAmounts.amount1 < 0) {
             TransferHelper.safeTransfer(
                 _context.token1,
-                msg.sender,
+                _vaultOwner,
                 uint256(-positionUpdateResult.requiredAmounts.amount1)
             );
         }

@@ -404,7 +404,8 @@ contract Controller is Initializable, IUniswapV3MintCallback, IUniswapV3SwapCall
             context,
             ranges,
             _positionUpdates,
-            _tradeOption
+            _tradeOption,
+            IVaultNFT(vaultNFT).ownerOf(vaultId)
         );
 
         requiredAmounts = positionUpdateResult.requiredAmounts;
