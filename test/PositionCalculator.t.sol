@@ -19,6 +19,38 @@ contract PositionCalculatorTest is Test {
         assertLe(minSqrtPrice, uint256(TickMath.getSqrtRatioAtTick(int24(_upperTick))));
     }
 
+    function testCalculateMinLPTValue0() public {
+        // isMarginZero false(1 is USDC)
+        {
+            int24 lower = -202450;
+            int24 upper = -200280;
+
+            uint128 liquidity = LiquidityAmounts.getLiquidityForAmount0(
+                TickMath.getSqrtRatioAtTick(lower),
+                TickMath.getSqrtRatioAtTick(upper),
+                1e18
+            );
+            uint256 value1 = PositionCalculator.calculateMinLPTValue(DataType.LPT(false, liquidity, lower, upper));
+            assertEq(value1, 1799974674);
+        }
+    }
+
+    function testCalculateMinLPTValue1() public {
+        // isMarginZero true(0 is USDC)
+        {
+            int24 lower = 200280;
+            int24 upper = 202450;
+
+            uint128 liquidity = LiquidityAmounts.getLiquidityForAmount1(
+                TickMath.getSqrtRatioAtTick(lower),
+                TickMath.getSqrtRatioAtTick(upper),
+                1e18
+            );
+            uint256 value1 = PositionCalculator.calculateMinLPTValue(DataType.LPT(false, liquidity, lower, upper));
+            assertEq(value1, 999999999999999457);
+        }
+    }
+
     function testCannotCalculateMinDeposit() public {
         DataType.LPT[] memory lpts = new DataType.LPT[](0);
 
@@ -126,6 +158,24 @@ contract PositionCalculatorTest is Test {
         );
 
         assertGe(PositionCalculator.calculateMinDeposit(position, uint160(sqrtPrice), false), 0);
+    }
+
+    function testCalculateMinDepositWith0Debt(uint160 _sqrtPrice) public {
+        uint160 sqrtPrice = uint160(bound(_sqrtPrice, 2823045766959374473400000, Constants.MAX_SQRT_PRICE));
+
+        DataType.LPT[] memory lpts = new DataType.LPT[](0);
+
+        PositionCalculator.PositionCalculatorParams memory position = PositionCalculator.PositionCalculatorParams(
+            1e16,
+            1e10,
+            0,
+            0,
+            0,
+            0,
+            lpts
+        );
+
+        assertEq(PositionCalculator.calculateMinDeposit(position, sqrtPrice, false), 0);
     }
 
     /*********************************************

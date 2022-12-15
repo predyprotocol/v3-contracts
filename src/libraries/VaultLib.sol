@@ -270,7 +270,7 @@ library VaultLib {
         );
 
         (int256 marginValue, uint256 assetValue, uint256 debtValue) = PositionCalculator
-            .calculateCollateralAndDebtValue(params, _sqrtPrice, _context.isMarginZero, false);
+            .calculateCollateralAndDebtValue(params, _sqrtPrice, _context.isMarginZero);
 
         return
             DataType.VaultStatus(
@@ -298,7 +298,7 @@ library VaultLib {
         PositionCalculator.PositionCalculatorParams memory _params,
         uint160 _sqrtPrice
     ) internal pure returns (int256) {
-        return PositionCalculator.calculateValue(_params, _sqrtPrice, _context.isMarginZero, false);
+        return PositionCalculator.calculateValue(_params, _sqrtPrice, _context.isMarginZero);
     }
 
     function getVaultStatusValue(

@@ -53,8 +53,7 @@ library LiquidationLogic {
         (, , uint256 debtValue) = PositionCalculator.calculateCollateralAndDebtValue(
             _params,
             sqrtTwap,
-            _context.isMarginZero,
-            false
+            _context.isMarginZero
         );
 
         // close all positions in the vault
@@ -167,8 +166,7 @@ library LiquidationLogic {
             (marginValue, assetValue, debtValue) = PositionCalculator.calculateCollateralAndDebtValue(
                 _params,
                 sqrtPrice,
-                isMarginZero,
-                false
+                isMarginZero
             );
 
             vaultValue = marginValue.add(int256(assetValue)).sub(int256(debtValue));

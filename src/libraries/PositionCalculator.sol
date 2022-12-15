@@ -35,6 +35,11 @@ library PositionCalculator {
         DataType.LPT[] lpts;
     }
 
+    struct TargetLPT {
+        int24 lowerTick;
+        int24 upperTick;
+    }
+
     /**
      * @notice Calculates Min. Deposit for a vault.
      * MinDeposit = vaultPositionValue - minValue + Max{0.00006 * Sqrt{DebtValue}, 0.02} * DebtValue
@@ -58,11 +63,19 @@ library PositionCalculator {
 
         int256 minValue = calculateMinValue(_params, _sqrtPrice, _isMarginZero);
 
-        (, , uint256 debtValue) = calculateCollateralAndDebtValue(_params, _sqrtPrice, _isMarginZero, false);
+        (, , uint256 debtValue) = calculateCollateralAndDebtValue(_params, _sqrtPrice, _isMarginZero);
 
-        minDeposit = int256(calculateRequiredCollateralWithDebt(debtValue).mul(debtValue).div(1e6))
-            .add(vaultPositionValue)
-            .sub(minValue);
+        if (debtValue == 0) {
+            return 0;
+        }
+
+        minDeposit = vaultPositionValue.sub(minValue);
+
+        if (minDeposit < 0) {
+            minDeposit = 0;
+        }
+
+        minDeposit = minDeposit.add(int256(calculateRequiredCollateralWithDebt(debtValue).mul(debtValue).div(1e6)));
 
         if (minDeposit < Constants.MIN_MARGIN_AMOUNT && debtValue > 0) {
             minDeposit = Constants.MIN_MARGIN_AMOUNT;
@@ -141,7 +154,13 @@ library PositionCalculator {
                     continue;
                 }
 
-                int256 value = calculateValue(_position, minSqrtPrice, _isMarginZero, true);
+                int256 value = calculateValue(
+                    _position,
+                    minSqrtPrice,
+                    _isMarginZero,
+                    true,
+                    TargetLPT(lpt.lowerTick, lpt.upperTick)
+                );
 
                 if (minValue > value) {
                     minValue = value;
@@ -155,20 +174,22 @@ library PositionCalculator {
         uint160 _sqrtPrice,
         bool _isMarginZero
     ) internal pure returns (int256 value) {
-        return calculateValue(_position, _sqrtPrice, _isMarginZero, false);
+        return calculateValue(_position, _sqrtPrice, _isMarginZero, false, TargetLPT(0, 0));
     }
 
     function calculateValue(
         PositionCalculatorParams memory _position,
         uint160 _sqrtPrice,
         bool isMarginZero,
-        bool _isMinPrice
+        bool _isMinPrice,
+        TargetLPT memory _targetLPT
     ) internal pure returns (int256 value) {
         (int256 marginValue, uint256 assetValue, uint256 debtValue) = calculateCollateralAndDebtValue(
             _position,
             _sqrtPrice,
             isMarginZero,
-            _isMinPrice
+            _isMinPrice,
+            _targetLPT
         );
 
         return marginValue + int256(assetValue) - int256(debtValue);
@@ -177,8 +198,25 @@ library PositionCalculator {
     function calculateCollateralAndDebtValue(
         PositionCalculatorParams memory _position,
         uint160 _sqrtPrice,
+        bool _isMarginZero
+    )
+        internal
+        pure
+        returns (
+            int256 marginValue,
+            uint256 assetValue,
+            uint256 debtValue
+        )
+    {
+        return calculateCollateralAndDebtValue(_position, _sqrtPrice, _isMarginZero, false, TargetLPT(0, 0));
+    }
+
+    function calculateCollateralAndDebtValue(
+        PositionCalculatorParams memory _position,
+        uint160 _sqrtPrice,
         bool _isMarginZero,
-        bool _isMinPrice
+        bool _isMinPrice,
+        TargetLPT memory _targetLPT
     )
         internal
         pure
@@ -195,7 +233,7 @@ library PositionCalculator {
             uint256 assetAmount1,
             uint256 debtAmount0,
             uint256 debtAmount1
-        ) = calculateCollateralAndDebtAmount(_position, _sqrtPrice, _isMinPrice);
+        ) = calculateCollateralAndDebtAmount(_position, _sqrtPrice, _isMinPrice, _targetLPT);
 
         assetValue = uint256(
             PriceHelper.getValue(_isMarginZero, _sqrtPrice, int256(assetAmount0), int256(assetAmount1))
@@ -207,7 +245,8 @@ library PositionCalculator {
     function calculateCollateralAndDebtAmount(
         PositionCalculatorParams memory _position,
         uint160 _sqrtPrice,
-        bool _isMinPrice
+        bool _isMinPrice,
+        TargetLPT memory _targetLPT
     )
         internal
         pure
@@ -226,21 +265,18 @@ library PositionCalculator {
         for (uint256 i = 0; i < _position.lpts.length; i++) {
             DataType.LPT memory lpt = _position.lpts[i];
 
-            uint160 sqrtLowerPrice = TickMath.getSqrtRatioAtTick(lpt.lowerTick);
-            uint160 sqrtUpperPrice = TickMath.getSqrtRatioAtTick(lpt.upperTick);
-
-            if (_isMinPrice && !lpt.isCollateral && sqrtLowerPrice <= _sqrtPrice && _sqrtPrice <= sqrtUpperPrice) {
-                debtAmount1 = debtAmount1.add(
-                    (
-                        uint256(lpt.liquidity).mul(
-                            uint256(TickMath.getSqrtRatioAtTick(lpt.upperTick)).sub(
-                                TickMath.getSqrtRatioAtTick(lpt.lowerTick)
-                            )
-                        )
-                    ).div(Q96)
-                );
+            if (
+                _isMinPrice &&
+                !lpt.isCollateral &&
+                lpt.lowerTick == _targetLPT.lowerTick &&
+                lpt.upperTick == _targetLPT.upperTick
+            ) {
+                debtAmount1 = debtAmount1.add(calculateMinLPTValue(lpt));
                 continue;
             }
+
+            uint160 sqrtLowerPrice = TickMath.getSqrtRatioAtTick(lpt.lowerTick);
+            uint160 sqrtUpperPrice = TickMath.getSqrtRatioAtTick(lpt.upperTick);
 
             (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
                 _sqrtPrice,
@@ -293,5 +329,16 @@ library PositionCalculator {
             _newParams.lpts[k] = _position.lpts[j];
             k++;
         }
+    }
+
+    function calculateMinLPTValue(DataType.LPT memory _lpt) internal pure returns (uint256) {
+        return
+            (
+                uint256(_lpt.liquidity).mul(
+                    uint256(TickMath.getSqrtRatioAtTick(_lpt.upperTick)).sub(
+                        TickMath.getSqrtRatioAtTick(_lpt.lowerTick)
+                    )
+                )
+            ).div(Q96);
     }
 }

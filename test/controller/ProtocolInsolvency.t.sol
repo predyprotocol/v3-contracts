@@ -43,12 +43,12 @@ contract ProtocolInsolvencyTest is TestController {
         positionUpdates[0] = DataType.PositionUpdate(
             _isWithdraw ? DataType.PositionUpdateType.WITHDRAW_TOKEN : DataType.PositionUpdateType.DEPOSIT_TOKEN,
             _isWithdraw ? vault.subVaults[0] : 0,
-            false,
+            true,
             0,
             0,
             0,
-            _amount0,
-            _amount1
+            _isWithdraw ? _amount0 * 2 : _amount0,
+            _isWithdraw ? _amount1 * 2 : _amount1
         );
 
         DataType.OpenPositionOption memory openPositionOption = getOpenPositionParams();
@@ -136,7 +136,7 @@ contract ProtocolInsolvencyTest is TestController {
 
         slip(user, true, swapAmount);
 
-        vm.warp(blockTimestamp() + 2 days);
+        vm.warp(blockTimestamp() + 36 days);
 
         withdrawToken(vaultId, 1e10, ethAmount);
 
@@ -155,12 +155,12 @@ contract ProtocolInsolvencyTest is TestController {
         uint256 _ethAmount
     ) public {
         uint256 swapAmount = bound(_swapAmount, 1e16, 10 * 1e18);
-        uint256 elapsedTime = bound(_elapsedTime, 1 days, 1 weeks);
+        uint256 elapsedTime = bound(_elapsedTime, 10 days, 60 weeks);
         uint256 ethAmount = bound(_ethAmount, 1e17, 2 * 1e18);
 
         uint256 supplyVaultId = supplyToken(1e10, 1e18);
 
-        openShortPut(supplyVaultId, 0, 202500, 202700, 1e18);
+        uint256 shortVaultId = openShortPut(0, 0, 202500, 202700, 1e18);
 
         uint256 borrowVaultId = borrowLPT(0, 0, 202600, 202500, 202600, ethAmount, 100 * 1e6);
 
@@ -170,6 +170,7 @@ contract ProtocolInsolvencyTest is TestController {
 
         (DataType.TradeOption memory tradeOption, DataType.ClosePositionOption memory closeOption) = getCloseOptions();
 
+        controller.closeVault(shortVaultId, tradeOption, closeOption);
         controller.closeVault(supplyVaultId, tradeOption, closeOption);
         controller.closeVault(borrowVaultId, tradeOption, closeOption);
 

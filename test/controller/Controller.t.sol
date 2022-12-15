@@ -574,7 +574,7 @@ contract ControllerTest is TestController {
                 -1,
                 EMPTY_METADATA
             ),
-            DataType.ClosePositionOption(1500 * 1e6, 2000, 100, 1e4, block.timestamp)
+            DataType.ClosePositionOption(0, type(uint128).max, 100, 1e4, block.timestamp)
         );
     }
 
