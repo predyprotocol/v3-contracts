@@ -6,7 +6,7 @@ import "./BaseTestHelper.sol";
 import "../../src/Controller.sol";
 import "../../src/Reader.sol";
 import "../../src/VaultNFT.sol";
-import "../../src/mocks/MockERC20.sol";
+import "../mocks/MockERC20.sol";
 import "../../src/libraries/DataType.sol";
 import "v3-periphery/NonfungiblePositionManager.sol";
 import {UniswapV3Factory} from "v3-core/contracts/UniswapV3Factory.sol";

@@ -7,7 +7,7 @@ import "forge-std/Vm.sol";
 import "forge-std/console.sol";
 import "../src/libraries/DataType.sol";
 import "../src/libraries/PriceHelper.sol";
-import "../src/mocks/MockPriceFeed.sol";
+import "./mocks/MockPriceFeed.sol";
 
 contract PriceHelperTest is Test {
     MockPriceFeed private priceFeed;

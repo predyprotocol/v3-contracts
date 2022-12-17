@@ -8,7 +8,6 @@ import "forge-std/console.sol";
 
 import "./Setup.t.sol";
 import "../../src/Controller.sol";
-import "../../src/mocks/MockERC20.sol";
 
 contract ControllerPauseTest is TestController {
     DataType.TradeOption internal tradeOption;

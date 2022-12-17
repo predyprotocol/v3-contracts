@@ -9,7 +9,7 @@ import "@uniswap/v3-periphery/interfaces/ISwapRouter.sol";
 import "../../src/Controller.sol";
 import "../../src/Reader.sol";
 import "../../src/VaultNFT.sol";
-import "../../src/mocks/MockERC20.sol";
+import "../mocks/MockERC20.sol";
 import "../../src/libraries/VaultLib.sol";
 import "../../src/libraries/PositionCalculator.sol";
 import "../../src/libraries/DataType.sol";
