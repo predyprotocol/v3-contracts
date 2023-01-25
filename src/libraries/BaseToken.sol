@@ -104,10 +104,12 @@ library BaseToken {
         TokenState storage tokenState,
         AccountState storage accountState,
         uint256 _amount
-    ) internal returns (uint256 finalBurnAmount) {
+    ) internal returns (uint256 finalWithdrawAmount) {
         if (_amount == 0) {
             return 0;
         }
+
+        uint256 finalBurnAmount;
 
         if (accountState.interestType == InterestType.COMPOUND) {
             uint256 burnAmount = PredyMath.mulDiv(_amount, Constants.ONE, tokenState.assetScaler);
@@ -120,9 +122,11 @@ library BaseToken {
                 accountState.assetAmount = accountState.assetAmount.sub(burnAmount);
             }
 
-            tokenState.totalCompoundDeposited = tokenState.totalCompoundDeposited.sub(finalBurnAmount);
+            finalWithdrawAmount = PredyMath.mulDiv(finalBurnAmount, tokenState.assetScaler, Constants.ONE);
 
-            finalBurnAmount = PredyMath.mulDiv(finalBurnAmount, tokenState.assetScaler, Constants.ONE);
+            require(getAvailableCollateralValue(tokenState) >= finalWithdrawAmount, "B0");
+
+            tokenState.totalCompoundDeposited = tokenState.totalCompoundDeposited.sub(finalBurnAmount);
         } else {
             if (accountState.assetAmount < _amount) {
                 finalBurnAmount = accountState.assetAmount;
@@ -132,7 +136,10 @@ library BaseToken {
                 accountState.assetAmount = accountState.assetAmount.sub(_amount);
             }
 
+            require(getAvailableCollateralValue(tokenState) >= finalBurnAmount, "B0");
+
             tokenState.totalNormalDeposited = tokenState.totalNormalDeposited.sub(finalBurnAmount);
+            finalWithdrawAmount = finalBurnAmount;
         }
     }
 
@@ -292,8 +299,8 @@ library BaseToken {
     }
 
     function getUtilizationRatio(TokenState memory tokenState) internal pure returns (uint256) {
-        if (tokenState.totalCompoundDeposited == 0 && tokenState.totalNormalBorrowed == 0) {
-            return Constants.ONE;
+        if (tokenState.totalCompoundDeposited == 0 && tokenState.totalNormalDeposited == 0) {
+            return 0;
         }
 
         return PredyMath.mulDiv(getTotalDebtValue(tokenState), Constants.ONE, getTotalCollateralValue(tokenState));
