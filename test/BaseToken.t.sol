@@ -145,8 +145,20 @@ contract BaseTokenTest is Test {
         assertGe(assetValue - debtValue + protocolFee1 + protocolFee2, 1400000000 - 2);
     }
 
-    function testRemoveCollateralAll(uint256 _amount) public {
+    // Cannot remove asset if there is no enough available asset
+    function testCannotRemoveAsset(uint256 _amount) public {
         vm.assume(assetAmount < _amount && _amount < type(uint128).max);
+
+        BaseToken.removeAsset(tokenState, accountState, _amount);
+        vm.expectRevert(bytes("B0"));
+        BaseToken.removeAsset(tokenState, normalAccountState, _amount);
+    }
+
+    function testRemoveAssetAll(uint256 _amount) public {
+        vm.assume(assetAmount < _amount && _amount < type(uint128).max);
+
+        BaseToken.removeDebt(tokenState, accountState, debtAmount);
+        BaseToken.removeDebt(tokenState, normalAccountState, debtAmount);
 
         uint256 removedAssetAmount1 = BaseToken.removeAsset(tokenState, accountState, _amount);
         uint256 removedAssetAmount2 = BaseToken.removeAsset(tokenState, normalAccountState, _amount);
